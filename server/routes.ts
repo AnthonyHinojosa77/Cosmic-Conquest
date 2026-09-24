@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertPostcardSchema, insertPredictionSchema, insertMenuItemSchema, insertVisitorSchema, type Visitor, type PublicVisitor } from "@shared/schema";
 import { apiLimiter, writeLimiter, visitorIdentity } from "./middleware";
+import { registerGameRoutes } from "./gameRoutes";
 
 // visitorId is the visitor's rf_vid cookie value; never expose it publicly.
 function publicVisitor({ visitorId: _visitorId, ...rest }: Visitor): PublicVisitor {
@@ -94,6 +95,8 @@ export async function registerRoutes(
     const visitor = storage.logVisitor(parsed.data, req.visitorId!);
     res.status(201).json(publicVisitor(visitor));
   });
+
+  registerGameRoutes(app);
 
   return httpServer;
 }

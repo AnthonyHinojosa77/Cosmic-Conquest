@@ -63,24 +63,24 @@ export default function Hub() {
       path: "/voyages",
       title: "Cosmic Voyages",
       subtitle: "Interplanetary Tourism Bureau",
-      // Position over left panel area of the magazine cover
-      top: "28%", left: "3%", width: "30%", height: "50%",
+      // "Blast-off to the planets!" band of the magazine cover
+      top: "19%", left: "3%", width: "94%", height: "20%",
     },
     {
       id: "expo",
       path: "/expo",
       title: "The Atomic Expo",
       subtitle: "World's Fair of Tomorrow",
-      // Position over center panel
-      top: "28%", left: "35%", width: "30%", height: "50%",
+      // "City of Tomorrow!" band
+      top: "40%", left: "3%", width: "94%", height: "21%",
     },
     {
       id: "diner",
       path: "/diner",
       title: "Astro Diner",
       subtitle: "Orbital Dining & Refreshments",
-      // Position over right panel
-      top: "28%", left: "67%", width: "30%", height: "50%",
+      // "Robot waitress of Space Diner!" band
+      top: "62%", left: "3%", width: "94%", height: "34%",
     },
   ];
 
@@ -169,6 +169,16 @@ export default function Hub() {
             </Link>
           ))}
         </div>
+
+        {/* Bounty Hunter game entry */}
+        <Link href="/bounties">
+          <button
+            className="retro-btn gold w-full mt-4 py-4 text-lg md:text-xl"
+            data-testid="button-enter-bounties"
+          >
+            ★ Bounty Office — Take a job, hunter ★
+          </button>
+        </Link>
 
         {/* Footer tagline */}
         <p className="text-center text-[hsl(38,20%,45%)] text-xs tracking-widest uppercase mt-6 marker-text">

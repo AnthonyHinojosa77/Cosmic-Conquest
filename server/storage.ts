@@ -53,6 +53,24 @@ sqlite.exec(`
     \`item_id\` integer NOT NULL,
     \`created_at\` text NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS \`players\` (
+    \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    \`visitor_id\` text NOT NULL,
+    \`callsign\` text NOT NULL,
+    \`credits\` integer DEFAULT 0 NOT NULL,
+    \`suit\` text DEFAULT 'silver' NOT NULL,
+    \`owned\` text DEFAULT '[]' NOT NULL,
+    \`created_at\` text NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS \`players_visitor_unique\` ON \`players\` (\`visitor_id\`);
+  CREATE TABLE IF NOT EXISTS \`bounty_claims\` (
+    \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    \`visitor_id\` text NOT NULL,
+    \`bounty_id\` text NOT NULL,
+    \`reward\` integer NOT NULL,
+    \`created_at\` text NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS \`bounty_claims_visitor_bounty_unique\` ON \`bounty_claims\` (\`visitor_id\`,\`bounty_id\`);
 `);
 
 // Enforce one vote per visitor per item at the database level. Kept separate so
