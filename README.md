@@ -1,4 +1,4 @@
-# RetroFuturism
+# Cosmic Conquest
 
 A point-and-click retro-futurist social game. Explore illustrated scenes (a space-tourism
 voyage, a World's Fair expo, a roadside diner), click hotspots to make discoveries, and

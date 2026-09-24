@@ -1,4 +1,4 @@
-# RetroFuturism — notes for Claude
+# Cosmic Conquest — notes for Claude
 
 ## Working agreement with the owner
 

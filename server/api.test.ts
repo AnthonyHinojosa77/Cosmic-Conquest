@@ -7,7 +7,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import type { AddressInfo } from "net";
 
-const dbDir = mkdtempSync(path.join(tmpdir(), "retrofuturism-test-"));
+const dbDir = mkdtempSync(path.join(tmpdir(), "cosmic-conquest-test-"));
 process.env.DATABASE_PATH = path.join(dbDir, "test.db");
 
 let server: Server;
