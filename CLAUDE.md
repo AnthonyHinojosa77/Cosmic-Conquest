@@ -36,5 +36,9 @@ npm run build
   `npm run db:push`.
 - Visitor identity for vote dedup is the server-issued `rf_vid` cookie; never
   return `visitorId` from the API.
+- Bounty Hunter game: content in `shared/game.ts` (ships to the browser),
+  bounty answers server-only in `server/bounties.ts`, logic in
+  `server/gameStorage.ts` + `server/gameRoutes.ts`. Credits/purchases/claims
+  are always decided server-side. Roadmap and art prompts: `GAME_PLAN.md`.
 - Env vars: `PORT`, `DATABASE_PATH`, `TRUST_PROXY` (loaded from `.env` by
   `server/env.ts`).

@@ -1,0 +1,151 @@
+import { createHash } from "crypto";
+import { eq, desc, sql } from "drizzle-orm";
+import { players, bountyClaims, type Player } from "@shared/schema";
+import {
+  DEFAULT_SUIT,
+  ownsSuit,
+  shopItem,
+  suitForItem,
+  type PlayerProfile,
+  type LeaderboardEntry,
+  type ShopItemId,
+  type SuitId,
+} from "@shared/game";
+import { db } from "./storage";
+
+// Stable per visitor, so the name shown before their first action is the one that gets saved.
+function defaultCallsign(visitorId: string): string {
+  const n = parseInt(createHash("sha256").update(visitorId).digest("hex").slice(0, 8), 16);
+  return `Hunter #${1000 + (n % 9000)}`;
+}
+
+function parseOwned(raw: string): ShopItemId[] {
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? value.filter((v): v is ShopItemId => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function completedBounties(visitorId: string): string[] {
+  return db.select({ bountyId: bountyClaims.bountyId })
+    .from(bountyClaims)
+    .where(eq(bountyClaims.visitorId, visitorId))
+    .all()
+    .map((r) => r.bountyId);
+}
+
+function toProfile(player: Player): PlayerProfile {
+  return {
+    callsign: player.callsign,
+    credits: player.credits,
+    suit: player.suit as SuitId,
+    owned: parseOwned(player.owned),
+    completedBounties: completedBounties(player.visitorId),
+  };
+}
+
+function findPlayer(visitorId: string): Player | undefined {
+  return db.select().from(players).where(eq(players.visitorId, visitorId)).get();
+}
+
+// Players are created lazily on their first write, so browsing never adds rows.
+function ensurePlayer(visitorId: string): Player {
+  return findPlayer(visitorId) ?? db.insert(players).values({
+    visitorId,
+    callsign: defaultCallsign(visitorId),
+    credits: 0,
+    suit: DEFAULT_SUIT,
+    owned: "[]",
+    createdAt: new Date().toISOString(),
+  }).returning().get();
+}
+
+export function getProfile(visitorId: string): PlayerProfile {
+  const player = findPlayer(visitorId);
+  if (player) return toProfile(player);
+  return { callsign: defaultCallsign(visitorId), credits: 0, suit: DEFAULT_SUIT, owned: [], completedBounties: [] };
+}
+
+export type UpdateResult = { status: "ok"; profile: PlayerProfile } | { status: "suit_not_owned" };
+
+export function updateProfile(visitorId: string, changes: { callsign?: string; suit?: SuitId }): UpdateResult {
+  return db.transaction(() => {
+    const player = ensurePlayer(visitorId);
+    const owned = parseOwned(player.owned);
+    if (changes.suit && !ownsSuit(owned, changes.suit)) {
+      return { status: "suit_not_owned" as const };
+    }
+    const updated = db.update(players)
+      .set({
+        ...(changes.callsign !== undefined ? { callsign: changes.callsign } : {}),
+        ...(changes.suit !== undefined ? { suit: changes.suit } : {}),
+      })
+      .where(eq(players.id, player.id))
+      .returning()
+      .get();
+    return { status: "ok" as const, profile: toProfile(updated) };
+  });
+}
+
+export type ClaimResult = { status: "ok"; profile: PlayerProfile } | { status: "already_claimed" };
+
+export function claimBounty(visitorId: string, bountyId: string, reward: number): ClaimResult {
+  return db.transaction(() => {
+    const player = ensurePlayer(visitorId);
+    if (completedBounties(visitorId).includes(bountyId)) return { status: "already_claimed" as const };
+    db.insert(bountyClaims).values({ visitorId, bountyId, reward, createdAt: new Date().toISOString() }).run();
+    const updated = db.update(players)
+      .set({ credits: sql`${players.credits} + ${reward}` })
+      .where(eq(players.id, player.id))
+      .returning()
+      .get();
+    return { status: "ok" as const, profile: toProfile(updated) };
+  });
+}
+
+export type BuyResult =
+  | { status: "ok"; profile: PlayerProfile }
+  | { status: "not_found" }
+  | { status: "already_owned" }
+  | { status: "insufficient_credits" };
+
+export function buyItem(visitorId: string, itemId: string): BuyResult {
+  const item = shopItem(itemId);
+  if (!item) return { status: "not_found" };
+  return db.transaction(() => {
+    const player = ensurePlayer(visitorId);
+    const owned = parseOwned(player.owned);
+    if (owned.includes(item.id)) return { status: "already_owned" as const };
+    if (player.credits < item.price) return { status: "insufficient_credits" as const };
+    const suit = suitForItem(item.id);
+    const updated = db.update(players)
+      .set({
+        credits: player.credits - item.price,
+        owned: JSON.stringify([...owned, item.id]),
+        // Put on a newly bought suit right away
+        ...(suit ? { suit } : {}),
+      })
+      .where(eq(players.id, player.id))
+      .returning()
+      .get();
+    return { status: "ok" as const, profile: toProfile(updated) };
+  });
+}
+
+export function getLeaderboard(limit = 10): LeaderboardEntry[] {
+  return db.select({
+    callsign: players.callsign,
+    earned: sql<number>`sum(${bountyClaims.reward})`,
+    bounties: sql<number>`count(${bountyClaims.id})`,
+    firstClaim: sql<string>`min(${bountyClaims.createdAt})`,
+  })
+    .from(bountyClaims)
+    .innerJoin(players, eq(players.visitorId, bountyClaims.visitorId))
+    .groupBy(players.id)
+    .orderBy(desc(sql`sum(${bountyClaims.reward})`), sql`min(${bountyClaims.createdAt})`)
+    .limit(limit)
+    .all()
+    .map(({ callsign, earned, bounties }) => ({ callsign, earned, bounties }));
+}

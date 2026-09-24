@@ -26,6 +26,17 @@ export const writeLimiter = rateLimit({
   },
 });
 
+// Game actions (customizing, buying, claiming) — more generous than content writes
+export const gameLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req: Request, res: Response) => {
+    res.status(429).json({ error: "Easy there, hunter — too many actions. Try again in a few minutes." });
+  },
+});
+
 declare module "http" {
   interface IncomingMessage {
     visitorId?: string;

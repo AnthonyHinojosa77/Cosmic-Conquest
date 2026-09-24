@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { SUIT_IDS } from "./game";
 
 // Postcards from Space Tourism world
 export const postcards = sqliteTable("postcards", {
@@ -91,3 +92,34 @@ export const insertVoteSchema = createInsertSchema(votes).omit({ id: true }).ext
 });
 export type InsertVote = z.infer<typeof insertVoteSchema>;
 export type Vote = typeof votes.$inferSelect;
+
+// Bounty Hunter game — one profile per visitor cookie
+export const players = sqliteTable("players", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  visitorId: text("visitor_id").notNull(),
+  callsign: text("callsign").notNull(),
+  credits: integer("credits").notNull().default(0),
+  suit: text("suit").notNull().default("silver"),
+  owned: text("owned").notNull().default("[]"), // JSON array of ShopItemId
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("players_visitor_unique").on(table.visitorId),
+]);
+export type Player = typeof players.$inferSelect;
+
+export const updatePlayerSchema = z.object({
+  callsign: z.string().trim().min(1).max(24).optional(),
+  suit: z.enum(SUIT_IDS).optional(),
+}).refine((v) => v.callsign !== undefined || v.suit !== undefined, { message: "Nothing to update" });
+
+// Bounties a player has completed (reward paid once per bounty)
+export const bountyClaims = sqliteTable("bounty_claims", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  visitorId: text("visitor_id").notNull(),
+  bountyId: text("bounty_id").notNull(),
+  reward: integer("reward").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("bounty_claims_visitor_bounty_unique").on(table.visitorId, table.bountyId),
+]);
+export type BountyClaim = typeof bountyClaims.$inferSelect;

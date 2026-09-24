@@ -107,3 +107,96 @@ test("a malformed visitor cookie is replaced, not a 500", async () => {
   assert.equal(res.status, 200);
   assert.match(cookieOf(res), /^rf_vid=[0-9a-f-]{36}$/);
 });
+
+function send(method: string, url: string, body: unknown, cookie?: string) {
+  return fetch(base + url, {
+    method,
+    headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}) },
+    body: JSON.stringify(body),
+  });
+}
+
+test("game: full bounty loop — accuse, claim once, buy, equip, leaderboard", async () => {
+  // A new visitor gets a default profile without creating anything
+  const start = await fetch(base + "/api/player");
+  const cookie = cookieOf(start);
+  const fresh = await start.json();
+  assert.equal(fresh.credits, 0);
+  assert.equal(fresh.suit, "silver");
+  assert.equal("visitorId" in fresh, false);
+
+  // Wrong and right accusations
+  const wrong = await post("/api/bounties/heart-of-luna/accuse", { suspect: "vela" }, cookie);
+  assert.deepEqual(await wrong.json(), { correct: false });
+  const right = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie" }, cookie)).json();
+  assert.equal(right.correct, true);
+  assert.match(right.showdown.opponent, /Cookie/); // revealed only after a correct accusation
+
+  // Claims: wrong suspect refused, right one paid exactly once
+  assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie)).status, 422);
+  const paid = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  assert.equal(paid.status, 200);
+  const afterClaim = await paid.json();
+  assert.equal(afterClaim.credits, 500);
+  assert.deepEqual(afterClaim.completedBounties, ["heart-of-luna"]);
+  assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 409);
+
+  // Unavailable / unknown bounties
+  assert.equal((await post("/api/bounties/red-sands/claim", { suspect: "x" }, cookie)).status, 404);
+  assert.equal((await post("/api/bounties/nope/accuse", { suspect: "x" }, cookie)).status, 404);
+
+  // The name shown before the first action is the one that got saved
+  assert.equal(afterClaim.callsign, fresh.callsign);
+  assert.match(fresh.callsign, /^Hunter #\d{4}$/);
+
+  // Empty updates are rejected (and don't create anything)
+  assert.equal((await send("PATCH", "/api/player", {}, cookie)).status, 400);
+
+  // Can't wear a suit you don't own
+  assert.equal((await send("PATCH", "/api/player", { suit: "gold" }, cookie)).status, 403);
+
+  // Shop: buy, can't double-buy, can't overspend
+  const gun = await post("/api/shop/raygun/buy", {}, cookie);
+  assert.equal(gun.status, 200);
+  assert.equal((await gun.json()).credits, 200);
+  assert.equal((await post("/api/shop/raygun/buy", {}, cookie)).status, 409);
+  assert.equal((await post("/api/shop/suit-gold/buy", {}, cookie)).status, 402);
+  assert.equal((await post("/api/shop/moon-boots/buy", {}, cookie)).status, 404);
+  const red = await post("/api/shop/suit-red/buy", {}, cookie);
+  const redProfile = await red.json();
+  assert.equal(redProfile.credits, 50);
+  assert.equal(redProfile.suit, "red"); // new suit is worn right away
+
+  // Callsign + switching back to the free suit
+  const renamed = await send("PATCH", "/api/player", { callsign: "  Spike  ", suit: "silver" }, cookie);
+  const renamedProfile = await renamed.json();
+  assert.equal(renamedProfile.callsign, "Spike");
+  assert.equal(renamedProfile.suit, "silver");
+  assert.equal((await send("PATCH", "/api/player", { callsign: "x".repeat(25) }, cookie)).status, 400);
+
+  // Leaderboard shows the hunter, never their visitor id
+  const board = await (await fetch(base + "/api/leaderboard")).json();
+  const entry = board.find((e: { callsign: string }) => e.callsign === "Spike");
+  assert.deepEqual(entry, { callsign: "Spike", earned: 500, bounties: 1 });
+});
+
+test("game: a buying spree never spends more than the balance", async () => {
+  const start = await fetch(base + "/api/player");
+  const cookie = cookieOf(start);
+  await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie); // 500 credits
+  const results = await Promise.all(
+    ["raygun", "suit-gold", "suit-red", "suit-teal", "bandana"].map((id) => post(`/api/shop/${id}/buy`, {}, cookie)),
+  );
+  const profile = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
+  assert.ok(profile.credits >= 0);
+  const spent = 500 - profile.credits;
+  assert.ok(results.some((r) => r.status === 402));
+  assert.equal(spent, profile.owned.reduce((sum: number, id: string) =>
+    sum + ({ raygun: 300, "suit-gold": 250, "suit-red": 150, "suit-teal": 150, bandana: 100 } as Record<string, number>)[id], 0));
+});
+
+test("game: the culprit is not in the shared (browser) bounty data", async () => {
+  const { BOUNTIES } = await import("@shared/game");
+  const shipped = JSON.stringify(BOUNTIES);
+  assert.equal(/spatula blaster|lock-up|never take me alive/.test(shipped), false);
+});

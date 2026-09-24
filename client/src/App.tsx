@@ -8,6 +8,8 @@ import Hub from "@/pages/hub";
 import Voyages from "@/pages/voyages";
 import Expo from "@/pages/expo";
 import Diner from "@/pages/diner";
+import BountyOffice from "@/pages/bounty-office";
+import BountyPage from "@/pages/bounty";
 import NotFound from "@/pages/not-found";
 
 function AppRouter() {
@@ -17,6 +19,8 @@ function AppRouter() {
       <Route path="/voyages" component={Voyages} />
       <Route path="/expo" component={Expo} />
       <Route path="/diner" component={Diner} />
+      <Route path="/bounties" component={BountyOffice} />
+      <Route path="/bounty/:id" component={BountyPage} />
       <Route component={NotFound} />
     </Switch>
   );
