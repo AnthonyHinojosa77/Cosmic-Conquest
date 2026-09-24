@@ -15,6 +15,9 @@ The owner is non-technical. For the rest of this build:
   review the diff for bugs, fix what you find, and verify real behavior in
   a browser when UI or API behavior changes. Report the verdict in plain
   language.
+- Merging is pre-approved: once your review is done, all checks pass (locally
+  and in CI) and there are no conflicts, squash-merge the PR yourself. Still
+  ask first for anything risky, irreversible, or product-related.
 
 ## Checks (all must pass before a PR is ready)
 
