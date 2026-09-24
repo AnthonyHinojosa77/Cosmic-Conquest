@@ -1,8 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPostcardSchema, insertPredictionSchema, insertMenuItemSchema, insertVisitorSchema } from "@shared/schema";
+import { insertPostcardSchema, insertPredictionSchema, insertMenuItemSchema, insertVisitorSchema, type Visitor } from "@shared/schema";
 import { apiLimiter, writeLimiter, visitorIdentity } from "./middleware";
+
+// visitorId is the visitor's rf_vid cookie value; never expose it publicly.
+function publicVisitor({ visitorId: _visitorId, ...rest }: Visitor) {
+  return rest;
+}
 
 function parseItemId(raw: string | string[]): number | null {
   if (typeof raw !== "string" || !/^\d+$/.test(raw)) return null;
@@ -80,14 +85,14 @@ export async function registerRoutes(
   app.get("/api/visitors", (req, res) => {
     const world = req.query.world as string | undefined;
     const visitors = storage.getRecentVisitors(world);
-    res.json(visitors);
+    res.json(visitors.map(publicVisitor));
   });
 
   app.post("/api/visitors", writeLimiter, (req, res) => {
     const parsed = insertVisitorSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const visitor = storage.logVisitor(parsed.data);
-    res.status(201).json(visitor);
+    const visitor = storage.logVisitor(parsed.data, req.visitorId!);
+    res.status(201).json(publicVisitor(visitor));
   });
 
   return httpServer;

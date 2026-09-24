@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
-import { getVisitorId, getVisitorName, shouldLogVisit } from "@/lib/visitor";
+import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
 import type { MenuItem } from "@shared/schema";
 
 // Hotspot definitions — positioned over the diner illustration
@@ -65,11 +65,9 @@ export default function Diner() {
   useEffect(() => {
     if (!shouldLogVisit("Astro Diner")) return;
     apiRequest("POST", "/api/visitors", {
-      visitorId: getVisitorId(),
       visitorName: getVisitorName(),
       world: "Astro Diner",
       action: "arrived at",
-      createdAt: new Date().toISOString(),
     }).catch(() => {});
   }, []);
 
@@ -90,7 +88,6 @@ export default function Diner() {
         visitorName: name,
         dishName,
         description,
-        createdAt: new Date().toISOString(),
       });
       return res.json();
     },

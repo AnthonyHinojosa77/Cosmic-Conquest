@@ -1,15 +1,8 @@
-// In-memory visitor identity — persists for the lifetime of the page session
-// (sessionStorage is unavailable in the sandboxed iframe)
+// In-memory display name — persists for the lifetime of the page session
+// (sessionStorage is unavailable in the sandboxed iframe). The visitor's
+// identity for vote dedup is a server-issued cookie, not set here.
 
-let visitorId: string | null = null;
 let visitorName: string | null = null;
-
-export function getVisitorId(): string {
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-  }
-  return visitorId;
-}
 
 export function getVisitorName(): string {
   if (!visitorName) {

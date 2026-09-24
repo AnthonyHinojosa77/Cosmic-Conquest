@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
-import { getVisitorId, getVisitorName, shouldLogVisit } from "@/lib/visitor";
+import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
 import type { Postcard } from "@shared/schema";
 
 const destinations = [
@@ -65,11 +65,9 @@ export default function Voyages() {
   useEffect(() => {
     if (!shouldLogVisit("Cosmic Voyages")) return;
     apiRequest("POST", "/api/visitors", {
-      visitorId: getVisitorId(),
       visitorName: getVisitorName(),
       world: "Cosmic Voyages",
       action: "arrived at",
-      createdAt: new Date().toISOString(),
     }).catch(() => {});
   }, []);
 
@@ -90,7 +88,6 @@ export default function Voyages() {
         visitorName: name,
         destination: selectedDest,
         message,
-        createdAt: new Date().toISOString(),
       });
       return res.json();
     },

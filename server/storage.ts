@@ -9,8 +9,51 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import { eq, desc, sql, and } from "drizzle-orm";
 
-const sqlite = new Database("data.db");
+const sqlite = new Database(process.env.DATABASE_PATH || "data.db");
 sqlite.pragma("journal_mode = WAL");
+
+// Create any missing tables on boot so databases created before a schema
+// addition (e.g. `votes`) keep working without a manual `npm run db:push`.
+// Keep in sync with shared/schema.ts (DDL matches what drizzle-kit push emits).
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS \`postcards\` (
+    \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    \`visitor_name\` text NOT NULL,
+    \`destination\` text NOT NULL,
+    \`message\` text NOT NULL,
+    \`created_at\` text NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS \`predictions\` (
+    \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    \`visitor_name\` text NOT NULL,
+    \`prediction\` text NOT NULL,
+    \`votes\` integer DEFAULT 0 NOT NULL,
+    \`created_at\` text NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS \`menu_items\` (
+    \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    \`visitor_name\` text NOT NULL,
+    \`dish_name\` text NOT NULL,
+    \`description\` text NOT NULL,
+    \`votes\` integer DEFAULT 0 NOT NULL,
+    \`created_at\` text NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS \`visitors\` (
+    \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    \`visitor_id\` text NOT NULL,
+    \`visitor_name\` text NOT NULL,
+    \`world\` text NOT NULL,
+    \`action\` text NOT NULL,
+    \`created_at\` text NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS \`votes\` (
+    \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    \`visitor_id\` text NOT NULL,
+    \`item_type\` text NOT NULL,
+    \`item_id\` integer NOT NULL,
+    \`created_at\` text NOT NULL
+  );
+`);
 
 export const db = drizzle(sqlite);
 
@@ -36,7 +79,7 @@ export interface IStorage {
 
   // Visitors
   getRecentVisitors(world?: string): Visitor[];
-  logVisitor(visitor: InsertVisitor): Visitor;
+  logVisitor(visitor: InsertVisitor, visitorId: string): Visitor;
 
   // Votes
   hasVoted(visitorId: string, itemType: string, itemId: number): boolean;
@@ -49,7 +92,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   createPostcard(postcard: InsertPostcard): Postcard {
-    return db.insert(postcards).values(postcard).returning().get();
+    return db.insert(postcards).values({ ...postcard, createdAt: new Date().toISOString() }).returning().get();
   }
 
   getPredictions(): Prediction[] {
@@ -57,7 +100,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   createPrediction(prediction: InsertPrediction): Prediction {
-    return db.insert(predictions).values(prediction).returning().get();
+    return db.insert(predictions).values({ ...prediction, createdAt: new Date().toISOString() }).returning().get();
   }
 
   votePrediction(id: number, visitorId: string): VoteResult<Prediction> {
@@ -80,7 +123,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   createMenuItem(item: InsertMenuItem): MenuItem {
-    return db.insert(menuItems).values(item).returning().get();
+    return db.insert(menuItems).values({ ...item, createdAt: new Date().toISOString() }).returning().get();
   }
 
   voteMenuItem(id: number, visitorId: string): VoteResult<MenuItem> {
@@ -112,8 +155,8 @@ export class DatabaseStorage implements IStorage {
       .all();
   }
 
-  logVisitor(visitor: InsertVisitor): Visitor {
-    return db.insert(visitors).values(visitor).returning().get();
+  logVisitor(visitor: InsertVisitor, visitorId: string): Visitor {
+    return db.insert(visitors).values({ ...visitor, visitorId, createdAt: new Date().toISOString() }).returning().get();
   }
 
   hasVoted(visitorId: string, itemType: string, itemId: number): boolean {

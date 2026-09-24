@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { getVisitorId, getVisitorName, shouldLogVisit } from "@/lib/visitor";
+import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
 import { BackButton } from "@/components/BackButton";
 import type { Prediction } from "@shared/schema";
 
@@ -66,11 +66,9 @@ export default function Expo() {
   useEffect(() => {
     if (!shouldLogVisit("The Atomic Expo")) return;
     apiRequest("POST", "/api/visitors", {
-      visitorId: getVisitorId(),
       visitorName: getVisitorName(),
       world: "The Atomic Expo",
       action: "arrived at",
-      createdAt: new Date().toISOString(),
     }).catch(() => {});
   }, []);
 
@@ -89,7 +87,6 @@ export default function Expo() {
       const res = await apiRequest("POST", "/api/predictions", {
         visitorName: name,
         prediction,
-        createdAt: new Date().toISOString(),
       });
       return res.json();
     },
