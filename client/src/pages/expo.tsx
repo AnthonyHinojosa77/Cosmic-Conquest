@@ -109,7 +109,7 @@ export default function Expo() {
 
   const voteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("POST", `/api/predictions/${id}/vote`, { visitorId: getVisitorId() });
+      const res = await apiRequest("POST", `/api/predictions/${id}/vote`);
       return res.json();
     },
     onSuccess: () => {

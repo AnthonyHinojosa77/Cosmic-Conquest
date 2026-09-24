@@ -111,7 +111,7 @@ export default function Diner() {
 
   const voteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("POST", `/api/menu-items/${id}/vote`, { visitorId: getVisitorId() });
+      const res = await apiRequest("POST", `/api/menu-items/${id}/vote`);
       return res.json();
     },
     onSuccess: () => {

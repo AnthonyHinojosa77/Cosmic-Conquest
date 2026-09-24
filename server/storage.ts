@@ -14,6 +14,11 @@ sqlite.pragma("journal_mode = WAL");
 
 export const db = drizzle(sqlite);
 
+export type VoteResult<T> =
+  | { status: "ok"; item: T }
+  | { status: "not_found" }
+  | { status: "duplicate" };
+
 export interface IStorage {
   // Postcards
   getPostcards(): Postcard[];
@@ -22,12 +27,12 @@ export interface IStorage {
   // Predictions
   getPredictions(): Prediction[];
   createPrediction(prediction: InsertPrediction): Prediction;
-  votePrediction(id: number, visitorId: string): Prediction | undefined;
+  votePrediction(id: number, visitorId: string): VoteResult<Prediction>;
 
   // Menu items
   getMenuItems(): MenuItem[];
   createMenuItem(item: InsertMenuItem): MenuItem;
-  voteMenuItem(id: number, visitorId: string): MenuItem | undefined;
+  voteMenuItem(id: number, visitorId: string): VoteResult<MenuItem>;
 
   // Visitors
   getRecentVisitors(world?: string): Visitor[];
@@ -55,14 +60,19 @@ export class DatabaseStorage implements IStorage {
     return db.insert(predictions).values(prediction).returning().get();
   }
 
-  votePrediction(id: number, visitorId: string): Prediction | undefined {
-    if (this.hasVoted(visitorId, "prediction", id)) return undefined;
-    this.recordVote({ visitorId, itemType: "prediction", itemId: id, createdAt: new Date().toISOString() });
-    return db.update(predictions)
-      .set({ votes: sql`${predictions.votes} + 1` })
-      .where(eq(predictions.id, id))
-      .returning()
-      .get();
+  votePrediction(id: number, visitorId: string): VoteResult<Prediction> {
+    return db.transaction(() => {
+      const existing = db.select().from(predictions).where(eq(predictions.id, id)).get();
+      if (!existing) return { status: "not_found" as const };
+      if (this.hasVoted(visitorId, "prediction", id)) return { status: "duplicate" as const };
+      this.recordVote({ visitorId, itemType: "prediction", itemId: id, createdAt: new Date().toISOString() });
+      const item = db.update(predictions)
+        .set({ votes: sql`${predictions.votes} + 1` })
+        .where(eq(predictions.id, id))
+        .returning()
+        .get();
+      return { status: "ok" as const, item };
+    });
   }
 
   getMenuItems(): MenuItem[] {
@@ -73,14 +83,19 @@ export class DatabaseStorage implements IStorage {
     return db.insert(menuItems).values(item).returning().get();
   }
 
-  voteMenuItem(id: number, visitorId: string): MenuItem | undefined {
-    if (this.hasVoted(visitorId, "menuItem", id)) return undefined;
-    this.recordVote({ visitorId, itemType: "menuItem", itemId: id, createdAt: new Date().toISOString() });
-    return db.update(menuItems)
-      .set({ votes: sql`${menuItems.votes} + 1` })
-      .where(eq(menuItems.id, id))
-      .returning()
-      .get();
+  voteMenuItem(id: number, visitorId: string): VoteResult<MenuItem> {
+    return db.transaction(() => {
+      const existing = db.select().from(menuItems).where(eq(menuItems.id, id)).get();
+      if (!existing) return { status: "not_found" as const };
+      if (this.hasVoted(visitorId, "menuItem", id)) return { status: "duplicate" as const };
+      this.recordVote({ visitorId, itemType: "menuItem", itemId: id, createdAt: new Date().toISOString() });
+      const item = db.update(menuItems)
+        .set({ votes: sql`${menuItems.votes} + 1` })
+        .where(eq(menuItems.id, id))
+        .returning()
+        .get();
+      return { status: "ok" as const, item };
+    });
   }
 
   getRecentVisitors(world?: string): Visitor[] {

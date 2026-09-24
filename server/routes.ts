@@ -2,7 +2,13 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertPostcardSchema, insertPredictionSchema, insertMenuItemSchema, insertVisitorSchema } from "@shared/schema";
-import { apiLimiter, writeLimiter } from "./middleware";
+import { apiLimiter, writeLimiter, visitorIdentity } from "./middleware";
+
+function parseItemId(raw: string | string[]): number | null {
+  if (typeof raw !== "string" || !/^\d+$/.test(raw)) return null;
+  const id = Number(raw);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -11,6 +17,7 @@ export async function registerRoutes(
 
   // Apply general API rate limiting to all /api routes
   app.use("/api", apiLimiter);
+  app.use("/api", visitorIdentity);
 
   // === POSTCARDS (Space Tourism) ===
   app.get("/api/postcards", (_req, res) => {
@@ -39,15 +46,12 @@ export async function registerRoutes(
   });
 
   app.post("/api/predictions/:id/vote", writeLimiter, (req, res) => {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const visitorId = req.body.visitorId;
-    if (!visitorId || typeof visitorId !== "string") {
-      return res.status(400).json({ error: "visitorId required" });
-    }
-    const prediction = storage.votePrediction(id, visitorId);
-    if (!prediction) return res.status(409).json({ error: "Already voted" });
-    res.json(prediction);
+    const id = parseItemId(req.params.id);
+    if (id === null) return res.status(400).json({ error: "Invalid ID" });
+    const result = storage.votePrediction(id, req.visitorId!);
+    if (result.status === "not_found") return res.status(404).json({ error: "Not found" });
+    if (result.status === "duplicate") return res.status(409).json({ error: "Already voted" });
+    res.json(result.item);
   });
 
   // === MENU ITEMS (Astro Diner) ===
@@ -64,15 +68,12 @@ export async function registerRoutes(
   });
 
   app.post("/api/menu-items/:id/vote", writeLimiter, (req, res) => {
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const visitorId = req.body.visitorId;
-    if (!visitorId || typeof visitorId !== "string") {
-      return res.status(400).json({ error: "visitorId required" });
-    }
-    const item = storage.voteMenuItem(id, visitorId);
-    if (!item) return res.status(409).json({ error: "Already voted" });
-    res.json(item);
+    const id = parseItemId(req.params.id);
+    if (id === null) return res.status(400).json({ error: "Invalid ID" });
+    const result = storage.voteMenuItem(id, req.visitorId!);
+    if (result.status === "not_found") return res.status(404).json({ error: "Not found" });
+    if (result.status === "duplicate") return res.status(409).json({ error: "Already voted" });
+    res.json(result.item);
   });
 
   // === VISITORS ===

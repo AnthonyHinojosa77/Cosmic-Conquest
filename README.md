@@ -40,10 +40,12 @@ Copy [`.env.example`](./.env.example) to `.env`. This app deliberately has only 
 | ---------- | --------------- | ----------------------------------------------------------- |
 | `NODE_ENV` | `development`   | `production` serves the prebuilt static client; otherwise Vite dev middleware is used |
 | `PORT`     | `5000`          | Port the Express server (API + client) binds on `0.0.0.0`   |
+| `TRUST_PROXY` | unset       | Proxy hops to trust for client IPs (e.g. `1` behind Fly.io/Railway/Render/nginx); needed for per-IP rate limiting behind a proxy |
 
 The SQLite database path (`./data.db`) and the Drizzle config URL are currently
 hard-coded (`server/storage.ts`, `drizzle.config.ts`), not read from the environment.
-There is no auth/session/OAuth layer, so no secrets are required.
+There is no auth/session/OAuth layer, so no secrets are required. The server sets an
+anonymous `rf_vid` cookie to identify visitors for one-vote-per-item deduplication.
 
 ## Deployment
 
