@@ -92,7 +92,7 @@ export default function Hub() {
           EXPLORE<br/>3 WORLDS
         </div>
         <h1 className="pulp-title text-4xl md:text-6xl text-[hsl(45,80%,55%)] drop-shadow-lg tracking-wider">
-          Retro Universe
+          Cosmic Conquest
         </h1>
         <p className="marker-text text-[hsl(38,30%,75%)] text-sm md:text-base mt-1 tracking-wide">
           A Social Voyage Through Tomorrow's Past
@@ -106,7 +106,7 @@ export default function Hub() {
           <img
             ref={imgRef}
             src="./scenes/hub-cover.png"
-            alt="Retro Universe — a pulp science fiction magazine cover with three illustrated panels"
+            alt="A pulp science fiction magazine cover with three illustrated panels"
             className="w-full h-auto block"
             onLoad={() => setImgLoaded(true)}
             draggable={false}

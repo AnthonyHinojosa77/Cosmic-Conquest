@@ -1,4 +1,4 @@
-# Design language — RetroFuturism
+# Design language — Cosmic Conquest
 
 A "retro pulp universe": aged-paper/parchment surfaces, bold primary inks, comic-panel
 borders, and pulp-magazine display type. This document captures the visual tokens so the
