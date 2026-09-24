@@ -155,19 +155,19 @@ test("game: full bounty loop — accuse, claim once, buy, equip, leaderboard", a
   // Can't wear a suit you don't own
   assert.equal((await send("PATCH", "/api/player", { suit: "gold" }, cookie)).status, 403);
 
-  // Shop: buy, can't double-buy, can't overspend
+  // Shop: buy, can't double-buy; unknown and coming-soon items can't be bought
   const gun = await post("/api/shop/raygun/buy", {}, cookie);
   assert.equal(gun.status, 200);
   assert.equal((await gun.json()).credits, 200);
   assert.equal((await post("/api/shop/raygun/buy", {}, cookie)).status, 409);
-  assert.equal((await post("/api/shop/suit-gold/buy", {}, cookie)).status, 402);
   assert.equal((await post("/api/shop/moon-boots/buy", {}, cookie)).status, 404);
-  const red = await post("/api/shop/suit-red/buy", {}, cookie);
-  const redProfile = await red.json();
-  assert.equal(redProfile.credits, 50);
-  assert.equal(redProfile.suit, "red"); // new suit is worn right away
+  assert.equal((await post("/api/shop/suit-red/buy", {}, cookie)).status, 404);
 
-  // Callsign + switching back to the free suit
+  // Can't afford anything with no credits
+  const broke = cookieOf(await fetch(base + "/api/player"));
+  assert.equal((await post("/api/shop/raygun/buy", {}, broke)).status, 402);
+
+  // Callsign + the free suit
   const renamed = await send("PATCH", "/api/player", { callsign: "  Spike  ", suit: "silver" }, cookie);
   const renamedProfile = await renamed.json();
   assert.equal(renamedProfile.callsign, "Spike");
@@ -184,15 +184,11 @@ test("game: a buying spree never spends more than the balance", async () => {
   const start = await fetch(base + "/api/player");
   const cookie = cookieOf(start);
   await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie); // 500 credits
-  const results = await Promise.all(
-    ["raygun", "suit-gold", "suit-red", "suit-teal", "bandana"].map((id) => post(`/api/shop/${id}/buy`, {}, cookie)),
-  );
+  const results = await Promise.all([1, 2, 3].map(() => post("/api/shop/raygun/buy", {}, cookie)));
   const profile = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
-  assert.ok(profile.credits >= 0);
-  const spent = 500 - profile.credits;
-  assert.ok(results.some((r) => r.status === 402));
-  assert.equal(spent, profile.owned.reduce((sum: number, id: string) =>
-    sum + ({ raygun: 300, "suit-gold": 250, "suit-red": 150, "suit-teal": 150, bandana: 100 } as Record<string, number>)[id], 0));
+  assert.equal(results.filter((r) => r.status === 200).length, 1); // bought once
+  assert.equal(profile.credits, 200);
+  assert.deepEqual(profile.owned, ["raygun"]);
 });
 
 test("game: the culprit is not in the shared (browser) bounty data", async () => {

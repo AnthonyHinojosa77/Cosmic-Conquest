@@ -8,7 +8,7 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
     outro: "The Heart of Luna is back under the Expo dome, and Cookie is cooling off in the Lunar lock-up.",
     showdown: {
       opponent: "\"Cookie\" Carmichael",
-      icon: "🍳",
+      image: "./game/cookie-showdown.webp",
       taunt: "Cookie backs against the grill, hand hovering over his spatula blaster. \"You'll never take me alive, hunter!\"",
     },
   },

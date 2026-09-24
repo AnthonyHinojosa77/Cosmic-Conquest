@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { BackButton } from "@/components/BackButton";
-import { SpaceCowboy } from "@/components/SpaceCowboy";
+import { HeroArt } from "@/components/HeroArt";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
-import { BOUNTIES, SHOP_ITEMS, SUITS, ownsSuit, type SuitId } from "@shared/game";
+import { BOUNTIES, SHOP_ITEMS } from "@shared/game";
 
 const INK = "hsl(25,40%,15%)";
 
@@ -30,12 +30,10 @@ function HeroCard() {
 
   return (
     <section className="comic-panel bg-[hsl(38,35%,88%)] p-4 flex flex-col items-center" data-testid="panel-hero">
-      <SpaceCowboy
-        suit={player.suit}
-        bandana={player.owned.includes("bandana")}
-        raygun={player.owned.includes("raygun")}
-        className="w-40 h-auto animate-float"
-      />
+      <HeroArt pose="ready" className="w-44 h-auto drop-shadow-lg" />
+      {player.owned.includes("raygun") && (
+        <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Packing the Lucky Ray-Gun</p>
+      )}
 
       <form
         className="w-full mt-3 flex gap-2"
@@ -63,35 +61,6 @@ function HeroCard() {
         </button>
       </form>
 
-      <div className="w-full mt-3">
-        <h3 className="pulp-title text-sm tracking-wider" style={{ color: INK }}>Suit</h3>
-        <div className="flex gap-2 mt-1">
-          {(Object.keys(SUITS) as SuitId[]).map((id) => {
-            const owned = ownsSuit(player.owned, id);
-            const worn = player.suit === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                title={owned ? SUITS[id].name : `${SUITS[id].name} — buy it in the shop`}
-                aria-label={`${SUITS[id].name}${worn ? " (wearing)" : owned ? "" : " (locked)"}`}
-                aria-pressed={worn}
-                disabled={!owned || worn || update.isPending}
-                onClick={() => update.mutate({ suit: id })}
-                className="w-9 h-9 rounded-full border-4 relative disabled:cursor-default"
-                style={{
-                  background: SUITS[id].color,
-                  borderColor: worn ? "hsl(45,80%,52%)" : INK,
-                  opacity: owned ? 1 : 0.35,
-                }}
-                data-testid={`button-suit-${id}`}
-              >
-                {!owned && <span className="absolute inset-0 flex items-center justify-center text-xs">🔒</span>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
       {update.isError && (
         <p className="text-xs text-[hsl(0,65%,45%)] mt-2" role="alert">{errorMessage(update.error)}</p>
       )}
@@ -150,7 +119,12 @@ function Shop() {
           const owned = player?.owned.includes(item.id) ?? false;
           const affordable = (player?.credits ?? 0) >= item.price;
           return (
-            <div key={item.id} className="comic-panel bg-[hsl(38,35%,88%)] p-3 flex flex-col" data-testid={`card-shop-${item.id}`}>
+            <div
+              key={item.id}
+              className="comic-panel bg-[hsl(38,35%,88%)] p-3 flex flex-col"
+              style={{ opacity: item.comingSoon ? 0.6 : 1 }}
+              data-testid={`card-shop-${item.id}`}
+            >
               <div className="flex justify-between items-baseline gap-2">
                 <h3 className="pulp-title text-base" style={{ color: INK }}>{item.name}</h3>
                 <span className="pulp-title text-sm text-[hsl(0,72%,42%)] shrink-0">{item.price} CR</span>
@@ -158,11 +132,11 @@ function Shop() {
               <p className="text-xs text-[hsl(25,30%,30%)] mt-1 flex-1">{item.description}</p>
               <button
                 className="retro-btn gold text-sm mt-2 self-start disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!player || owned || !affordable || buy.isPending}
+                disabled={!player || item.comingSoon || owned || !affordable || buy.isPending}
                 onClick={() => buy.mutate(item.id)}
                 data-testid={`button-buy-${item.id}`}
               >
-                {owned ? "✓ Owned" : affordable ? "Buy" : "Need more credits"}
+                {item.comingSoon ? "Coming soon" : owned ? "✓ Owned" : affordable ? "Buy" : "Need more credits"}
               </button>
             </div>
           );
@@ -203,6 +177,17 @@ export default function BountyOffice() {
           <BackButton />
           <h1 className="pulp-title text-xl md:text-2xl text-[hsl(45,80%,55%)] tracking-wider">Bounty Office</h1>
           <CreditsBadge credits={player?.credits ?? 0} />
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 pt-4">
+        <div className="scene-container" data-testid="scene-bounty-office">
+          <img
+            src="./game/bounty-office-no-hero.webp"
+            alt="The Bounty Office on a Moon outpost: a cork board of wanted posters, a desk with a radio, and Saturn through the porthole"
+            className="w-full h-auto block"
+            draggable={false}
+          />
         </div>
       </div>
 

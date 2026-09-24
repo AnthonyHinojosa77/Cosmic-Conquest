@@ -32,10 +32,18 @@ showdown. Bounties pay credits; credits buy suits, gear and weapon upgrades.
 | Phase | What ships | Status |
 | ----- | ---------- | ------ |
 | 1. First playable bounty | Bounty Office, "The Heart of Luna Heist", quick-draw showdown, credits, shop (suits, bandana, ray-gun), leaderboard, placeholder hero art | **Done** |
-| 2. Real art | Swap the placeholder hero, suspects and showdown for AI-made illustrations (prompts below) | Waiting on art |
+| 2. Real art | ChatGPT-made hero poses (ready, firing, too slow), suspect portraits, Cookie showdown pose, showdown street and Bounty Office scenes | **Done** — still to make: a relaxed standing pose, and red/teal/gold suit versions (the suits are "coming soon" in the shop until then) |
 | 3. More planets | Mars ("Rustlers of the Red Sands") and Venus ("The Venus Fog Phantom"), each with its own scenes, clues and a new showdown twist | Next |
 | 4. Deeper gear | Weapons that change showdowns (e.g. two shots, slow-mo), hats, helmet visors, ship paint | Later |
 | 5. Co-op | Team up with friends on a bounty (shared clues, split reward). Possible later twist: one player is secretly in league with the outlaw | Later, needs live multiplayer |
+
+## Art pipeline
+
+- **Tool:** ChatGPT's image generator. It matched the site's style best, and it
+  keeps the hero consistent across poses when you stay in the same chat.
+- **Characters** are drawn on a plain cream background. They're cut out
+  automatically and saved as small `.webp` files in `client/public/game/`.
+- **Scenes** are wide 3:2 images and are just resized.
 
 ## Art prompts (for ChatGPT, Grok or similar)
 

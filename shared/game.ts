@@ -2,7 +2,7 @@
 // Solutions are NOT here — they live server-side in server/bounties.ts.
 
 export type SuitId = "silver" | "red" | "teal" | "gold";
-export type GearId = "raygun" | "bandana";
+export type GearId = "raygun";
 export type ShopItemId = `suit-${Exclude<SuitId, "silver">}` | GearId;
 
 export const SUITS: Record<SuitId, { name: string; color: string; trim: string }> = {
@@ -24,18 +24,20 @@ export interface ShopItem {
   name: string;
   price: number;
   description: string;
+  // Listed but not yet purchasable (waiting on art)
+  comingSoon?: boolean;
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
   { id: "raygun", name: "Lucky Ray-Gun", price: 300, description: "A pearl-handled blaster that clears leather fast. Gives you more time to draw in showdowns." },
-  { id: "bandana", name: "Star Bandana", price: 100, description: "Red kerchief with a gold star. Every hunter needs a signature." },
-  { id: "suit-red", name: "Pulp Red Suit", price: 150, description: "Loud, proud, and visible from orbit." },
-  { id: "suit-teal", name: "Atomic Teal Suit", price: 150, description: "Cool as the far side of the Moon." },
-  { id: "suit-gold", name: "Gold Rush Suit", price: 250, description: "For hunters who want the whole saloon to know they've arrived." },
+  { id: "suit-red", name: "Pulp Red Suit", price: 150, description: "Loud, proud, and visible from orbit.", comingSoon: true },
+  { id: "suit-teal", name: "Atomic Teal Suit", price: 150, description: "Cool as the far side of the Moon.", comingSoon: true },
+  { id: "suit-gold", name: "Gold Rush Suit", price: 250, description: "For hunters who want the whole saloon to know they've arrived.", comingSoon: true },
 ];
 
+// Only items that can actually be bought right now
 export function shopItem(id: string): ShopItem | undefined {
-  return SHOP_ITEMS.find((i) => i.id === id);
+  return SHOP_ITEMS.find((i) => i.id === id && !i.comingSoon);
 }
 
 export function suitForItem(id: ShopItemId): SuitId | null {
@@ -68,7 +70,7 @@ export interface Suspect {
   id: string;
   name: string;
   title: string;
-  icon: string;
+  portrait: string;
   description: string;
 }
 
@@ -155,21 +157,21 @@ export const BOUNTIES: Bounty[] = [
         id: "gearhart",
         name: "Dr. Otto Gearhart",
         title: "Robot Butler Inventor",
-        icon: "🤖",
+        portrait: "./game/suspect-gearhart.webp",
         description: "Brilliant, cranky, and furious his robot got less press than the Moon model.",
       },
       {
         id: "vela",
         name: "Madame Vela Quasar",
         title: "Videophone Saleswoman",
-        icon: "📺",
+        portrait: "./game/suspect-vela.webp",
         description: "Sells the future one long-distance call at a time. Always on the line.",
       },
       {
         id: "cookie",
         name: "\"Cookie\" Carmichael",
         title: "Astro Diner Fry Cook",
-        icon: "🍳",
+        portrait: "./game/suspect-cookie.webp",
         description: "Flips a mean Rocket Burger. Talks a lot about 'retiring somewhere shiny.'",
       },
     ],
@@ -199,7 +201,7 @@ export function bountyById(id: string): Bounty | undefined {
 
 // Revealed by the server only after a correct accusation (keeps the culprit out of the bundle).
 export interface CaseSolution {
-  showdown: { opponent: string; icon: string; taunt: string };
+  showdown: { opponent: string; image: string; taunt: string };
   outro: string;
 }
 

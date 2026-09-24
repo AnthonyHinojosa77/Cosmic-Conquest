@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
-import { SpaceCowboy } from "@/components/SpaceCowboy";
+import { HeroArt, preloadHeroPoses, type HeroPose } from "@/components/HeroArt";
 import { usePlayer, accuse, claimBounty, errorMessage, type ClaimOutcome } from "@/lib/game";
 import {
   bountyById,
@@ -177,13 +177,18 @@ function Accusation({
         {(bounty.suspects ?? []).map((s) => (
           <button
             key={s.id}
-            className="comic-panel bg-[hsl(38,35%,88%)] p-4 text-left hover:-translate-y-1 transition-transform disabled:opacity-60"
+            className="comic-panel bg-[hsl(38,35%,88%)] p-4 text-left flex flex-col justify-start hover:-translate-y-1 transition-transform disabled:opacity-60"
             disabled={pending !== null}
             onClick={() => choose(s.id, s.name)}
             data-testid={`button-suspect-${s.id}`}
           >
             <p className="pulp-title text-center text-[hsl(0,72%,42%)] tracking-widest text-sm">WANTED?</p>
-            <div className="text-5xl text-center my-2" aria-hidden>{s.icon}</div>
+            <img
+              src={s.portrait}
+              alt={`Portrait of ${s.name}`}
+              className="w-full aspect-square object-cover my-2 border-2 border-[hsl(25,40%,18%)] rounded"
+              draggable={false}
+            />
             <h3 className="pulp-title text-lg text-center" style={{ color: INK }}>{s.name}</h3>
             <p className="text-xs text-center uppercase tracking-wider text-[hsl(25,15%,42%)]">{s.title}</p>
             <p className="text-xs text-[hsl(25,30%,25%)] mt-2">{s.description}</p>
@@ -201,6 +206,9 @@ function Accusation({
 
 // --- Quick-draw showdown ---------------------------------------------------
 
+// Inline so it beats `.scene-container img { width: 100% }` from index.css
+const SPRITE: React.CSSProperties = { height: "78%", width: "auto" };
+
 type DrawState = "idle" | "waiting" | "draw" | "early" | "slow" | "won";
 
 function Showdown({
@@ -212,13 +220,17 @@ function Showdown({
   windowMs: number;
   onWin: () => void;
 }) {
-  const { data: player } = usePlayer();
   const [state, setState] = useState<DrawState>("idle");
   const [reaction, setReaction] = useState<number | null>(null);
   const drawAt = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => () => clearTimeout(timer.current), []);
+
+  useEffect(() => {
+    preloadHeroPoses();
+    new Image().src = showdown.image;
+  }, [showdown.image]);
 
   const start = useCallback(() => {
     setState("waiting");
@@ -259,6 +271,9 @@ function Showdown({
     return () => window.removeEventListener("keydown", onKey);
   }, [fire]);
 
+  const heroPose: HeroPose = state === "won" ? "firing" : state === "early" || state === "slow" ? "too-slow" : "ready";
+  const callout = state === "draw" ? "DRAW!" : state === "won" ? "BANG!" : state === "early" ? "TOO JUMPY!" : state === "slow" ? "TOO SLOW!" : "";
+
   const label: Record<DrawState, string> = {
     idle: "Step into the street",
     waiting: "Steady… wait for it…",
@@ -271,22 +286,27 @@ function Showdown({
   return (
     <div className="max-w-3xl mx-auto space-y-4 text-center">
       <p className="text-[hsl(38,40%,80%)] marker-text">{showdown.taunt}</p>
-      <div
-        className="comic-panel p-6 flex items-end justify-between select-none"
-        style={{ background: state === "draw" ? "hsl(0,72%,48%)" : "hsl(38,35%,88%)", transition: "background 0.05s" }}
-      >
-        {player && (
-          <SpaceCowboy
-            suit={player.suit}
-            bandana={player.owned.includes("bandana")}
-            raygun={player.owned.includes("raygun")}
-            className="w-24 md:w-32 h-auto"
+      <div className="scene-container relative select-none" data-testid="scene-showdown">
+        <img src="./game/showdown-street.webp" alt="A dusty Moon-colony main street at high noon" className="w-full h-auto block" draggable={false} />
+        {state === "draw" && <div className="absolute inset-0 bg-[hsl(0,72%,48%)]/35 pointer-events-none" aria-hidden />}
+        <HeroArt pose={heroPose} className="absolute bottom-[3%] left-[4%] drop-shadow-2xl pointer-events-none" style={SPRITE} />
+        {state !== "slow" && (
+          <img
+            src={showdown.image}
+            alt={showdown.opponent}
+            className="absolute bottom-[3%] right-[4%] drop-shadow-2xl pointer-events-none"
+            style={state === "won" ? { ...SPRITE, transform: "rotate(14deg) translateY(6%)", filter: "grayscale(0.6)", transition: "all 0.25s" } : SPRITE}
+            draggable={false}
           />
         )}
-        <span className="pulp-title text-4xl md:text-6xl" style={{ color: state === "draw" ? "#fff" : INK }} aria-live="assertive">
-          {state === "draw" ? "DRAW!" : "VS"}
+        <span
+          className="absolute top-[5%] left-1/2 -translate-x-1/2 whitespace-nowrap pulp-title text-4xl md:text-7xl tracking-wider drop-shadow-lg"
+          style={{ color: state === "draw" ? "#fff" : "hsl(45,80%,55%)", WebkitTextStroke: "2px hsl(25,40%,12%)" }}
+          aria-live="assertive"
+          data-testid="text-showdown-callout"
+        >
+          {callout}
         </span>
-        <div className="text-7xl md:text-8xl" role="img" aria-label={showdown.opponent}>{showdown.icon}</div>
       </div>
       <button
         className={`retro-btn text-xl px-8 py-4 ${state === "draw" ? "gold" : ""}`}
