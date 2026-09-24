@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -11,7 +11,7 @@ export const postcards = sqliteTable("postcards", {
   createdAt: text("created_at").notNull(),
 });
 
-export const insertPostcardSchema = createInsertSchema(postcards).omit({ id: true }).extend({
+export const insertPostcardSchema = createInsertSchema(postcards).omit({ id: true, createdAt: true }).extend({
   visitorName: z.string().min(1).max(50),
   destination: z.string().min(1).max(50),
   message: z.string().min(1).max(500),
@@ -28,7 +28,7 @@ export const predictions = sqliteTable("predictions", {
   createdAt: text("created_at").notNull(),
 });
 
-export const insertPredictionSchema = createInsertSchema(predictions).omit({ id: true, votes: true }).extend({
+export const insertPredictionSchema = createInsertSchema(predictions).omit({ id: true, votes: true, createdAt: true }).extend({
   visitorName: z.string().min(1).max(50),
   prediction: z.string().min(1).max(500),
 });
@@ -45,7 +45,7 @@ export const menuItems = sqliteTable("menu_items", {
   createdAt: text("created_at").notNull(),
 });
 
-export const insertMenuItemSchema = createInsertSchema(menuItems).omit({ id: true, votes: true }).extend({
+export const insertMenuItemSchema = createInsertSchema(menuItems).omit({ id: true, votes: true, createdAt: true }).extend({
   visitorName: z.string().min(1).max(50),
   dishName: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
@@ -63,13 +63,15 @@ export const visitors = sqliteTable("visitors", {
   createdAt: text("created_at").notNull(),
 });
 
-export const insertVisitorSchema = createInsertSchema(visitors).omit({ id: true }).extend({
+export const insertVisitorSchema = createInsertSchema(visitors).omit({ id: true, visitorId: true, createdAt: true }).extend({
   visitorName: z.string().min(1).max(50),
   world: z.string().min(1).max(50),
   action: z.string().min(1).max(50),
 });
 export type InsertVisitor = z.infer<typeof insertVisitorSchema>;
 export type Visitor = typeof visitors.$inferSelect;
+// What the API returns: visitorId is the visitor's vote cookie and stays server-side.
+export type PublicVisitor = Omit<Visitor, "visitorId">;
 
 // Vote tracking — prevents duplicate votes per visitor
 export const votes = sqliteTable("votes", {
@@ -78,7 +80,9 @@ export const votes = sqliteTable("votes", {
   itemType: text("item_type").notNull(), // "prediction" | "menuItem"
   itemId: integer("item_id").notNull(),
   createdAt: text("created_at").notNull(),
-});
+}, (table) => [
+  uniqueIndex("votes_visitor_item_unique").on(table.visitorId, table.itemType, table.itemId),
+]);
 
 export const insertVoteSchema = createInsertSchema(votes).omit({ id: true }).extend({
   visitorId: z.string().min(1),

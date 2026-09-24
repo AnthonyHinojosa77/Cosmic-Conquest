@@ -18,7 +18,6 @@ leave postcards, predictions, menu items, and a visitor tally that other players
 
 ```bash
 npm install
-npm run db:push   # create / sync the SQLite schema into ./data.db
 npm run dev       # starts Express + Vite dev middleware on http://localhost:5000
 ```
 
@@ -30,20 +29,25 @@ Useful scripts:
 | `npm run build`   | Builds the client (Vite) and bundles the server to `dist/index.cjs` |
 | `npm start`       | Runs the production build (`NODE_ENV=production node dist/index.cjs`) |
 | `npm run check`   | TypeScript typecheck (`tsc`)                              |
+| `npm test`        | API tests (Node test runner, temporary SQLite database)   |
 | `npm run db:push` | Push the Drizzle schema to the SQLite database           |
 
 ## Environment variables
 
-Copy [`.env.example`](./.env.example) to `.env`. This app deliberately has only two:
+Copy [`.env.example`](./.env.example) to `.env`. This app deliberately has only a few:
 
 | Variable   | Default         | Purpose                                                      |
 | ---------- | --------------- | ----------------------------------------------------------- |
 | `NODE_ENV` | `development`   | `production` serves the prebuilt static client; otherwise Vite dev middleware is used |
 | `PORT`     | `5000`          | Port the Express server (API + client) binds on `0.0.0.0`   |
+| `DATABASE_PATH` | `./data.db` | SQLite file location (put it on a persistent volume in production) |
+| `TRUST_PROXY` | unset       | Proxy hops to trust for client IPs (e.g. `1` behind Fly.io/Railway/Render/nginx); needed for per-IP rate limiting behind a proxy |
 
-The SQLite database path (`./data.db`) and the Drizzle config URL are currently
-hard-coded (`server/storage.ts`, `drizzle.config.ts`), not read from the environment.
-There is no auth/session/OAuth layer, so no secrets are required.
+The SQLite database path defaults to `./data.db` and can be overridden with
+`DATABASE_PATH` (read by both `server/storage.ts` and `drizzle.config.ts`). The server
+creates any missing tables on startup, so `npm run db:push` is optional.
+There is no auth/session/OAuth layer, so no secrets are required. The server sets an
+anonymous `rf_vid` cookie to identify visitors for one-vote-per-item deduplication.
 
 ## Deployment
 
@@ -57,7 +61,6 @@ such as Docker, Fly.io, Railway, Render, or a plain VPS.
 ```bash
 npm ci
 npm run build      # -> dist/public (client) and dist/index.cjs (server)
-npm run db:push    # initialize / migrate the SQLite schema (run once per new volume)
 NODE_ENV=production PORT=5000 npm start
 ```
 
@@ -74,8 +77,8 @@ every restart/redeploy.
 
 - **Fly.io / Railway / Render:** attach a persistent volume and mount it where the app
   runs (e.g. `/data`), then start the process with that directory as the working dir so
-  `./data.db` resolves onto the volume. Run `npm run db:push` once against the mounted
-  volume to create the schema.
+  `./data.db` resolves onto the volume (or set `DATABASE_PATH=/data/data.db`). Tables
+  are created automatically on first boot.
 - **VPS:** run under a process manager (systemd, pm2) from a fixed working directory; back
   up `data.db*`.
 
@@ -93,10 +96,11 @@ RUN npm run build
 ENV NODE_ENV=production
 ENV PORT=5000
 EXPOSE 5000
-# Mount a persistent volume at /app so data.db survives restarts,
-# and run `npm run db:push` once to create the schema.
+# Mount a persistent volume and point DATABASE_PATH at it so data.db survives
+# restarts; tables are created on first boot.
 CMD ["npm", "start"]
 ```
 
-> Migration step: always run `npm run db:push` once against a fresh database/volume (and
-> after schema changes in `shared/schema.ts`) before or on first boot.
+> Schema changes: the server creates missing tables on boot (`server/storage.ts`), but it
+> does not alter existing ones. When you add a table, add it there too; when you change a
+> column, run `npm run db:push` against the database.

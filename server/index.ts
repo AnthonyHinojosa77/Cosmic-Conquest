@@ -1,9 +1,24 @@
+import "./env";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
 const app = express();
+
+// Behind a reverse proxy / PaaS load balancer, set TRUST_PROXY (e.g. "1" for one hop)
+// so req.ip — and therefore per-IP rate limiting — uses the real client address.
+// Left unset, X-Forwarded-For is ignored, which is correct when exposed directly.
+const trustProxy = process.env.TRUST_PROXY;
+if (trustProxy) {
+  app.set(
+    "trust proxy",
+    /^\d+$/.test(trustProxy) ? Number(trustProxy)
+      : trustProxy === "true" ? true
+      : trustProxy === "false" ? false
+      : trustProxy,
+  );
+}
 const httpServer = createServer(app);
 
 declare module "http" {
@@ -37,23 +52,12 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
+  // Response bodies are deliberately not logged: polled GETs return whole
+  // tables every few seconds, and bodies contain user-submitted content.
   res.on("finish", () => {
-    const duration = Date.now() - start;
     if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      log(logLine);
+      log(`${req.method} ${path} ${res.statusCode} in ${Date.now() - start}ms`);
     }
   });
 

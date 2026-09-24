@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
-import { getVisitorId, getVisitorName, shouldLogVisit } from "@/lib/visitor";
+import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
 import type { MenuItem } from "@shared/schema";
 
 // Hotspot definitions — positioned over the diner illustration
@@ -65,11 +65,9 @@ export default function Diner() {
   useEffect(() => {
     if (!shouldLogVisit("Astro Diner")) return;
     apiRequest("POST", "/api/visitors", {
-      visitorId: getVisitorId(),
       visitorName: getVisitorName(),
       world: "Astro Diner",
       action: "arrived at",
-      createdAt: new Date().toISOString(),
     }).catch(() => {});
   }, []);
 
@@ -90,7 +88,6 @@ export default function Diner() {
         visitorName: name,
         dishName,
         description,
-        createdAt: new Date().toISOString(),
       });
       return res.json();
     },
@@ -109,13 +106,24 @@ export default function Diner() {
     return () => clearTimeout(t);
   }, [showSuccess]);
 
+  const [votedIds, setVotedIds] = useState(() => getVotedIds("menuItem"));
+  const markVoted = (id: number) => {
+    rememberVote("menuItem", id);
+    setVotedIds(prev => new Set(prev).add(id));
+  };
+
   const voteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("POST", `/api/menu-items/${id}/vote`, { visitorId: getVisitorId() });
+      const res = await apiRequest("POST", `/api/menu-items/${id}/vote`);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
+      markVoted(id);
       queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
+    },
+    onError: (err, id) => {
+      // 409 = the server already has this visitor's vote
+      if (err.message.startsWith("409")) markVoted(id);
     },
   });
 
@@ -275,7 +283,7 @@ export default function Diner() {
                         <div key={item.id} className="comic-panel p-3 bg-[hsl(38,35%,88%)] flex items-start gap-3" data-testid={`card-menu-${item.id}`}>
                           <button
                             onClick={() => voteMutation.mutate(item.id)}
-                            disabled={voteMutation.isPending}
+                            disabled={voteMutation.isPending || votedIds.has(item.id)}
                             className="flex flex-col items-center gap-0.5 shrink-0 mt-0.5 hover:scale-110 transition-transform"
                             data-testid={`button-vote-dish-${item.id}`}
                           >
