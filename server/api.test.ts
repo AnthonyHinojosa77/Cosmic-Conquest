@@ -101,3 +101,9 @@ test("rejects over-length input", async () => {
   });
   assert.equal(res.status, 400);
 });
+
+test("a malformed visitor cookie is replaced, not a 500", async () => {
+  const res = await fetch(base + "/api/postcards", { headers: { Cookie: "rf_vid=%E0%A4%A" } });
+  assert.equal(res.status, 200);
+  assert.match(cookieOf(res), /^rf_vid=[0-9a-f-]{36}$/);
+});

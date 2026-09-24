@@ -55,6 +55,17 @@ sqlite.exec(`
   );
 `);
 
+// Enforce one vote per visitor per item at the database level. Kept separate so
+// a database holding duplicate rows from older code logs a warning instead of
+// failing to boot (the application-level check still applies).
+try {
+  sqlite.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS `votes_visitor_item_unique` ON `votes` (`visitor_id`,`item_type`,`item_id`)",
+  );
+} catch (err) {
+  console.warn("Could not create votes unique index (existing duplicate votes?):", err);
+}
+
 export const db = drizzle(sqlite);
 
 export type VoteResult<T> =
@@ -104,18 +115,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   votePrediction(id: number, visitorId: string): VoteResult<Prediction> {
-    return db.transaction(() => {
-      const existing = db.select().from(predictions).where(eq(predictions.id, id)).get();
-      if (!existing) return { status: "not_found" as const };
-      if (this.hasVoted(visitorId, "prediction", id)) return { status: "duplicate" as const };
-      this.recordVote({ visitorId, itemType: "prediction", itemId: id, createdAt: new Date().toISOString() });
-      const item = db.update(predictions)
+    return this.vote("prediction", id, visitorId, () =>
+      db.update(predictions)
         .set({ votes: sql`${predictions.votes} + 1` })
         .where(eq(predictions.id, id))
         .returning()
-        .get();
-      return { status: "ok" as const, item };
-    });
+        .get());
   }
 
   getMenuItems(): MenuItem[] {
@@ -127,16 +132,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   voteMenuItem(id: number, visitorId: string): VoteResult<MenuItem> {
-    return db.transaction(() => {
-      const existing = db.select().from(menuItems).where(eq(menuItems.id, id)).get();
-      if (!existing) return { status: "not_found" as const };
-      if (this.hasVoted(visitorId, "menuItem", id)) return { status: "duplicate" as const };
-      this.recordVote({ visitorId, itemType: "menuItem", itemId: id, createdAt: new Date().toISOString() });
-      const item = db.update(menuItems)
+    return this.vote("menuItem", id, visitorId, () =>
+      db.update(menuItems)
         .set({ votes: sql`${menuItems.votes} + 1` })
         .where(eq(menuItems.id, id))
         .returning()
-        .get();
+        .get());
+  }
+
+  // One transaction: reject repeat voters, bump the counter (undefined if the
+  // item doesn't exist), then record the vote. The unique index on votes backs
+  // up the dedup check.
+  private vote<T>(
+    itemType: InsertVote["itemType"],
+    itemId: number,
+    visitorId: string,
+    increment: () => T | undefined,
+  ): VoteResult<T> {
+    return db.transaction(() => {
+      if (this.hasVoted(visitorId, itemType, itemId)) return { status: "duplicate" as const };
+      const item = increment();
+      if (!item) return { status: "not_found" as const };
+      this.recordVote({ visitorId, itemType, itemId, createdAt: new Date().toISOString() });
       return { status: "ok" as const, item };
     });
   }

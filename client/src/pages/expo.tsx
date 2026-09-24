@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
+import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
 import { BackButton } from "@/components/BackButton";
 import type { Prediction } from "@shared/schema";
 
@@ -104,13 +104,24 @@ export default function Expo() {
     return () => clearTimeout(t);
   }, [showSuccess]);
 
+  const [votedIds, setVotedIds] = useState(() => getVotedIds("prediction"));
+  const markVoted = (id: number) => {
+    rememberVote("prediction", id);
+    setVotedIds(prev => new Set(prev).add(id));
+  };
+
   const voteMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await apiRequest("POST", `/api/predictions/${id}/vote`);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
+      markVoted(id);
       queryClient.invalidateQueries({ queryKey: ["/api/predictions"] });
+    },
+    onError: (err, id) => {
+      // 409 = the server already has this visitor's vote
+      if (err.message.startsWith("409")) markVoted(id);
     },
   });
 
@@ -256,7 +267,7 @@ export default function Expo() {
                         <div key={pred.id} className="comic-panel p-3 bg-[hsl(38,35%,88%)] flex items-start gap-3" data-testid={`card-prediction-${pred.id}`}>
                           <button
                             onClick={() => voteMutation.mutate(pred.id)}
-                            disabled={voteMutation.isPending}
+                            disabled={voteMutation.isPending || votedIds.has(pred.id)}
                             className="flex flex-col items-center gap-0.5 shrink-0 mt-0.5 hover:scale-110 transition-transform"
                             data-testid={`button-vote-prediction-${pred.id}`}
                           >

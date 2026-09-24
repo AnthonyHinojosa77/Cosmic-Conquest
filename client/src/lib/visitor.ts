@@ -19,3 +19,17 @@ export function shouldLogVisit(world: string): boolean {
   loggedWorlds.add(world);
   return true;
 }
+
+// Items this page session has voted on. The server's cookie-based check is the
+// real guard; this keeps the button disabled after voting even where the
+// browser blocks the cookie (e.g. a sandboxed iframe).
+const votedItems = new Map<string, Set<number>>();
+
+export function getVotedIds(kind: string): Set<number> {
+  return new Set(votedItems.get(kind) ?? []);
+}
+
+export function rememberVote(kind: string, id: number): void {
+  if (!votedItems.has(kind)) votedItems.set(kind, new Set());
+  votedItems.get(kind)!.add(id);
+}

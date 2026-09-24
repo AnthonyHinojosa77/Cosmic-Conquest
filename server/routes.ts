@@ -1,11 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPostcardSchema, insertPredictionSchema, insertMenuItemSchema, insertVisitorSchema, type Visitor } from "@shared/schema";
+import { insertPostcardSchema, insertPredictionSchema, insertMenuItemSchema, insertVisitorSchema, type Visitor, type PublicVisitor } from "@shared/schema";
 import { apiLimiter, writeLimiter, visitorIdentity } from "./middleware";
 
 // visitorId is the visitor's rf_vid cookie value; never expose it publicly.
-function publicVisitor({ visitorId: _visitorId, ...rest }: Visitor) {
+function publicVisitor({ visitorId: _visitorId, ...rest }: Visitor): PublicVisitor {
   return rest;
 }
 

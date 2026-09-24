@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -70,6 +70,8 @@ export const insertVisitorSchema = createInsertSchema(visitors).omit({ id: true,
 });
 export type InsertVisitor = z.infer<typeof insertVisitorSchema>;
 export type Visitor = typeof visitors.$inferSelect;
+// What the API returns: visitorId is the visitor's vote cookie and stays server-side.
+export type PublicVisitor = Omit<Visitor, "visitorId">;
 
 // Vote tracking — prevents duplicate votes per visitor
 export const votes = sqliteTable("votes", {
@@ -78,7 +80,9 @@ export const votes = sqliteTable("votes", {
   itemType: text("item_type").notNull(), // "prediction" | "menuItem"
   itemId: integer("item_id").notNull(),
   createdAt: text("created_at").notNull(),
-});
+}, (table) => [
+  uniqueIndex("votes_visitor_item_unique").on(table.visitorId, table.itemType, table.itemId),
+]);
 
 export const insertVoteSchema = createInsertSchema(votes).omit({ id: true }).extend({
   visitorId: z.string().min(1),

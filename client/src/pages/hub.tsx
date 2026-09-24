@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import type { Visitor } from "@shared/schema";
+import type { PublicVisitor as Visitor } from "@shared/schema";
 
 function VisitorTicker({ visitors }: { visitors: Visitor[] }) {
   const recent = useMemo(() => visitors.slice(0, 5), [visitors]);
