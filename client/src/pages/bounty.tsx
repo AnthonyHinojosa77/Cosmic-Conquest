@@ -234,7 +234,7 @@ function Showdown({
   useEffect(() => () => clearTimeout(timer.current), []);
 
   useEffect(() => {
-    preloadHeroPoses(suit);
+    preloadHeroPoses(["ready", "firing", "too-slow"], [suit]);
     new Image().src = showdown.image;
   }, [showdown.image, suit]);
 

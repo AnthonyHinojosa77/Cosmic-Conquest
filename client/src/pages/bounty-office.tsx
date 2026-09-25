@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { BackButton } from "@/components/BackButton";
-import { HeroArt } from "@/components/HeroArt";
+import { HeroArt, preloadHeroPoses } from "@/components/HeroArt";
 import { StarMap } from "@/components/StarMap";
 import { SterlingBroadcast, hasHeardBroadcast, markBroadcastHeard } from "@/components/SterlingBroadcast";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
@@ -20,7 +20,13 @@ function CreditsBadge({ credits }: { credits: number }) {
 function HeroCard() {
   const { data: player } = usePlayer();
   const update = useUpdatePlayer();
+  const changeSuit = useUpdatePlayer(); // separate state so errors show next to the right control
   const [callsign, setCallsign] = useState("");
+  const ownedSuits = SUIT_IDS.filter((s) => ownsSuit(player?.owned ?? [], s));
+
+  useEffect(() => {
+    if (ownedSuits.length > 1) preloadHeroPoses(["standing"], ownedSuits);
+  }, [ownedSuits.join()]);
 
   useEffect(() => {
     if (player) setCallsign(player.callsign);
@@ -37,18 +43,17 @@ function HeroCard() {
         <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Packing the Lucky Ray-Gun</p>
       )}
 
-      {SUIT_IDS.filter((s) => ownsSuit(player.owned, s)).length > 1 && (
-        <div className="mt-3 flex items-center gap-2" role="radiogroup" aria-label="Suit" data-testid="picker-suit">
+      {ownedSuits.length > 1 && (
+        <div className="mt-3 flex items-center gap-2" role="group" aria-label="Suit" data-testid="picker-suit">
           <span className="pulp-title text-xs" style={{ color: INK }}>Suit:</span>
-          {SUIT_IDS.filter((s) => ownsSuit(player.owned, s)).map((s) => (
+          {ownedSuits.map((s) => (
             <button
               key={s}
-              role="radio"
-              aria-checked={player.suit === s}
-              aria-label={SUITS[s].name}
+              aria-pressed={player.suit === s}
+              aria-label={`${SUITS[s].name} suit`}
               title={SUITS[s].name}
-              disabled={update.isPending}
-              onClick={() => player.suit !== s && update.mutate({ suit: s })}
+              disabled={changeSuit.isPending}
+              onClick={() => player.suit !== s && changeSuit.mutate({ suit: s })}
               className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
               style={{
                 background: SUITS[s].color,
@@ -59,6 +64,9 @@ function HeroCard() {
             />
           ))}
         </div>
+      )}
+      {changeSuit.isError && (
+        <p className="text-xs text-[hsl(0,65%,45%)] mt-2" role="alert">{errorMessage(changeSuit.error)}</p>
       )}
 
       <form
