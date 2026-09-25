@@ -22,15 +22,27 @@ export function markBroadcastHeard() {
 }
 
 export function SterlingBroadcast({ onClose }: { onClose: () => void }) {
+  const dialog = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    button.current?.focus();
+    // Focus the dialog itself (not the button, which is still fading in) and
+    // keep the scroll at the top so the broadcast is read from its start.
+    const opener = document.activeElement as HTMLElement | null;
+    dialog.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      if (e.key === "Tab") {
+        // The button is the only control: keep focus inside the dialog.
+        e.preventDefault();
+        button.current?.focus({ preventScroll: true });
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      opener?.focus?.({ preventScroll: true });
+    };
   }, [onClose]);
 
   // Lines come in one after another, like a signal tuning in
@@ -40,16 +52,16 @@ export function SterlingBroadcast({ onClose }: { onClose: () => void }) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "hsla(25, 40%, 6%, 0.82)" }}
-      onClick={onClose}
       role="presentation"
     >
       <div
+        ref={dialog}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="broadcast-title"
         className="discovery-panel animate-slide-up"
-        style={{ position: "relative", maxWidth: 560, width: "100%", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto" }}
-        onClick={(e) => e.stopPropagation()}
+        style={{ position: "relative", maxWidth: 560, width: "100%", maxHeight: "calc(100dvh - 2rem)", overflowY: "auto", outline: "none" }}
         data-testid="dialog-broadcast"
       >
         <div className="discovery-panel-header">

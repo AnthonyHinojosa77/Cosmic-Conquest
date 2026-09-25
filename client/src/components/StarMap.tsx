@@ -1,24 +1,19 @@
 import { useState } from "react";
 import { usePlayer, useStarMap } from "@/lib/game";
-import { MAP_FRAGMENTS, STAR_MAP_SIZE, fragmentsFor, type MapFragment } from "@shared/game";
-
-const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"];
-export const numeral = (n: number) => NUMERALS[n - 1] ?? String(n);
+import { MAP_FRAGMENTS, STAR_MAP_SIZE, fragmentsFor, numeral, type MapFragment } from "@shared/game";
 
 const NIGHT = "hsl(220,45%,13%)";
 
 // Sterling's star map: the player's own fragments plus how far the whole community has got.
 export function StarMap() {
   const { data: player } = usePlayer();
-  const { data: status } = useStarMap();
+  const { data: status, isError } = useStarMap();
   const [open, setOpen] = useState<MapFragment | null>(null);
 
   const mine = new Set(fragmentsFor(player?.completedBounties ?? []).map((f) => f.id));
   const hunters = new Map(status?.fragments.map((f) => [f.id, f.hunters]) ?? []);
   const byNumber = new Map(MAP_FRAGMENTS.map((f) => [f.number, f]));
   const total = status?.total ?? STAR_MAP_SIZE;
-  const recovered = status?.fragments.filter((f) => f.hunters > 0).length ?? 0;
-  const searchers = status?.searchers ?? 0;
 
   return (
     <section data-testid="panel-star-map">
@@ -47,6 +42,11 @@ export function StarMap() {
                 >
                   <span className="pulp-title text-lg text-[hsl(0,72%,40%)] block leading-none">★ {numeral(n)}</span>
                   <span className="pulp-title text-xs text-[hsl(25,40%,15%)] block mt-1 leading-tight">{fragment.name}</span>
+                  {count > 0 && (
+                    <span className="text-[10px] leading-tight text-[hsl(25,30%,30%)] block mt-1">
+                      Found by {count} hunter{count === 1 ? "" : "s"}
+                    </span>
+                  )}
                 </button>
               );
             }
@@ -78,9 +78,18 @@ export function StarMap() {
             <span className="pulp-title text-[hsl(45,80%,60%)]">You:</span> {mine.size} of {total} fragments
           </span>
           <span data-testid="text-map-community">
-            <span className="pulp-title text-[hsl(45,80%,60%)]">All hunters:</span> {recovered} of {total} recovered
-            {" · "}
-            {searchers} hunter{searchers === 1 ? "" : "s"} on the trail
+            <span className="pulp-title text-[hsl(45,80%,60%)]">All hunters:</span>{" "}
+            {status ? (
+              <>
+                {status.fragments.filter((f) => f.hunters > 0).length} of {total} recovered
+                {" · "}
+                {status.searchers} hunter{status.searchers === 1 ? "" : "s"} on the trail
+              </>
+            ) : isError ? (
+              "the signal's down; try again soon"
+            ) : (
+              "tuning in…"
+            )}
           </span>
         </div>
       </div>

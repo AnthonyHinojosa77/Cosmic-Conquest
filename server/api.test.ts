@@ -212,3 +212,11 @@ test("game: star map counts hunters per fragment, once each", async () => {
   assert.equal(after.searchers, before.searchers + 1);
   assert.deepEqual(Object.keys(after).sort(), ["fragments", "searchers", "total"]);
 });
+
+test("game: star map fragments have unique ids and numbers within the map", async () => {
+  const { MAP_FRAGMENTS, STAR_MAP_SIZE } = await import("@shared/game");
+  const numbers = MAP_FRAGMENTS.map((f) => f.number);
+  assert.equal(new Set(numbers).size, numbers.length);
+  assert.equal(new Set(MAP_FRAGMENTS.map((f) => f.id)).size, MAP_FRAGMENTS.length);
+  for (const n of numbers) assert.ok(Number.isInteger(n) && n >= 1 && n <= STAR_MAP_SIZE);
+});

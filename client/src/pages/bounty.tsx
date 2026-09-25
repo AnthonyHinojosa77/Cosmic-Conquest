@@ -10,9 +10,9 @@ import {
   type CaseSolution,
   type Clue,
   STAR_MAP_SIZE,
+  numeral,
 } from "@shared/game";
 import NotFound from "@/pages/not-found";
-import { numeral } from "@/components/StarMap";
 
 const INK = "hsl(25,40%,15%)";
 type Stage = "briefing" | "investigate" | "accuse" | "showdown" | "done";
@@ -424,7 +424,7 @@ export default function BountyPage() {
                   : "Nice shooting — but you already collected this bounty. Each bounty only pays once per hunter."}
               </p>
             </div>
-            {outcome === "paid" && bounty.fragment && (
+            {bounty.fragment && (
               <div className="mt-4 pt-3 border-t-2 border-dashed border-[hsl(30,20%,68%)]" data-testid="panel-fragment">
                 <p className="pulp-title text-lg text-[hsl(0,72%,40%)]">
                   ★ Star map fragment {numeral(bounty.fragment.number)} of {STAR_MAP_SIZE}: {bounty.fragment.name}

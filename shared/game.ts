@@ -216,6 +216,9 @@ export function bountyById(id: string): Bounty | undefined {
   return BOUNTIES.find((b) => b.id === id);
 }
 
+const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"];
+export const numeral = (n: number) => NUMERALS[n - 1] ?? String(n);
+
 export const MAP_FRAGMENTS: MapFragment[] = BOUNTIES.flatMap((b) => (b.fragment ? [b.fragment] : []));
 
 // Fragments a player holds, from the bounties they've collected.

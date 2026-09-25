@@ -15,7 +15,8 @@ export function useLeaderboard() {
 }
 
 export function useStarMap() {
-  return useQuery<StarMapStatus>({ queryKey: STAR_MAP_KEY, refetchInterval: 15000 });
+  // Changes only when someone collects a bounty; your own claim refreshes it right away.
+  return useQuery<StarMapStatus>({ queryKey: STAR_MAP_KEY, refetchInterval: 60000 });
 }
 
 function onProfile(profile: PlayerProfile) {

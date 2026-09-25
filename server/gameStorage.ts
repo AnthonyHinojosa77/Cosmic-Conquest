@@ -157,22 +157,25 @@ export function getStarMap(): StarMapStatus {
   const withFragment = BOUNTIES.filter((b) => b.fragment);
   const ids = withFragment.map((b) => b.id);
   if (ids.length === 0) return { total: STAR_MAP_SIZE, fragments: [], searchers: 0 };
-  // One claim per hunter per bounty (unique index), so count(*) is distinct hunters.
-  const counts = new Map(
-    db.select({ bountyId: bountyClaims.bountyId, hunters: sql<number>`count(*)` })
+  // One read transaction so the per-fragment counts and the searcher total agree.
+  return db.transaction(() => {
+    // One claim per hunter per bounty (unique index), so count(*) is distinct hunters.
+    const counts = new Map(
+      db.select({ bountyId: bountyClaims.bountyId, hunters: sql<number>`count(*)` })
+        .from(bountyClaims)
+        .where(inArray(bountyClaims.bountyId, ids))
+        .groupBy(bountyClaims.bountyId)
+        .all()
+        .map((r) => [r.bountyId, r.hunters]),
+    );
+    const searchers = db.select({ n: sql<number>`count(distinct ${bountyClaims.visitorId})` })
       .from(bountyClaims)
       .where(inArray(bountyClaims.bountyId, ids))
-      .groupBy(bountyClaims.bountyId)
-      .all()
-      .map((r) => [r.bountyId, r.hunters]),
-  );
-  const searchers = db.select({ n: sql<number>`count(distinct ${bountyClaims.visitorId})` })
-    .from(bountyClaims)
-    .where(inArray(bountyClaims.bountyId, ids))
-    .get()?.n ?? 0;
-  return {
-    total: STAR_MAP_SIZE,
-    fragments: withFragment.map((b) => ({ id: b.fragment!.id, hunters: counts.get(b.id) ?? 0 })),
-    searchers,
-  };
+      .get()?.n ?? 0;
+    return {
+      total: STAR_MAP_SIZE,
+      fragments: withFragment.map((b) => ({ id: b.fragment!.id, hunters: counts.get(b.id) ?? 0 })),
+      searchers,
+    };
+  });
 }
