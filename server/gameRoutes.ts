@@ -1,10 +1,10 @@
 import type { Express } from "express";
 import { z } from "zod";
 import { updatePlayerSchema } from "@shared/schema";
-import { bountyById } from "@shared/game";
+import { bountyById, itemAvailable } from "@shared/game";
 import { gameLimiter } from "./middleware";
 import { BOUNTY_SOLUTIONS } from "./bounties";
-import { getProfile, updateProfile, claimBounty, buyItem, getLeaderboard, getStarMap } from "./gameStorage";
+import { getProfile, updateProfile, claimBounty, buyItem, getLeaderboard, getStarMap, findItem } from "./gameStorage";
 
 const accusationSchema = z.object({ suspect: z.string().min(1).max(50) });
 
@@ -56,6 +56,13 @@ export function registerGameRoutes(app: Express) {
 
   app.get("/api/leaderboard", (_req, res) => {
     res.json(getLeaderboard());
+  });
+
+  // Honor system, like clues: any item a live bounty hands out can be picked up.
+  app.post("/api/items/:itemId/find", gameLimiter, (req, res) => {
+    const itemId = String(req.params.itemId);
+    if (!itemAvailable(itemId)) return res.status(404).json({ error: "No such item" });
+    res.json(findItem(req.visitorId!, itemId));
   });
 
   app.get("/api/star-map", (_req, res) => {

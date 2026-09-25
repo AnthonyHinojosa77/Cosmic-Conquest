@@ -142,7 +142,7 @@ test("game: full bounty loop — accuse, claim once, buy, equip, leaderboard", a
   assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 409);
 
   // Unavailable / unknown bounties
-  assert.equal((await post("/api/bounties/red-sands/claim", { suspect: "x" }, cookie)).status, 404);
+  assert.equal((await post("/api/bounties/venus-fog/claim", { suspect: "x" }, cookie)).status, 404);
   assert.equal((await post("/api/bounties/nope/accuse", { suspect: "x" }, cookie)).status, 404);
 
   // The name shown before the first action is the one that got saved
@@ -203,7 +203,7 @@ test("game: a buying spree never spends more than the balance", async () => {
 test("game: the culprit is not in the shared (browser) bounty data", async () => {
   const { BOUNTIES } = await import("@shared/game");
   const shipped = JSON.stringify(BOUNTIES);
-  assert.equal(/spatula blaster|lock-up|never take me alive/.test(shipped), false);
+  assert.equal(/spatula blaster|lock-up|never take me alive|stamp-blaster|properly filed/.test(shipped), false);
 });
 
 test("game: star map counts hunters per fragment, once each", async () => {
@@ -228,4 +228,39 @@ test("game: star map fragments have unique ids and numbers within the map", asyn
   assert.equal(new Set(numbers).size, numbers.length);
   assert.equal(new Set(MAP_FRAGMENTS.map((f) => f.id)).size, MAP_FRAGMENTS.length);
   for (const n of numbers) assert.ok(Number.isInteger(n) && n >= 1 && n <= STAR_MAP_SIZE);
+});
+
+test("game: Mars bounty pays 800 to the right suspect and turns up fragment II", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  assert.deepEqual(await (await post("/api/bounties/red-sands/accuse", { suspect: "venn" }, cookie)).json(), { correct: false });
+  const right = await (await post("/api/bounties/red-sands/accuse", { suspect: "quill" }, cookie)).json();
+  assert.equal(right.showdown.scene, "./game/showdown-street-mars.webp");
+  const paid = await (await post("/api/bounties/red-sands/claim", { suspect: "quill" }, cookie)).json();
+  assert.equal(paid.credits, 800);
+  const map = await (await fetch(base + "/api/star-map")).json();
+  assert.ok(map.fragments.find((f: { id: string; hunters: number }) => f.id === "martian-quadrant").hunters >= 1);
+});
+
+test("game: items go in the satchel once; unknown items are refused", async () => {
+  const start = await fetch(base + "/api/player");
+  const cookie = cookieOf(start);
+  assert.deepEqual((await start.json()).items, []);
+  const first = await post("/api/items/decoder-ring/find", {}, cookie);
+  assert.equal(first.status, 200);
+  assert.deepEqual((await first.json()).items, ["decoder-ring"]);
+  const again = await (await post("/api/items/decoder-ring/find", {}, cookie)).json();
+  assert.deepEqual(again.items, ["decoder-ring"]);
+  assert.equal((await post("/api/items/golden-lasso/find", {}, cookie)).status, 404);
+  assert.equal((await post("/api/items/constructor/find", {}, cookie)).status, 404);
+});
+
+test("game: hunter rank and the telegram cipher", async () => {
+  const { hunterRank, shiftLetters, bountyById } = await import("@shared/game");
+  assert.equal(hunterRank(0).title, "Greenhorn");
+  assert.deepEqual(hunterRank(1), { title: "Deputy", next: { title: "Marshal", needed: 1 } });
+  assert.equal(hunterRank(99).next, undefined);
+  assert.equal(shiftLetters(shiftLetters("RAIN-MAKERS, Q.", 2), -2), "RAIN-MAKERS, Q.");
+  assert.equal(shiftLetters("XYZ", 2), "ZAB");
+  const telegram = bountyById("red-sands")!.locations!.flatMap((l) => l.clues).find((c) => c.cipher)!;
+  assert.notEqual(shiftLetters(telegram.text, telegram.cipher!.key), telegram.text);
 });

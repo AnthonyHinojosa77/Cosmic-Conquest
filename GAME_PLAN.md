@@ -41,8 +41,8 @@ showdown. Bounties pay credits; credits buy suits, gear and weapon upgrades.
 | 1. First playable bounty | Bounty Office, "The Heart of Luna Heist", quick-draw showdown, credits, shop (suits, bandana, ray-gun), leaderboard, placeholder hero art | **Done** |
 | 2. Real art | ChatGPT-made hero poses (ready, firing, too slow), suspect portraits, Cookie showdown pose, showdown street and Bounty Office scenes | **Done** — plus a relaxed standing pose (Bounty Office) and every pose in red, teal and gold (2026-09-25) |
 | 3. The Sterling Legacy | The story hook (below), map fragments earned from bounties, a community tracker showing how close everyone is | **Built** — Aurora's broadcast (first Bounty Office visit, replay on the desk radio), a 12-piece star map with fragment I from the Heart of Luna, and the community count |
-| 4. Puzzles & RPG | Puzzles inside investigations (safes, circuits, coded telegrams, star charts), an inventory of found items used elsewhere, hunter rank, gadgets that help with puzzles, and conversations with suspects | Next |
-| 5. More worlds | Tomorrowland-style planets: Mars ("Rustlers of the Red Sands"), Venus ("The Venus Fog Phantom"), each with scenes, puzzles, a fragment and a showdown | Later |
+| 4. Puzzles & RPG | Puzzles inside investigations (safes, circuits, coded telegrams, star charts), an inventory of found items used elsewhere, hunter rank, gadgets that help with puzzles, and conversations with suspects | **Started** — first puzzle (coded telegram + decoder dial), a satchel of items kept between bounties, and hunter rank (Greenhorn → Legend of the Spaceways) |
+| 5. More worlds | Tomorrowland-style planets: Mars ("Rustlers of the Red Sands"), Venus ("The Venus Fog Phantom"), each with scenes, puzzles, a fragment and a showdown | **Mars built** (800 CR, fragment II); Venus next |
 | 6. Deeper gear | Suits (**live**: red/teal/gold, worn in the office and in showdowns), weapons that change showdowns, gadgets, ship paint | Later |
 | 7. Co-op | Team up with friends on a bounty (shared clues, split reward) | Later, needs live multiplayer |
 
@@ -170,6 +170,19 @@ with the old cover attached:
 > positions, the same banners, colors, aged paper texture and worn edges.
 
 Keeping the bands in place matters: the hub's clickable areas sit on them.
+
+## Mars: Rustlers of the Red Sands
+
+Chrome Rain-Makers vanish from Sterling Atomic's Ares Valley Hydro-Dome.
+Locations: the Hydro-Dome (empty pad, Sprinkles the farm robot, who gives
+the **decoder ring**, Professor Venn's lab) and the Red Sands freight depot
+(Dusty's sand-skiff, the Canned Sunshine crates, the **coded telegram**).
+The telegram is a letter-shift code; the ring's engraving says the key is
+"the number of moons of your world" (Mars: 2). Red herrings: Dusty Dunmore
+(racing all night) and Professor Lyra Venn (lab log). The clues point to the
+freight clerk by design; only the showdown and outro stay server-side. Like the
+showdown, the puzzle is honor-system (its answer ships to the browser). Art was made in a separate ChatGPT chat with an existing
+world scene attached as the style reference; sources are in the Drive folder.
 
 ## Economy
 

@@ -12,4 +12,14 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
       taunt: "Cookie backs against the grill, hand hovering over his spatula blaster. \"You'll never take me alive, hunter!\"",
     },
   },
+  "red-sands": {
+    suspect: "quill",
+    outro: "The Rain-Makers are back on their pads, the Ares Valley crops are drinking again, and Rigby Quill is filing his own paperwork in the Phobos lock-up.",
+    showdown: {
+      opponent: "Rigby Quill",
+      image: "./game/quill-showdown.webp",
+      scene: "./game/showdown-street-mars.webp",
+      taunt: "Quill tucks his clipboard under one arm, fingers twitching over his stamp-blaster. \"Everything was properly filed, hunter!\"",
+    },
+  },
 };

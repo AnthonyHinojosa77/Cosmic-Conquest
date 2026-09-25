@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { HeroArt, preloadHeroPoses, type HeroPose } from "@/components/HeroArt";
-import { usePlayer, accuse, claimBounty, errorMessage, type ClaimOutcome } from "@/lib/game";
+import { usePlayer, useFindItem, accuse, claimBounty, errorMessage, type ClaimOutcome } from "@/lib/game";
 import {
   bountyById,
   DRAW_WINDOW_MS,
@@ -12,6 +12,8 @@ import {
   STAR_MAP_SIZE,
   numeral,
   DEFAULT_SUIT,
+  ITEMS,
+  shiftLetters,
   type SuitId,
 } from "@shared/game";
 import NotFound from "@/pages/not-found";
@@ -42,6 +44,86 @@ function Panel({ title, children, testId }: { title: string; children: React.Rea
   );
 }
 
+// --- Coded clues --------------------------------------------------------------
+
+function Decoder({
+  clue,
+  hasTool,
+  alreadySolved,
+  onSolved,
+}: {
+  clue: Clue;
+  hasTool: boolean;
+  alreadySolved: boolean;
+  onSolved: () => void;
+}) {
+  const cipher = clue.cipher!;
+  const [dial, setDial] = useState(alreadySolved ? cipher.key : 0);
+  const coded = shiftLetters(clue.text, cipher.key);
+  const solved = dial === cipher.key;
+
+  // Report once, when the dial lands on the key
+  const reported = useRef(alreadySolved);
+  useEffect(() => {
+    if (solved && !reported.current) {
+      reported.current = true;
+      onSolved();
+    }
+  }, [solved, onSolved]);
+
+  const tape = (text: string) => (
+    <p
+      className="font-mono text-sm leading-relaxed tracking-wider bg-[hsl(45,40%,94%)] border-2 border-dashed border-[hsl(30,20%,68%)] rounded px-3 py-2 break-words"
+      aria-live="polite"
+      data-testid="text-telegram"
+    >
+      {text}
+    </p>
+  );
+
+  if (!hasTool && !alreadySolved) {
+    return (
+      <>
+        {tape(coded)}
+        <p className="text-sm mt-2">It's in code. You'll need something to decode it with.</p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {tape(shiftLetters(coded, -dial))}
+      <p className="text-xs text-[hsl(25,15%,42%)] mt-2 italic">
+        {ITEMS[cipher.requires].name}: {ITEMS[cipher.requires].description}
+      </p>
+      <div className="flex items-center gap-3 mt-3">
+        <button
+          className="retro-btn teal text-sm px-3"
+          onClick={() => setDial((d) => (d + 25) % 26)}
+          disabled={solved}
+          aria-label="Turn the dial back"
+          data-testid="button-dial-down"
+        >
+          ◀
+        </button>
+        <span className="pulp-title text-lg w-20 text-center" style={{ color: INK }} data-testid="text-dial">
+          Key {dial}
+        </span>
+        <button
+          className="retro-btn teal text-sm px-3"
+          onClick={() => setDial((d) => (d + 1) % 26)}
+          disabled={solved}
+          aria-label="Turn the dial forward"
+          data-testid="button-dial-up"
+        >
+          ▶
+        </button>
+        {solved && <span className="pulp-title text-[hsl(120,50%,32%)]" role="status">✓ Decoded!</span>}
+      </div>
+    </>
+  );
+}
+
 // --- Investigation ---------------------------------------------------------
 
 function Investigation({
@@ -60,6 +142,8 @@ function Investigation({
   const [openClue, setOpenClue] = useState<Clue | null>(null);
   const [imgLoaded, setImgLoaded] = useState(false);
   const location = locations.find((l) => l.id === locationId) ?? locations[0];
+  const { data: player } = usePlayer();
+  const findItem = useFindItem();
   const allClues = locations.flatMap((l) => l.clues);
   const needed = bounty.cluesNeeded ?? allClues.length;
   const ready = found.size >= needed;
@@ -99,7 +183,8 @@ function Investigation({
             className={`hotspot ${found.has(clue.id) ? "border-[hsl(120,50%,45%)]/60" : ""}`}
             style={{ top: clue.top, left: clue.left, width: clue.width, height: clue.height }}
             onClick={() => {
-              onFind(clue);
+              if (!clue.cipher) onFind(clue); // coded clues count once decoded
+              if (clue.grants && !player?.items.includes(clue.grants) && !findItem.isPending) findItem.mutate(clue.grants);
               setOpenClue(clue);
             }}
             aria-label={`Search ${clue.label}`}
@@ -115,7 +200,30 @@ function Investigation({
 
       {openClue && (
         <Panel title={`🔍 ${openClue.label}`} testId="panel-clue">
-          <p className="text-sm leading-relaxed">{openClue.text}</p>
+          {openClue.cipher ? (
+            <Decoder
+              key={openClue.id}
+              clue={openClue}
+              // Finding the tool in this case is enough, even if saving it to the satchel failed
+              hasTool={
+                (player?.items.includes(openClue.cipher.requires) ?? false) ||
+                allClues.some((c) => c.grants === openClue.cipher!.requires && found.has(c.id))
+              }
+              alreadySolved={found.has(openClue.id)}
+              onSolved={() => onFind(openClue)}
+            />
+          ) : (
+            <p className="text-sm leading-relaxed">{openClue.text}</p>
+          )}
+          {openClue.grants && (
+            <p className="text-sm mt-3 pulp-title text-[hsl(0,72%,40%)]" role="status" data-testid="text-item-found">
+              {player?.items.includes(openClue.grants)
+                ? `🎒 In your satchel: ${ITEMS[openClue.grants].name}`
+                : findItem.isError
+                  ? `Couldn't pick it up: ${errorMessage(findItem.error)}. Search here again.`
+                  : "🎒 Picking it up…"}
+            </p>
+          )}
         </Panel>
       )}
 
@@ -236,7 +344,8 @@ function Showdown({
   useEffect(() => {
     preloadHeroPoses(["ready", "firing", "too-slow"], [suit]);
     new Image().src = showdown.image;
-  }, [showdown.image, suit]);
+    if (showdown.scene) new Image().src = showdown.scene;
+  }, [showdown.image, showdown.scene, suit]);
 
   const start = useCallback(() => {
     setState("waiting");
@@ -293,7 +402,7 @@ function Showdown({
     <div className="max-w-3xl mx-auto space-y-4 text-center">
       <p className="text-[hsl(38,40%,80%)] marker-text">{showdown.taunt}</p>
       <div className="scene-container relative select-none" data-testid="scene-showdown">
-        <img src="./game/showdown-street.webp" alt="A dusty Moon-colony main street at high noon" className="w-full h-auto block" draggable={false} />
+        <img src={showdown.scene ?? "./game/showdown-street.webp"} alt="The main street at high noon, cleared for a showdown" className="w-full h-auto block" draggable={false} />
         {state === "draw" && <div className="absolute inset-0 bg-[hsl(0,72%,48%)]/35 pointer-events-none" aria-hidden />}
         <HeroArt pose={heroPose} suit={suit} className="absolute bottom-[3%] left-[4%] drop-shadow-2xl pointer-events-none" style={SPRITE} />
         {state !== "slow" && (

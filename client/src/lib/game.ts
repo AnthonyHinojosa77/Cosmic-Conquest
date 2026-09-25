@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { PlayerProfile, LeaderboardEntry, SuitId, CaseSolution, StarMapStatus } from "@shared/game";
+import type { PlayerProfile, LeaderboardEntry, SuitId, CaseSolution, StarMapStatus, ItemId } from "@shared/game";
 
 export const PLAYER_KEY = ["/api/player"];
 export const LEADERBOARD_KEY = ["/api/leaderboard"];
@@ -41,6 +41,14 @@ export function useUpdatePlayer() {
     mutationFn: async (changes: { callsign?: string; suit?: SuitId }) =>
       (await apiRequest("PATCH", "/api/player", changes)).json() as Promise<PlayerProfile>,
     onSuccess: onProfile,
+  });
+}
+
+export function useFindItem() {
+  return useMutation({
+    mutationFn: async (itemId: ItemId) =>
+      (await apiRequest("POST", `/api/items/${itemId}/find`)).json() as Promise<PlayerProfile>,
+    onSuccess: (profile: PlayerProfile) => queryClient.setQueryData(PLAYER_KEY, profile),
   });
 }
 
