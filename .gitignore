@@ -29,6 +29,3 @@ Thumbs.db
 
 # Python
 __pycache__/
-
-# Art: commit finished .webp only, never full-size source PNGs
-client/public/**/*.png

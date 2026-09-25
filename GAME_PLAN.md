@@ -147,9 +147,10 @@ wearing a **red bandana with a gold star**.
 > pinned to a cork board, a big porthole window showing Saturn, a desk with
 > a vintage radio and a brass star badge.
 
-**How to hand them over:** save each image as a PNG and send them to Claude
-in chat, or upload them to the repository's `client/public/scenes/` folder
-on GitHub.
+**How to hand them over:** Claude generates the art in the ChatGPT app on the
+Mac Mini and runs it through `script/art/process.py`. If you make an image
+yourself, save it as a PNG and send it to Claude in chat; don't upload
+full-size PNGs into the repository.
 
 **Site cover (the hub page):** the current cover has "RETRO UNIVERSE" painted
 into the art. Upload it to ChatGPT and ask:
