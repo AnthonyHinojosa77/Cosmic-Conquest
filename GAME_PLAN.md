@@ -152,16 +152,24 @@ wearing a **red bandana with a gold star**.
 > pinned to a cork board, a big porthole window showing Saturn, a desk with
 > a vintage radio and a brass star badge.
 
-**How to hand them over:** Claude generates the art in the ChatGPT app on the
-Mac Mini and runs it through `script/art/process.py`. If you make an image
-yourself, save it as a PNG and send it to Claude in chat; don't upload
-full-size PNGs into the repository.
+**How to hand them over:** Claude drives the ChatGPT desktop app on the Mac
+Mini (paste the reference image and prompt, then "Copy image" on the result),
+saves the full-size PNG to the owner's Google Drive folder "Retro Futurism",
+and runs it through `script/art/process.py` into `client/public/`. The ChatGPT
+app exposes no accessibility controls, so this works from screenshots and
+clicks by position; the Terminal running Claude Code needs Accessibility and
+Screen Recording permission. Don't commit full-size PNGs to the repository.
 
-**Site cover (the hub page):** the current cover has "RETRO UNIVERSE" painted
-into the art. Upload it to ChatGPT and ask:
+**Site cover (the hub page):** done 2026-09-25 (title now "COSMIC CONQUEST";
+original in the Drive folder as "hub cover cosmic conquest.png"). Prompt used,
+with the old cover attached:
 
 > Recreate this exact magazine cover in the same style, but change the title
-> text "RETRO UNIVERSE" to "COSMIC CONQUEST". Keep everything else the same.
+> text "RETRO UNIVERSE" to "COSMIC CONQUEST". Keep everything else the same:
+> the same tall portrait size, the same three illustrated bands in the same
+> positions, the same banners, colors, aged paper texture and worn edges.
+
+Keeping the bands in place matters: the hub's clickable areas sit on them.
 
 ## Known limits
 
