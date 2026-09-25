@@ -196,3 +196,19 @@ test("game: the culprit is not in the shared (browser) bounty data", async () =>
   const shipped = JSON.stringify(BOUNTIES);
   assert.equal(/spatula blaster|lock-up|never take me alive/.test(shipped), false);
 });
+
+test("game: star map counts hunters per fragment, once each", async () => {
+  const lunar = (m: { fragments: { id: string; hunters: number }[] }) =>
+    m.fragments.find((f) => f.id === "lunar-quadrant")!.hunters;
+  const before = await (await fetch(base + "/api/star-map")).json();
+  assert.equal(before.total, 12);
+
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie); // 409, not counted twice
+
+  const after = await (await fetch(base + "/api/star-map")).json();
+  assert.equal(lunar(after), lunar(before) + 1);
+  assert.equal(after.searchers, before.searchers + 1);
+  assert.deepEqual(Object.keys(after).sort(), ["fragments", "searchers", "total"]);
+});

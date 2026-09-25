@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { BackButton } from "@/components/BackButton";
 import { HeroArt } from "@/components/HeroArt";
+import { StarMap } from "@/components/StarMap";
+import { SterlingBroadcast, hasHeardBroadcast, markBroadcastHeard } from "@/components/SterlingBroadcast";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
 import { BOUNTIES, SHOP_ITEMS } from "@shared/game";
 
@@ -170,6 +172,12 @@ function Leaderboard() {
 
 export default function BountyOffice() {
   const { data: player } = usePlayer();
+  // New hunters hear Aurora Sterling's broadcast once; the desk radio replays it.
+  const [broadcast, setBroadcast] = useState(() => !hasHeardBroadcast());
+  const closeBroadcast = useCallback(() => {
+    markBroadcastHeard();
+    setBroadcast(false);
+  }, []);
   return (
     <div className="min-h-screen bg-[hsl(25,30%,12%)] paper-texture pb-10">
       <div className="bg-[hsl(0,45%,18%)] border-b-4 border-[hsl(45,80%,48%)] px-4 py-3">
@@ -188,7 +196,20 @@ export default function BountyOffice() {
             className="w-full h-auto block"
             draggable={false}
           />
+          <button
+            className="hotspot"
+            style={{ top: "57%", left: "70%", width: "16%", height: "17%" }}
+            onClick={() => setBroadcast(true)}
+            aria-label="Play Aurora Sterling's broadcast on the radio"
+            title="Aurora Sterling's broadcast"
+            data-testid="hotspot-radio"
+          >
+            <span className="hotspot-indicator" style={{ bottom: "10%", left: "50%", transform: "translateX(-50%)" }} />
+          </button>
         </div>
+        <p className="marker-text text-xs text-center text-[hsl(38,25%,60%)] mt-2">
+          📻 Tap the radio to hear Aurora Sterling's last broadcast
+        </p>
       </div>
 
       <main className="max-w-5xl mx-auto px-4 pt-6 grid md:grid-cols-[280px_1fr] gap-6">
@@ -198,9 +219,12 @@ export default function BountyOffice() {
         </div>
         <div className="space-y-8">
           <BountyBoard />
+          <StarMap />
           <Shop />
         </div>
       </main>
+
+      {broadcast && <SterlingBroadcast onClose={closeBroadcast} />}
     </div>
   );
 }

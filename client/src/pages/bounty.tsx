@@ -9,8 +9,10 @@ import {
   type Bounty,
   type CaseSolution,
   type Clue,
+  STAR_MAP_SIZE,
 } from "@shared/game";
 import NotFound from "@/pages/not-found";
+import { numeral } from "@/components/StarMap";
 
 const INK = "hsl(25,40%,15%)";
 type Stage = "briefing" | "investigate" | "accuse" | "showdown" | "done";
@@ -422,6 +424,17 @@ export default function BountyPage() {
                   : "Nice shooting — but you already collected this bounty. Each bounty only pays once per hunter."}
               </p>
             </div>
+            {outcome === "paid" && bounty.fragment && (
+              <div className="mt-4 pt-3 border-t-2 border-dashed border-[hsl(30,20%,68%)]" data-testid="panel-fragment">
+                <p className="pulp-title text-lg text-[hsl(0,72%,40%)]">
+                  ★ Star map fragment {numeral(bounty.fragment.number)} of {STAR_MAP_SIZE}: {bounty.fragment.name}
+                </p>
+                <p className="text-sm leading-relaxed mt-1">{bounty.fragment.caption}</p>
+                <p className="marker-text text-xs text-[hsl(25,15%,42%)] mt-2">
+                  It's pinned to Sterling's Star Map in the Bounty Office.
+                </p>
+              </div>
+            )}
             <Link href="/bounties">
               <button className="retro-btn gold mt-4" data-testid="button-return-office">Back to the Bounty Office</button>
             </Link>
