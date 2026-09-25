@@ -94,6 +94,10 @@ arrives only in Act II and III.
 - **Characters** are drawn on a plain cream background. They're cut out
   automatically and saved as small `.webp` files in `client/public/game/`.
 - **Scenes** are wide 3:2 images and are just resized.
+- **Processing:** `script/art/process.py` does the cutout and resizing
+  (`character`, `scene` or `portrait` mode; needs Python 3 with pillow, numpy
+  and scipy). New art goes into `client/public/` as the finished `.webp`
+  only; don't commit the full-size source PNGs.
 
 ## Art prompts (for ChatGPT, Grok or similar)
 
