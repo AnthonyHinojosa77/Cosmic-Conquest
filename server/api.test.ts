@@ -161,7 +161,12 @@ test("game: full bounty loop — accuse, claim once, buy, equip, leaderboard", a
   assert.equal((await gun.json()).credits, 200);
   assert.equal((await post("/api/shop/raygun/buy", {}, cookie)).status, 409);
   assert.equal((await post("/api/shop/moon-boots/buy", {}, cookie)).status, 404);
-  assert.equal((await post("/api/shop/suit-red/buy", {}, cookie)).status, 404);
+
+  // Suits: buying one puts it on; can't afford the gold one after that
+  const red = await (await post("/api/shop/suit-red/buy", {}, cookie)).json();
+  assert.equal(red.credits, 50);
+  assert.equal(red.suit, "red");
+  assert.equal((await post("/api/shop/suit-gold/buy", {}, cookie)).status, 402);
 
   // Can't afford anything with no credits
   const broke = cookieOf(await fetch(base + "/api/player"));

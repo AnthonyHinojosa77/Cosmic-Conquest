@@ -11,6 +11,8 @@ import {
   type Clue,
   STAR_MAP_SIZE,
   numeral,
+  DEFAULT_SUIT,
+  type SuitId,
 } from "@shared/game";
 import NotFound from "@/pages/not-found";
 
@@ -216,10 +218,12 @@ type DrawState = "idle" | "waiting" | "draw" | "early" | "slow" | "won";
 function Showdown({
   showdown,
   windowMs,
+  suit,
   onWin,
 }: {
   showdown: CaseSolution["showdown"];
   windowMs: number;
+  suit: SuitId;
   onWin: () => void;
 }) {
   const [state, setState] = useState<DrawState>("idle");
@@ -230,9 +234,9 @@ function Showdown({
   useEffect(() => () => clearTimeout(timer.current), []);
 
   useEffect(() => {
-    preloadHeroPoses();
+    preloadHeroPoses(suit);
     new Image().src = showdown.image;
-  }, [showdown.image]);
+  }, [showdown.image, suit]);
 
   const start = useCallback(() => {
     setState("waiting");
@@ -291,7 +295,7 @@ function Showdown({
       <div className="scene-container relative select-none" data-testid="scene-showdown">
         <img src="./game/showdown-street.webp" alt="A dusty Moon-colony main street at high noon" className="w-full h-auto block" draggable={false} />
         {state === "draw" && <div className="absolute inset-0 bg-[hsl(0,72%,48%)]/35 pointer-events-none" aria-hidden />}
-        <HeroArt pose={heroPose} className="absolute bottom-[3%] left-[4%] drop-shadow-2xl pointer-events-none" style={SPRITE} />
+        <HeroArt pose={heroPose} suit={suit} className="absolute bottom-[3%] left-[4%] drop-shadow-2xl pointer-events-none" style={SPRITE} />
         {state !== "slow" && (
           <img
             src={showdown.image}
@@ -400,7 +404,7 @@ export default function BountyPage() {
 
         {stage === "showdown" && solution && (
           <>
-            <Showdown showdown={solution.showdown} windowMs={windowMs} onWin={collect} />
+            <Showdown showdown={solution.showdown} windowMs={windowMs} suit={player?.suit ?? DEFAULT_SUIT} onWin={collect} />
             {claimError && (
               <div className="text-center mt-3 space-y-2" role="alert">
                 <p className="text-sm text-[hsl(0,65%,65%)]">Couldn't collect the bounty: {claimError}</p>
