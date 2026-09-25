@@ -135,7 +135,7 @@ export default function Voyages() {
       <div className="max-w-5xl mx-auto px-4 pt-4">
         <div className="scene-container relative" data-testid="scene-voyages">
           <img
-            src="./scenes/voyages-scene.png"
+            src="./scenes/voyages-scene.webp"
             alt="Cosmic Voyages travel agency — rocket launch window, travel posters, ticket counter"
             className="w-full h-auto block"
             onLoad={() => setImgLoaded(true)}

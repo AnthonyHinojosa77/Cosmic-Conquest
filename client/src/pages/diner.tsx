@@ -156,7 +156,7 @@ export default function Diner() {
       <div className="max-w-5xl mx-auto px-4 pt-4">
         <div className="scene-container relative" data-testid="scene-diner">
           <img
-            src="./scenes/diner-scene.png"
+            src="./scenes/diner-scene.webp"
             alt="Inside the Astro Diner — chrome counter, robot waiter, jukebox, observation window"
             className="w-full h-auto block"
             onLoad={() => setImgLoaded(true)}

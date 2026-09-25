@@ -105,7 +105,7 @@ export default function Hub() {
         <div className="scene-container relative" data-testid="scene-hub-cover">
           <img
             ref={imgRef}
-            src="./scenes/hub-cover.png"
+            src="./scenes/hub-cover.webp"
             alt="A pulp science fiction magazine cover with three illustrated panels"
             className="w-full h-auto block"
             onLoad={() => setImgLoaded(true)}
