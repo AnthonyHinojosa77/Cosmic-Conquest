@@ -104,7 +104,7 @@ export const BOUNTIES: Bounty[] = [
       {
         id: "expo",
         name: "The Atomic Expo",
-        image: "./scenes/expo-scene.png",
+        image: "./scenes/expo-scene.webp",
         clues: [
           {
             id: "dome",
@@ -129,7 +129,7 @@ export const BOUNTIES: Bounty[] = [
       {
         id: "diner",
         name: "Astro Diner",
-        image: "./scenes/diner-scene.png",
+        image: "./scenes/diner-scene.webp",
         clues: [
           {
             id: "mixer",

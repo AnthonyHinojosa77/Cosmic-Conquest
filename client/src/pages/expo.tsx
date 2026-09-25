@@ -155,7 +155,7 @@ export default function Expo() {
       <div className="max-w-5xl mx-auto px-4 pt-4">
         <div className="scene-container relative" data-testid="scene-expo">
           <img
-            src="./scenes/expo-scene.png"
+            src="./scenes/expo-scene.webp"
             alt="The Atomic Expo — City of Tomorrow with jetpack demo, robot butler, moon colony, videophone"
             className="w-full h-auto block"
             onLoad={() => setImgLoaded(true)}
