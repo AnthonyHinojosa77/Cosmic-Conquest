@@ -5,7 +5,7 @@ import { HeroArt, preloadHeroPoses } from "@/components/HeroArt";
 import { StarMap } from "@/components/StarMap";
 import { SterlingBroadcast, hasHeardBroadcast, markBroadcastHeard } from "@/components/SterlingBroadcast";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
-import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ownsSuit } from "@shared/game";
+import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ITEMS, ownsSuit, hunterRank } from "@shared/game";
 
 const INK = "hsl(25,40%,15%)";
 
@@ -39,6 +39,7 @@ function HeroCard() {
   return (
     <section className="comic-panel bg-[hsl(38,35%,88%)] p-4 flex flex-col items-center" data-testid="panel-hero">
       <HeroArt pose="standing" suit={player.suit} className="w-36 h-auto drop-shadow-lg" />
+      <RankBadge bounties={player.completedBounties.length} />
       {player.owned.includes("raygun") && (
         <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Packing the Lucky Ray-Gun</p>
       )}
@@ -65,6 +66,19 @@ function HeroCard() {
           ))}
         </div>
       )}
+      {player.items.length > 0 && (
+        <div className="w-full mt-3 border-t-2 border-dashed border-[hsl(30,20%,68%)] pt-2" data-testid="panel-satchel">
+          <p className="pulp-title text-xs" style={{ color: INK }}>🎒 Satchel</p>
+          <ul className="mt-1 space-y-1">
+            {player.items.map((id) => (
+              <li key={id} className="text-xs text-[hsl(25,30%,25%)]" title={ITEMS[id]?.description}>
+                <span className="font-semibold">{ITEMS[id]?.name ?? id}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {changeSuit.isError && (
         <p className="text-xs text-[hsl(0,65%,45%)] mt-2" role="alert">{errorMessage(changeSuit.error)}</p>
       )}
@@ -99,6 +113,20 @@ function HeroCard() {
         <p className="text-xs text-[hsl(0,65%,45%)] mt-2" role="alert">{errorMessage(update.error)}</p>
       )}
     </section>
+  );
+}
+
+function RankBadge({ bounties }: { bounties: number }) {
+  const rank = hunterRank(bounties);
+  return (
+    <div className="text-center mt-2" data-testid="text-rank">
+      <p className="pulp-title text-base text-[hsl(0,72%,40%)] tracking-wider">★ {rank.title}</p>
+      {rank.next && (
+        <p className="text-[11px] text-[hsl(25,15%,42%)]">
+          {rank.next.needed} more bount{rank.next.needed === 1 ? "y" : "ies"} to {rank.next.title}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -192,7 +220,10 @@ function Leaderboard() {
         <ol className="mt-2 space-y-1">
           {board.map((e, i) => (
             <li key={`${e.callsign}-${i}`} className="flex justify-between text-sm" style={{ color: INK }}>
-              <span><span className="pulp-title mr-2">{i + 1}.</span>{e.callsign}</span>
+              <span>
+                <span className="pulp-title mr-2">{i + 1}.</span>{e.callsign}
+                <span className="text-[10px] uppercase tracking-wider text-[hsl(25,15%,42%)] ml-1">{hunterRank(e.bounties).title}</span>
+              </span>
               <span className="pulp-title">{e.earned.toLocaleString()} CR</span>
             </li>
           ))}

@@ -48,10 +48,26 @@ export function suitForItem(id: ShopItemId): SuitId | null {
 export const DRAW_WINDOW_MS = 500;
 export const DRAW_WINDOW_RAYGUN_MS = 750;
 
+// Items found during bounties stay in the hunter's satchel for later jobs.
+export type ItemId = "decoder-ring";
+
+export const ITEMS: Record<ItemId, { name: string; description: string }> = {
+  "decoder-ring": {
+    name: "Junior Ranger Decoder Ring",
+    description: "Brass, Sterling Atomic issue. Engraved inside: \"Set your key to the number of moons of your world.\"",
+  },
+};
+
+export const ITEM_IDS = Object.keys(ITEMS) as [ItemId, ...ItemId[]];
+
 export interface Clue {
   id: string;
   label: string;
   text: string;
+  // Searching this clue hands the hunter an item
+  grants?: ItemId;
+  // The clue is in code: shown shifted by `key` letters until decoded with `requires`
+  cipher?: { requires: ItemId; key: number };
   // Hotspot position over the scene image (percent)
   top: string;
   left: string;
@@ -199,8 +215,95 @@ export const BOUNTIES: Bounty[] = [
     title: "Rustlers of the Red Sands",
     planet: "Mars",
     reward: 800,
-    available: false,
-    teaser: "Someone's stealing water rigs from the Martian dome farms. Coming soon.",
+    available: true,
+    teaser: "Chrome Rain-Makers are vanishing from the Ares Valley dome farms, one Friday night at a time.",
+    briefing:
+      "Out in Mars's Ares Valley, Sterling Atomic's glass-domed farms turn red dust into green fields, thanks to towering chrome Rain-Makers that pull water right out of the thin Martian air. Someone's been rustling them: three towers gone in three weeks. The Valley Growers' Cooperative is paying 800 credits to whoever stops it. Search the Hydro-Dome and the Red Sands freight depot, then name your rustler.",
+    cluesNeeded: 6,
+    locations: [
+      {
+        id: "hydro-dome",
+        name: "Ares Valley Hydro-Dome",
+        image: "./scenes/mars-farm.webp",
+        clues: [
+          {
+            id: "pad",
+            label: "Empty Rain-Maker Pad",
+            text: "Where a Rain-Maker stood last night there's only bare concrete. The four bolts were undone neatly with a proper wrench, not ripped out. Narrow paired wheel tracks lead to the dome's freight door: a monorail freight dolly.",
+            top: "60%", left: "28%", width: "40%", height: "16%",
+          },
+          {
+            id: "sprinkles",
+            label: "Sprinkles the Farm Robot",
+            text: "Sprinkles plays back his memory tape: \"The Rain-Makers always go missing on a Friday night, sir, just before the 2:10 freight monorail leaves for Phobos.\" Then he pops open his chest drawer and hands you something from the lost-and-found: a brass decoder ring.",
+            grants: "decoder-ring",
+            top: "45%", left: "70%", width: "16%", height: "33%",
+          },
+          {
+            id: "lab",
+            label: "Professor Venn's Lab",
+            text: "Professor Venn has been asking Sterling Atomic to scrap the old Rain-Makers for her new design, which looks bad. But the lab's door log shows she badged in at 8 PM last Friday and didn't leave until sunrise, and the night camera shows her at her bench the whole time.",
+            top: "38%", left: "5%", width: "20%", height: "22%",
+          },
+        ],
+      },
+      {
+        id: "depot",
+        name: "Red Sands Freight Depot",
+        image: "./scenes/mars-depot.webp",
+        clues: [
+          {
+            id: "skiff",
+            label: "Dusty's Sand-Skiff",
+            text: "Dusty Dunmore's racing skiff is caked in dust and its engine is stone cold. On the seat: a race ticket for the Olympus Mons Rally, last Friday from 9 PM to dawn. He finished second. Besides, a skiff this size couldn't haul a Rain-Maker.",
+            top: "20%", left: "63%", width: "35%", height: "62%",
+          },
+          {
+            id: "crates",
+            label: "Canned Sunshine Crates",
+            text: "The crates say CANNED SUNSHINE, but one is far too heavy, and a chrome fin pokes through the slats. The shipping label: \"To Phobos Station. Checked and sealed by the freight clerk on duty.\"",
+            top: "44%", left: "29%", width: "21%", height: "26%",
+          },
+          {
+            id: "telegram",
+            label: "Coded Telegram",
+            text: "TEN MORE RAIN-MAKERS READY FRIDAY. CRATE THEM AS CANNED SUNSHINE. PHOBOS BUYER PAYS DOUBLE. SIGNED, Q.",
+            cipher: { requires: "decoder-ring", key: 2 },
+            top: "27%", left: "3%", width: "17%", height: "30%",
+          },
+        ],
+      },
+    ],
+    suspects: [
+      {
+        id: "dusty",
+        name: "\"Dusty\" Dunmore",
+        title: "Sand-Skiff Racer",
+        portrait: "./game/suspect-dusty.webp",
+        description: "Loud about 'dome farmers hogging all of Mars's water.' Fastest skiff in the Ares Valley.",
+      },
+      {
+        id: "venn",
+        name: "Professor Lyra Venn",
+        title: "Sterling Atomic Hydrologist",
+        portrait: "./game/suspect-venn.webp",
+        description: "Designed a better Rain-Maker and makes no secret she wanted the old ones gone.",
+      },
+      {
+        id: "quill",
+        name: "Rigby Quill",
+        title: "Monorail Freight Clerk",
+        portrait: "./game/suspect-quill.webp",
+        description: "Knows every crate that leaves the Red Sands depot. Lately he's been buying rounds.",
+      },
+    ],
+    accusePrompt: "Who's rustling the Rain-Makers?",
+    fragment: {
+      id: "martian-quadrant",
+      number: 2,
+      name: "The Martian Quadrant",
+      caption: "When the Rain-Makers come home, Sprinkles finds a chart rolled up inside one hollow fin: Aurora Sterling's gold ink tracing the canals of Mars, and a bright dotted line running on past the asteroid belt.",
+    },
   },
   {
     id: "venus-fog",
@@ -218,6 +321,31 @@ export function bountyById(id: string): Bounty | undefined {
 
 const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"];
 export const numeral = (n: number) => NUMERALS[n - 1] ?? String(n);
+
+// Shift letters by n (Caesar cipher); everything else is left alone.
+export function shiftLetters(text: string, n: number): string {
+  return text.replace(/[A-Z]/g, (c) => String.fromCharCode(((c.charCodeAt(0) - 65 + n) % 26 + 26) % 26 + 65));
+}
+
+// Hunter rank grows with bounties collected.
+export const RANKS = [
+  { min: 0, title: "Greenhorn" },
+  { min: 1, title: "Deputy" },
+  { min: 2, title: "Marshal" },
+  { min: 4, title: "Star Ranger" },
+  { min: 7, title: "Legend of the Spaceways" },
+] as const;
+
+export function hunterRank(bounties: number): { title: string; next?: { title: string; needed: number } } {
+  const i = RANKS.findLastIndex((r) => bounties >= r.min);
+  const next = RANKS[i + 1];
+  return { title: RANKS[i].title, ...(next ? { next: { title: next.title, needed: next.min - bounties } } : {}) };
+}
+
+// Bounties that hand out an item, so the server only grants items that exist in play.
+export function itemAvailable(id: string): id is ItemId {
+  return BOUNTIES.some((b) => b.available && b.locations?.some((l) => l.clues.some((c) => c.grants === id)));
+}
 
 export const MAP_FRAGMENTS: MapFragment[] = BOUNTIES.flatMap((b) => (b.fragment ? [b.fragment] : []));
 
@@ -237,7 +365,7 @@ export interface StarMapStatus {
 
 // Revealed by the server only after a correct accusation (keeps the culprit out of the bundle).
 export interface CaseSolution {
-  showdown: { opponent: string; image: string; taunt: string };
+  showdown: { opponent: string; image: string; taunt: string; scene?: string };
   outro: string;
 }
 
@@ -248,6 +376,7 @@ export interface PlayerProfile {
   suit: SuitId;
   owned: ShopItemId[];
   completedBounties: string[];
+  items: ItemId[];
 }
 
 export interface LeaderboardEntry {

@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { eq, desc, sql, inArray } from "drizzle-orm";
-import { players, bountyClaims, type Player } from "@shared/schema";
+import { players, bountyClaims, playerItems, type Player } from "@shared/schema";
 import {
   DEFAULT_SUIT,
   ownsSuit,
@@ -11,6 +11,7 @@ import {
   type PlayerProfile,
   type LeaderboardEntry,
   type StarMapStatus,
+  type ItemId,
   type ShopItemId,
   type SuitId,
 } from "@shared/game";
@@ -39,6 +40,14 @@ function completedBounties(visitorId: string): string[] {
     .map((r) => r.bountyId);
 }
 
+function itemsOf(visitorId: string): ItemId[] {
+  return db.select({ itemId: playerItems.itemId })
+    .from(playerItems)
+    .where(eq(playerItems.visitorId, visitorId))
+    .all()
+    .map((r) => r.itemId as ItemId);
+}
+
 function toProfile(player: Player): PlayerProfile {
   return {
     callsign: player.callsign,
@@ -46,6 +55,7 @@ function toProfile(player: Player): PlayerProfile {
     suit: player.suit as SuitId,
     owned: parseOwned(player.owned),
     completedBounties: completedBounties(player.visitorId),
+    items: itemsOf(player.visitorId),
   };
 }
 
@@ -68,7 +78,7 @@ function ensurePlayer(visitorId: string): Player {
 export function getProfile(visitorId: string): PlayerProfile {
   const player = findPlayer(visitorId);
   if (player) return toProfile(player);
-  return { callsign: defaultCallsign(visitorId), credits: 0, suit: DEFAULT_SUIT, owned: [], completedBounties: [] };
+  return { callsign: defaultCallsign(visitorId), credits: 0, suit: DEFAULT_SUIT, owned: [], completedBounties: [], items: [] };
 }
 
 export type UpdateResult = { status: "ok"; profile: PlayerProfile } | { status: "suit_not_owned" };
@@ -177,5 +187,17 @@ export function getStarMap(): StarMapStatus {
       fragments: withFragment.map((b) => ({ id: b.fragment!.id, hunters: counts.get(b.id) ?? 0 })),
       searchers,
     };
+  });
+}
+
+// Put an item in the hunter's satchel (idempotent).
+export function findItem(visitorId: string, itemId: ItemId): PlayerProfile {
+  return db.transaction(() => {
+    const player = ensurePlayer(visitorId);
+    db.insert(playerItems)
+      .values({ visitorId, itemId, createdAt: new Date().toISOString() })
+      .onConflictDoNothing()
+      .run();
+    return toProfile(player);
   });
 }

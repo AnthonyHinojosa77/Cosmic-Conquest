@@ -123,3 +123,13 @@ export const bountyClaims = sqliteTable("bounty_claims", {
   uniqueIndex("bounty_claims_visitor_bounty_unique").on(table.visitorId, table.bountyId),
 ]);
 export type BountyClaim = typeof bountyClaims.$inferSelect;
+
+// Items in a hunter's satchel (found once, kept for later bounties)
+export const playerItems = sqliteTable("player_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  visitorId: text("visitor_id").notNull(),
+  itemId: text("item_id").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("player_items_visitor_item_unique").on(table.visitorId, table.itemId),
+]);
