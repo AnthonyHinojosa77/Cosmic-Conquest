@@ -4,7 +4,7 @@ import { updatePlayerSchema } from "@shared/schema";
 import { bountyById } from "@shared/game";
 import { gameLimiter } from "./middleware";
 import { BOUNTY_SOLUTIONS } from "./bounties";
-import { getProfile, updateProfile, claimBounty, buyItem, getLeaderboard } from "./gameStorage";
+import { getProfile, updateProfile, claimBounty, buyItem, getLeaderboard, getStarMap } from "./gameStorage";
 
 const accusationSchema = z.object({ suspect: z.string().min(1).max(50) });
 
@@ -56,5 +56,9 @@ export function registerGameRoutes(app: Express) {
 
   app.get("/api/leaderboard", (_req, res) => {
     res.json(getLeaderboard());
+  });
+
+  app.get("/api/star-map", (_req, res) => {
+    res.json(getStarMap());
   });
 }

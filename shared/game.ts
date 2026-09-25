@@ -74,6 +74,17 @@ export interface Suspect {
   description: string;
 }
 
+// Sterling's star map: each bounty turns up one fragment. The map is meant to
+// be large; the other fragments arrive with future bounties and worlds.
+export const STAR_MAP_SIZE = 12;
+
+export interface MapFragment {
+  id: string;
+  number: number; // position on the map, 1..STAR_MAP_SIZE
+  name: string;
+  caption: string;
+}
+
 export interface Bounty {
   id: string;
   title: string;
@@ -86,7 +97,7 @@ export interface Bounty {
   suspects?: Suspect[];
   cluesNeeded?: number;
   accusePrompt?: string;
-
+  fragment?: MapFragment;
 }
 
 export const BOUNTIES: Bounty[] = [
@@ -176,6 +187,12 @@ export const BOUNTIES: Bounty[] = [
       },
     ],
     accusePrompt: "Who took the Heart of Luna?",
+    fragment: {
+      id: "lunar-quadrant",
+      number: 1,
+      name: "The Lunar Quadrant",
+      caption: "Folded inside the Heart of Luna's brass setting: a sliver of star chart inked in gold, signed \"A.S.\" It marks Moon Colony Alpha, then a trail of stars running off the edge toward places no chart has ever named.",
+    },
   },
   {
     id: "red-sands",
@@ -197,6 +214,25 @@ export const BOUNTIES: Bounty[] = [
 
 export function bountyById(id: string): Bounty | undefined {
   return BOUNTIES.find((b) => b.id === id);
+}
+
+const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"];
+export const numeral = (n: number) => NUMERALS[n - 1] ?? String(n);
+
+export const MAP_FRAGMENTS: MapFragment[] = BOUNTIES.flatMap((b) => (b.fragment ? [b.fragment] : []));
+
+// Fragments a player holds, from the bounties they've collected.
+export function fragmentsFor(completedBounties: readonly string[]): MapFragment[] {
+  return BOUNTIES.filter((b) => b.fragment && completedBounties.includes(b.id)).map((b) => b.fragment!);
+}
+
+// Community progress on the star map (public, no player identities).
+export interface StarMapStatus {
+  total: number;
+  // How many hunters have recovered each known fragment (0 = still lost)
+  fragments: { id: string; hunters: number }[];
+  // Hunters holding at least one fragment
+  searchers: number;
 }
 
 // Revealed by the server only after a correct accusation (keeps the culprit out of the bundle).
