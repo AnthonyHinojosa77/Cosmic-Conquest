@@ -58,8 +58,8 @@ every radio in the system:
 
 Every bounty hunter, dreamer and crook is now searching for it.
 
-**The tycoon.** Working name **Aurora Sterling**, founder of *Sterling Atomic*.
-Other options: Celestine Vantage, Evelyn Goldcrest. She's a modern twist on
+**The tycoon.** **Aurora Sterling** (final name, chosen by the owner
+2026-09-25), founder of *Sterling Atomic*. She's a modern twist on
 the Rockefeller / Andrew Ryan figure: visionary, glamorous and generous,
 the face of the space age.
 
@@ -69,10 +69,15 @@ the face of the space age.
    not after it (unlike BioShock or Fallout). Everything is wonder: her
    creations are marvels, her believers are sincere, and exploration is the
    reward. No cracks show at all.
-2. **Act II: The Cracks.** These only appear after meaningful progress (for
-   example, a set number of map fragments or a hunter rank). Small details
-   are wrong: a mural with workers painted out, a sealed district, a
-   broadcast that contradicts the records.
+2. **Act II: The Cracks.** These only appear after *significant* progress:
+   substantial exploration of a large, expansive world, not a handful of
+   bounties. Only then do the pieces come together and reveal the truth
+   about Aurora and the world she built along with her fortune. The exact
+   threshold (fragments, rank, worlds explored) gets set once there are
+   enough worlds to make it substantial (phase 5); until then the game
+   stays in Act I. When the cracks do come, small details are wrong: a
+   mural with workers painted out, a sealed district, a broadcast that
+   contradicts the records.
 3. **Act III: The Truth.** The cost of her utopia. How it ends is still open.
 
 The reveals are unlocked by the player's progress, never by time, so a new
