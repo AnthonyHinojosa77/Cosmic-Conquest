@@ -171,6 +171,13 @@ with the old cover attached:
 
 Keeping the bands in place matters: the hub's clickable areas sit on them.
 
+## Economy
+
+- **Prices outrun a single bounty on purpose** (owner decision, 2026-09-25):
+  the first bounty pays 500 credits once, so a hunter can't buy everything
+  from it (ray-gun 300 + gold suit 250 = 550). The better gear is a reason to
+  keep exploring and take on new bounties as they arrive. Purchases are final.
+
 ## Known limits
 
 - **Anonymous players:** anyone who clears their browser cookies starts
