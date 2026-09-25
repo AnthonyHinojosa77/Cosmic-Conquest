@@ -30,9 +30,9 @@ export interface ShopItem {
 
 export const SHOP_ITEMS: ShopItem[] = [
   { id: "raygun", name: "Lucky Ray-Gun", price: 300, description: "A pearl-handled blaster that clears leather fast. Gives you more time to draw in showdowns." },
-  { id: "suit-red", name: "Pulp Red Suit", price: 150, description: "Loud, proud, and visible from orbit.", comingSoon: true },
-  { id: "suit-teal", name: "Atomic Teal Suit", price: 150, description: "Cool as the far side of the Moon.", comingSoon: true },
-  { id: "suit-gold", name: "Gold Rush Suit", price: 250, description: "For hunters who want the whole saloon to know they've arrived.", comingSoon: true },
+  { id: "suit-red", name: "Pulp Red Suit", price: 150, description: "Loud, proud, and visible from orbit." },
+  { id: "suit-teal", name: "Atomic Teal Suit", price: 150, description: "Cool as the far side of the Moon." },
+  { id: "suit-gold", name: "Gold Rush Suit", price: 250, description: "For hunters who want the whole saloon to know they've arrived." },
 ];
 
 // Only items that can actually be bought right now

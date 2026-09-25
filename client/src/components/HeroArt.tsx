@@ -1,21 +1,46 @@
-export type HeroPose = "ready" | "firing" | "too-slow";
+import { DEFAULT_SUIT, SUITS, type SuitId } from "@shared/game";
 
-const POSES: Record<HeroPose, { src: string; alt: string }> = {
-  ready: { src: "./game/hero-ready.webp", alt: "The space cowboy, hand on his holster, ready to draw" },
-  firing: { src: "./game/hero-firing.webp", alt: "The space cowboy firing his ray gun" },
-  "too-slow": { src: "./game/hero-too-slow.webp", alt: "The space cowboy knocked off balance" },
+export type HeroPose = "standing" | "ready" | "firing" | "too-slow";
+
+const POSES: Record<HeroPose, { file: string; alt: string }> = {
+  standing: { file: "hero-standing", alt: "The space cowboy standing at ease, thumb hooked in his belt" },
+  ready: { file: "hero-ready", alt: "The space cowboy, hand on his holster, ready to draw" },
+  firing: { file: "hero-firing", alt: "The space cowboy firing his ray gun" },
+  "too-slow": { file: "hero-too-slow", alt: "The space cowboy knocked off balance" },
 };
 
-// Illustrated hero (cut-out art from the image generator).
-export function HeroArt({ pose, className, style }: { pose: HeroPose; className?: string; style?: React.CSSProperties }) {
-  const { src, alt } = POSES[pose];
-  return <img src={src} alt={alt} className={className} style={style} draggable={false} />;
+// An unknown suit (stale bundle, bad data) falls back to the default art.
+const knownSuit = (suit: string): SuitId => (Object.hasOwn(SUITS, suit) ? (suit as SuitId) : DEFAULT_SUIT);
+
+// Every pose exists in every suit: hero-<pose>.webp (silver) or hero-<pose>-<suit>.webp.
+function heroSrc(pose: HeroPose, suit: SuitId): string {
+  const file = POSES[pose].file;
+  return `./game/${suit === DEFAULT_SUIT ? file : `${file}-${suit}`}.webp`;
 }
 
-// Preload every pose so switching during a showdown is instant.
-export function preloadHeroPoses() {
-  for (const { src } of Object.values(POSES)) {
-    const img = new Image();
-    img.src = src;
+// Illustrated hero (cut-out art from the image generator).
+export function HeroArt({
+  pose,
+  suit = DEFAULT_SUIT,
+  className,
+  style,
+}: {
+  pose: HeroPose;
+  suit?: SuitId;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  suit = knownSuit(suit);
+  const alt = suit === DEFAULT_SUIT ? POSES[pose].alt : `${POSES[pose].alt}, in the ${SUITS[suit].name} suit`;
+  return <img src={heroSrc(pose, suit)} alt={alt} className={className} style={style} draggable={false} />;
+}
+
+// Preload art so switching poses or suits is instant.
+export function preloadHeroPoses(poses: readonly HeroPose[], suits: readonly SuitId[]) {
+  for (const pose of poses) {
+    for (const suit of suits) {
+      const img = new Image();
+      img.src = heroSrc(pose, knownSuit(suit));
+    }
   }
 }

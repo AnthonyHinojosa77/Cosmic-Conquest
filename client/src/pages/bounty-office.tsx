@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { BackButton } from "@/components/BackButton";
-import { HeroArt } from "@/components/HeroArt";
+import { HeroArt, preloadHeroPoses } from "@/components/HeroArt";
 import { StarMap } from "@/components/StarMap";
 import { SterlingBroadcast, hasHeardBroadcast, markBroadcastHeard } from "@/components/SterlingBroadcast";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
-import { BOUNTIES, SHOP_ITEMS } from "@shared/game";
+import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ownsSuit } from "@shared/game";
 
 const INK = "hsl(25,40%,15%)";
 
@@ -20,7 +20,13 @@ function CreditsBadge({ credits }: { credits: number }) {
 function HeroCard() {
   const { data: player } = usePlayer();
   const update = useUpdatePlayer();
+  const changeSuit = useUpdatePlayer(); // separate state so errors show next to the right control
   const [callsign, setCallsign] = useState("");
+  const ownedSuits = SUIT_IDS.filter((s) => ownsSuit(player?.owned ?? [], s));
+
+  useEffect(() => {
+    if (ownedSuits.length > 1) preloadHeroPoses(["standing"], ownedSuits);
+  }, [ownedSuits.join()]);
 
   useEffect(() => {
     if (player) setCallsign(player.callsign);
@@ -32,9 +38,35 @@ function HeroCard() {
 
   return (
     <section className="comic-panel bg-[hsl(38,35%,88%)] p-4 flex flex-col items-center" data-testid="panel-hero">
-      <HeroArt pose="ready" className="w-44 h-auto drop-shadow-lg" />
+      <HeroArt pose="standing" suit={player.suit} className="w-36 h-auto drop-shadow-lg" />
       {player.owned.includes("raygun") && (
         <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Packing the Lucky Ray-Gun</p>
+      )}
+
+      {ownedSuits.length > 1 && (
+        <div className="mt-3 flex items-center gap-2" role="group" aria-label="Suit" data-testid="picker-suit">
+          <span className="pulp-title text-xs" style={{ color: INK }}>Suit:</span>
+          {ownedSuits.map((s) => (
+            <button
+              key={s}
+              aria-pressed={player.suit === s}
+              aria-label={`${SUITS[s].name} suit`}
+              title={SUITS[s].name}
+              disabled={changeSuit.isPending}
+              onClick={() => player.suit !== s && changeSuit.mutate({ suit: s })}
+              className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
+              style={{
+                background: SUITS[s].color,
+                borderColor: SUITS[s].trim,
+                boxShadow: player.suit === s ? `0 0 0 3px hsl(38,35%,88%), 0 0 0 5px ${INK}` : undefined,
+              }}
+              data-testid={`button-suit-${s}`}
+            />
+          ))}
+        </div>
+      )}
+      {changeSuit.isError && (
+        <p className="text-xs text-[hsl(0,65%,45%)] mt-2" role="alert">{errorMessage(changeSuit.error)}</p>
       )}
 
       <form
