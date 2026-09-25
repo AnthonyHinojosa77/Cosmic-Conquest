@@ -78,7 +78,7 @@ function ensurePlayer(visitorId: string): Player {
 export function getProfile(visitorId: string): PlayerProfile {
   const player = findPlayer(visitorId);
   if (player) return toProfile(player);
-  return { callsign: defaultCallsign(visitorId), credits: 0, suit: DEFAULT_SUIT, owned: [], completedBounties: [], items: [] };
+  return { callsign: defaultCallsign(visitorId), credits: 0, suit: DEFAULT_SUIT, owned: [], completedBounties: [], items: itemsOf(visitorId) };
 }
 
 export type UpdateResult = { status: "ok"; profile: PlayerProfile } | { status: "suit_not_owned" };
@@ -190,14 +190,11 @@ export function getStarMap(): StarMapStatus {
   });
 }
 
-// Put an item in the hunter's satchel (idempotent).
+// Put an item in the hunter's satchel (idempotent). Doesn't create a player row.
 export function findItem(visitorId: string, itemId: ItemId): PlayerProfile {
-  return db.transaction(() => {
-    const player = ensurePlayer(visitorId);
-    db.insert(playerItems)
-      .values({ visitorId, itemId, createdAt: new Date().toISOString() })
-      .onConflictDoNothing()
-      .run();
-    return toProfile(player);
-  });
+  db.insert(playerItems)
+    .values({ visitorId, itemId, createdAt: new Date().toISOString() })
+    .onConflictDoNothing()
+    .run();
+  return getProfile(visitorId);
 }

@@ -179,8 +179,9 @@ the **decoder ring**, Professor Venn's lab) and the Red Sands freight depot
 (Dusty's sand-skiff, the Canned Sunshine crates, the **coded telegram**).
 The telegram is a letter-shift code; the ring's engraving says the key is
 "the number of moons of your world" (Mars: 2). Red herrings: Dusty Dunmore
-(racing all night) and Professor Lyra Venn (lab log). Culprit (server-only):
-the freight clerk. Art was made in a separate ChatGPT chat with an existing
+(racing all night) and Professor Lyra Venn (lab log). The clues point to the
+freight clerk by design; only the showdown and outro stay server-side. Like the
+showdown, the puzzle is honor-system (its answer ships to the browser). Art was made in a separate ChatGPT chat with an existing
 world scene attached as the style reference; sources are in the Drive folder.
 
 ## Economy

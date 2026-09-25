@@ -58,8 +58,6 @@ export const ITEMS: Record<ItemId, { name: string; description: string }> = {
   },
 };
 
-export const ITEM_IDS = Object.keys(ITEMS) as [ItemId, ...ItemId[]];
-
 export interface Clue {
   id: string;
   label: string;
@@ -337,7 +335,8 @@ export const RANKS = [
 ] as const;
 
 export function hunterRank(bounties: number): { title: string; next?: { title: string; needed: number } } {
-  const i = RANKS.findLastIndex((r) => bounties >= r.min);
+  let i = 0;
+  while (i + 1 < RANKS.length && bounties >= RANKS[i + 1].min) i++;
   const next = RANKS[i + 1];
   return { title: RANKS[i].title, ...(next ? { next: { title: next.title, needed: next.min - bounties } } : {}) };
 }

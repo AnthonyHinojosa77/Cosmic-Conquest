@@ -46,16 +46,24 @@ function Panel({ title, children, testId }: { title: string; children: React.Rea
 
 // --- Coded clues --------------------------------------------------------------
 
-function Decoder({ clue, onSolved }: { clue: Clue; onSolved: () => void }) {
+function Decoder({
+  clue,
+  hasTool,
+  alreadySolved,
+  onSolved,
+}: {
+  clue: Clue;
+  hasTool: boolean;
+  alreadySolved: boolean;
+  onSolved: () => void;
+}) {
   const cipher = clue.cipher!;
-  const { data: player } = usePlayer();
-  const [dial, setDial] = useState(0);
+  const [dial, setDial] = useState(alreadySolved ? cipher.key : 0);
   const coded = shiftLetters(clue.text, cipher.key);
-  const hasTool = player?.items.includes(cipher.requires) ?? false;
   const solved = dial === cipher.key;
 
   // Report once, when the dial lands on the key
-  const reported = useRef(false);
+  const reported = useRef(alreadySolved);
   useEffect(() => {
     if (solved && !reported.current) {
       reported.current = true;
@@ -73,7 +81,7 @@ function Decoder({ clue, onSolved }: { clue: Clue; onSolved: () => void }) {
     </p>
   );
 
-  if (!hasTool) {
+  if (!hasTool && !alreadySolved) {
     return (
       <>
         {tape(coded)}
@@ -176,7 +184,7 @@ function Investigation({
             style={{ top: clue.top, left: clue.left, width: clue.width, height: clue.height }}
             onClick={() => {
               if (!clue.cipher) onFind(clue); // coded clues count once decoded
-              if (clue.grants && !player?.items.includes(clue.grants)) findItem.mutate(clue.grants);
+              if (clue.grants && !player?.items.includes(clue.grants) && !findItem.isPending) findItem.mutate(clue.grants);
               setOpenClue(clue);
             }}
             aria-label={`Search ${clue.label}`}
@@ -192,8 +200,18 @@ function Investigation({
 
       {openClue && (
         <Panel title={`🔍 ${openClue.label}`} testId="panel-clue">
-          {openClue.cipher && !found.has(openClue.id) ? (
-            <Decoder key={openClue.id} clue={openClue} onSolved={() => onFind(openClue)} />
+          {openClue.cipher ? (
+            <Decoder
+              key={openClue.id}
+              clue={openClue}
+              // Finding the tool in this case is enough, even if saving it to the satchel failed
+              hasTool={
+                (player?.items.includes(openClue.cipher.requires) ?? false) ||
+                allClues.some((c) => c.grants === openClue.cipher!.requires && found.has(c.id))
+              }
+              alreadySolved={found.has(openClue.id)}
+              onSolved={() => onFind(openClue)}
+            />
           ) : (
             <p className="text-sm leading-relaxed">{openClue.text}</p>
           )}
@@ -326,7 +344,8 @@ function Showdown({
   useEffect(() => {
     preloadHeroPoses(["ready", "firing", "too-slow"], [suit]);
     new Image().src = showdown.image;
-  }, [showdown.image, suit]);
+    if (showdown.scene) new Image().src = showdown.scene;
+  }, [showdown.image, showdown.scene, suit]);
 
   const start = useCallback(() => {
     setState("waiting");
