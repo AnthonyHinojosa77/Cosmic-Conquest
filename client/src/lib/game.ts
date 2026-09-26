@@ -23,6 +23,7 @@ function onProfile(profile: PlayerProfile) {
   queryClient.setQueryData(PLAYER_KEY, profile);
   queryClient.invalidateQueries({ queryKey: LEADERBOARD_KEY });
   queryClient.invalidateQueries({ queryKey: STAR_MAP_KEY });
+  queryClient.invalidateQueries({ queryKey: ["/api/aurelia"] }); // a new piece may earn the invitation
 }
 
 // "402: {...}" -> the server's error message, for friendly display

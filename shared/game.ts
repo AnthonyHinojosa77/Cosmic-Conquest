@@ -392,6 +392,31 @@ export function cluesNeeded(bounty: Bounty): number {
   return bounty.cluesNeeded ?? (bounty.locations ?? []).reduce((n, l) => n + l.clues.length, 0);
 }
 
+// Aurelia: the private planet of the rich. Hunters are invited once they've
+// recovered this many star map pieces.
+export const AURELIA_INVITE_FRAGMENTS = 3;
+
+export function invitedToAurelia(completedBounties: readonly string[]): boolean {
+  return fragmentsFor(completedBounties).length >= AURELIA_INVITE_FRAGMENTS;
+}
+
+export interface AureliaSpot {
+  id: string;
+  label: string;
+  text: string;
+  top: string;
+  left: string;
+  width: string;
+  height: string;
+}
+
+export interface AureliaLocation {
+  id: string;
+  name: string;
+  image: string;
+  spots: AureliaSpot[];
+}
+
 export const MAP_FRAGMENTS: MapFragment[] = BOUNTIES.flatMap((b) => (b.fragment ? [b.fragment] : []));
 
 // Fragments a player holds, from the bounties they've collected.

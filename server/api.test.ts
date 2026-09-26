@@ -403,3 +403,23 @@ test("game: bounties that aren't released yet can't be played", async () => {
     venus.available = true;
   }
 });
+
+test("game: Aurelia admits only hunters with all three star map pieces", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const visit = () => fetch(base + "/api/aurelia", { headers: { Cookie: cookie } });
+
+  const refused = await visit();
+  assert.equal(refused.status, 403);
+  assert.deepEqual(await refused.json(), { error: "Your name isn't on the list", have: 0, needed: 3 });
+
+  await solve("heart-of-luna", "cookie", cookie);
+  await solve("red-sands", "quill", cookie);
+  assert.equal((await visit()).status, 403); // two of three isn't enough
+  await solve("venus-fog", "vance", cookie);
+
+  const city = await (await visit()).json();
+  assert.deepEqual(city.map((l: { id: string }) => l.id), ["plaza", "guild", "tower"]);
+  const callsign = (await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json()).callsign;
+  const registrar = city[1].spots.find((s: { id: string }) => s.id === "registrar");
+  assert.ok(registrar.text.includes(callsign) && registrar.text.includes("Marshal"));
+});

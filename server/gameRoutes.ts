@@ -1,7 +1,18 @@
 import type { Express } from "express";
 import { z } from "zod";
 import { updatePlayerSchema } from "@shared/schema";
-import { bountyById, cluesNeeded, shiftLetters, type Bounty, type BountyProgress, type ClueSearch } from "@shared/game";
+import {
+  bountyById,
+  cluesNeeded,
+  shiftLetters,
+  invitedToAurelia,
+  fragmentsFor,
+  AURELIA_INVITE_FRAGMENTS,
+  type Bounty,
+  type BountyProgress,
+  type ClueSearch,
+} from "@shared/game";
+import { aureliaFor } from "./aurelia";
 import { gameLimiter, clueLimiter } from "./middleware";
 import { BOUNTY_SOLUTIONS, CLUES } from "./bounties";
 import {
@@ -174,6 +185,19 @@ export function registerGameRoutes(app: Express) {
 
   app.get("/api/leaderboard", (_req, res) => {
     res.json(getLeaderboard());
+  });
+
+  // Aurelia is invitation-only: the doormen check the hunter's record.
+  app.get("/api/aurelia", (req, res) => {
+    const profile = getProfile(req.visitorId!);
+    if (!invitedToAurelia(profile.completedBounties)) {
+      return res.status(403).json({
+        error: "Your name isn't on the list",
+        have: fragmentsFor(profile.completedBounties).length,
+        needed: AURELIA_INVITE_FRAGMENTS,
+      });
+    }
+    res.json(aureliaFor(profile.callsign, profile.completedBounties.length));
   });
 
   app.get("/api/star-map", (_req, res) => {

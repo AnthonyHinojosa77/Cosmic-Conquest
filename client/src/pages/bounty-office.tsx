@@ -5,7 +5,7 @@ import { HeroArt, preloadHeroPoses } from "@/components/HeroArt";
 import { StarMap } from "@/components/StarMap";
 import { SterlingBroadcast, hasHeardBroadcast, markBroadcastHeard } from "@/components/SterlingBroadcast";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
-import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ITEMS, ownsSuit, hunterRank } from "@shared/game";
+import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ITEMS, ownsSuit, hunterRank, fragmentsFor, invitedToAurelia, AURELIA_INVITE_FRAGMENTS } from "@shared/game";
 
 const INK = "hsl(25,40%,15%)";
 
@@ -170,6 +170,42 @@ function BountyBoard() {
   );
 }
 
+// Aurelia, the private planet of the rich: invitation only.
+function AureliaCard() {
+  const { data: player } = usePlayer();
+  const invited = player ? invitedToAurelia(player.completedBounties) : false;
+  const have = player ? Math.min(fragmentsFor(player.completedBounties).length, AURELIA_INVITE_FRAGMENTS) : 0;
+  return (
+    <section data-testid="panel-aurelia">
+      <h2 className="pulp-title text-2xl text-[hsl(45,80%,55%)] tracking-wider">Aurelia</h2>
+      <div className="comic-panel mt-3 overflow-hidden" style={{ background: "hsl(245,45%,16%)" }}>
+        <img
+          src="./game/aurelia-gates.webp"
+          alt="The golden Art Deco gates of Aurelia, guarded by robot doormen"
+          className="w-full h-auto block"
+          draggable={false}
+        />
+        <div className="p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-[hsl(240,20%,85%)] flex-1 min-w-[14rem]">
+            {invited
+              ? "✉ An engraved invitation has arrived. The private planet of the solar system's finest is expecting you."
+              : `The private planet where Aurora Sterling's world lives in style. Hunters are admitted by invitation only: recover ${AURELIA_INVITE_FRAGMENTS} pieces of her star map to earn yours (you hold ${have}).`}
+          </p>
+          {invited ? (
+            <Link href="/aurelia">
+              <button className="retro-btn gold" data-testid="button-enter-aurelia">✦ Enter Aurelia</button>
+            </Link>
+          ) : (
+            <span className="pulp-title text-sm text-[hsl(45,80%,60%)]" data-testid="text-aurelia-locked">
+              Invitation only · {have}/{AURELIA_INVITE_FRAGMENTS}
+            </span>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Shop() {
   const { data: player } = usePlayer();
   const buy = useBuyItem();
@@ -283,6 +319,7 @@ export default function BountyOffice() {
         <div className="space-y-8">
           <BountyBoard />
           <StarMap />
+          <AureliaCard />
           <Shop />
         </div>
       </main>

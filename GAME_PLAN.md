@@ -185,6 +185,31 @@ server; the browser only has the coded telegram. Art was made in a separate
 ChatGPT chat with an existing world scene attached as the style reference;
 sources are in the Drive folder.
 
+## Aurelia: the private planet (owner's idea, 2026-09-26)
+
+A planet only the solar system's richest can visit, built by Aurora Sterling:
+1930s Art Deco pushed into the future (stepped towers, sunburst crowns,
+searchlights, black tie), rendered on the game's usual inked aged paper in an
+indigo / violet / silver / gold palette. Owner's reference images: airbrushed
+Art Deco night cities.
+
+- **No bounty hunting inside.** The Bounty Guild is headquartered here (all
+  contracts start here), but Aurora's charter bans serving contracts within
+  the walls, so the rich live protected from the rough world outside.
+- **Invitation only.** Hunters see it from the start (Bounty Office card, the
+  gates art) and are invited after recovering 3 star-map pieces. The server
+  gates `/api/aurelia`, and the city's text only comes from the server.
+- **Places:** the Grand Staircase plaza, Bounty Guild HQ (contracts board,
+  registrar, trophy case of the hunter's own cases, charter), Sterling Tower
+  lobby (her portrait, fresh lilies, the sealed penthouse elevator, robot
+  concierge).
+- **Story:** Aurora is still "vanished" to players (owner's call). Aurelia is
+  pure wonder with small hints (the rope up since her last broadcast, lilies
+  still ordered). The owner's longer arc: she actually died, the cause is a
+  mystery nobody looks into because everyone is chasing the treasure, and
+  Aurelia is the hub that makes everything around it run. That reveal belongs
+  to Act II or later.
+
 ## Venus: The Venus Fog Phantom
 
 During the Aphrodite Sky Resort's fog show, a masked thief takes the Star of
