@@ -109,9 +109,10 @@ try {
 export const db = drizzle(sqlite);
 
 // For the /health check: is the database answering?
+const ping = sqlite.prepare("SELECT 1");
 export function pingDb(): boolean {
   try {
-    sqlite.prepare("SELECT 1").get();
+    ping.get();
     return true;
   } catch {
     return false;

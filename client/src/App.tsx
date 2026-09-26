@@ -24,7 +24,9 @@ function AppRouter() {
       <Route path="/diner" component={Diner} />
       <Route path="/bounties" component={BountyOffice} />
       {/* Keyed by bounty so moving between cases (e.g. back/forward) starts each one fresh */}
-      <Route path="/bounty/:id">{(params) => <BountyPage key={params.id} />}</Route>
+      <Route path="/bounty/:id">
+        {(params) => <BountyPage key={params.id} />}
+      </Route>
       <Route path="/aurelia" component={Aurelia} />
       <Route component={NotFound} />
     </Switch>
@@ -33,17 +35,19 @@ function AppRouter() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router hook={useHashLocation}>
-          <ErrorBoundary>
+    // Outermost, so a crash anywhere (sound button, toasts, providers) shows the
+    // "try again" card rather than a blank page
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router hook={useHashLocation}>
             <AppRouter />
-          </ErrorBoundary>
-          <SoundToggle />
-        </Router>
-      </TooltipProvider>
-    </QueryClientProvider>
+            <SoundToggle />
+          </Router>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

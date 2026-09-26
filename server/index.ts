@@ -65,13 +65,44 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
-  // Liveness check for hosting platforms (outside /api, so no rate limits or cookies)
-  app.get("/health", (_req, res) => {
-    const ok = pingDb();
-    res.status(ok ? 200 : 503).json({ ok });
-  });
+// Liveness check for hosting platforms (outside /api, so no rate limits or cookies)
+app.get("/health", (_req, res) => {
+  const ok = pingDb();
+  res.status(ok ? 200 : 503).json({ ok });
+});
 
+// Stop cleanly on SIGINT/SIGTERM: finish open requests, then save the database
+// properly. Registered before startup so a signal mid-startup is handled too.
+// A second signal exits at once; the grace is shorter than the ~10s most platforms
+// allow before force-killing, so the database is always closed first.
+const GRACE_MS = 5_000;
+let stopping = false;
+function finish(code: number) {
+  closeDb();
+  process.exit(code);
+}
+function stop(signal: string) {
+  if (stopping) {
+    log(`received ${signal} again, exiting now`);
+    finish(1);
+  }
+  stopping = true;
+  log(`received ${signal}, stopping`);
+  httpServer.close((err) => {
+    if (err) console.error("Server wasn't running cleanly:", err.message);
+    finish(err ? 1 : 0);
+  });
+  // Idle keep-alive (and dev live-reload) connections would hold close() open.
+  httpServer.closeIdleConnections();
+  setTimeout(() => {
+    console.error(`Requests didn't finish within ${GRACE_MS / 1000}s; closing anyway`);
+    finish(1);
+  }, GRACE_MS).unref();
+}
+process.on("SIGINT", () => stop("SIGINT"));
+process.on("SIGTERM", () => stop("SIGTERM"));
+
+(async () => {
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -112,22 +143,4 @@ app.use((req, res, next) => {
     },
   );
 
-  // Stop cleanly: finish open requests, then save the database properly.
-  let stopping = false;
-  const stop = (signal: string) => {
-    if (stopping) return;
-    stopping = true;
-    log(`received ${signal}, stopping`);
-    httpServer.close(() => {
-      closeDb();
-      process.exit(0);
-    });
-    setTimeout(() => {
-      console.error("Requests didn't finish within 10s; closing anyway");
-      closeDb();
-      process.exit(1);
-    }, 10_000).unref();
-  };
-  process.on("SIGINT", () => stop("SIGINT"));
-  process.on("SIGTERM", () => stop("SIGTERM"));
 })();

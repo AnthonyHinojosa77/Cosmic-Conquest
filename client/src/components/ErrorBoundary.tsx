@@ -13,6 +13,17 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
     console.error("Screen crashed:", error, info.componentStack);
   }
 
+  // Moving to another screen (back button, links) gives it a fresh try.
+  private onNavigate = () => this.state.error && this.setState({ error: null });
+
+  componentDidMount() {
+    window.addEventListener("hashchange", this.onNavigate);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("hashchange", this.onNavigate);
+  }
+
   render() {
     if (!this.state.error) return this.props.children;
     return (
@@ -23,7 +34,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
           </div>
           <div className="discovery-panel-body text-center text-[hsl(25,40%,20%)]">
             <p className="pulp-title text-lg text-[hsl(0,72%,42%)] tracking-wider mb-2">Houston, we have a problem.</p>
-            <p className="text-sm leading-relaxed mb-4">This screen hit a snag. Your progress is safe on the server.</p>
+            <p className="text-sm leading-relaxed mb-4">This screen hit a snag. Try it again, or head back to the hub.</p>
             <div className="flex gap-2 justify-center flex-wrap">
               <button className="retro-btn gold text-sm" onClick={() => window.location.reload()} data-testid="button-reload-page">
                 ★ Try again
