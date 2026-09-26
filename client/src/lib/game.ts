@@ -117,3 +117,21 @@ export const decodeClue = (bountyId: string, clueId: string, key: number) => sol
 
 // Try a combination on a locked clue.
 export const unlockClue = (bountyId: string, clueId: string, code: string) => solveClue(bountyId, clueId, "unlock", { code });
+
+// Question a suspect about a topic; returns what they say.
+export async function askSuspect(bountyId: string, suspect: string, topic: string): Promise<string> {
+  const res = await apiRequest("POST", `/api/bounties/${bountyId}/suspects/${suspect}/ask/${topic}`);
+  return (await res.json()).text;
+}
+
+// Present a found clue against a statement; a breakthrough is added to the notebook.
+export async function presentClue(
+  bountyId: string,
+  suspect: string,
+  topic: string,
+  clue: string,
+): Promise<{ correct: false } | { correct: true; id: string; text: string }> {
+  const body = await (await apiRequest("POST", `/api/bounties/${bountyId}/suspects/${suspect}/ask/${topic}/present`, { clue })).json();
+  if (body.correct) await addFound(bountyId, body.id, body.text);
+  return body;
+}

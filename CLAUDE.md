@@ -46,6 +46,8 @@ npm run build
   from `/api/bounties/:id/clues/:clueId/search`, `/decode` and `/unlock`, and
   the server checks recorded progress before unlocking, accusing and claiming
   (a test fails if clue text, a key or a code appears in `shared/game.ts`).
+  Suspect testimony and which clue catches which lie (`TESTIMONY`) are
+  server-only too, served by `/api/bounties/:id/suspects/:suspect/ask/:topic`.
   Voice recordings count too: they live in `audio/voice/` and are served only
   through `/api/voice/...` with the same gates (never put them in `client/public`).
 - Env vars: `PORT`, `DATABASE_PATH`, `TRUST_PROXY` (loaded from `.env` by

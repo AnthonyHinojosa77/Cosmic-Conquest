@@ -12,7 +12,7 @@ import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { AURORA_BROADCAST, BOUNTIES } from "@shared/game";
-import { BOUNTY_SOLUTIONS, CLUES } from "../../server/bounties";
+import { BOUNTY_SOLUTIONS, CLUES, TESTIMONY } from "../../server/bounties";
 import { aureliaFor } from "../../server/aurelia";
 
 // Voice per character, by ElevenLabs voice name (see --list). Change and re-run to recast;
@@ -23,6 +23,9 @@ const CAST = {
   cookie: "Callum",
   quill: "Liam",
   vance: "Chris",
+  ashgrove: "Lily",
+  pip: "Harry",
+  tuttle: "George",
 } as const;
 type Role = keyof typeof CAST;
 
@@ -53,6 +56,15 @@ function lines(): Line[] {
     if (b.briefing) out.push({ file: `briefing/${b.id}/line.mp3`, role: "narrator", text: b.briefing });
     for (const [id, clue] of Object.entries(CLUES[b.id] ?? {})) {
       out.push({ file: `clue/${b.id}/${id}.mp3`, role: "narrator", text: clue.text });
+    }
+    for (const [suspect, topics] of Object.entries(TESTIMONY[b.id] ?? {})) {
+      const role: Role = suspect in CAST ? (suspect as Role) : "narrator";
+      for (const [topic, said] of Object.entries(topics)) {
+        out.push({ file: `testimony/${b.id}/${suspect}--${topic}.mp3`, role, text: said.text });
+        if (said.breakthrough) {
+          out.push({ file: `breakthrough/${b.id}/${said.breakthrough.id}.mp3`, role: "narrator", text: said.breakthrough.text });
+        }
+      }
     }
     const sol = BOUNTY_SOLUTIONS[b.id];
     if (sol) {

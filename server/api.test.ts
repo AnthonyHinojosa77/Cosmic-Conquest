@@ -10,7 +10,7 @@ import type { AddressInfo } from "net";
 const dbDir = mkdtempSync(path.join(tmpdir(), "cosmic-conquest-test-"));
 process.env.DATABASE_PATH = path.join(dbDir, "test.db");
 process.env.AUDIO_DIR = path.join(dbDir, "voice");
-for (const f of ["clue/red-sands/telegram.mp3", "taunt/red-sands/line.mp3", "aurora/broadcast/line.mp3", "aurelia/tower/lilies.mp3"]) {
+for (const f of ["clue/red-sands/telegram.mp3", "taunt/red-sands/line.mp3", "aurora/broadcast/line.mp3", "aurelia/tower/lilies.mp3", "testimony/saturn-orrery/ashgrove--money.mp3", "breakthrough/saturn-orrery/breakthrough-1.mp3"]) {
   mkdirSync(path.dirname(path.join(dbDir, "voice", f)), { recursive: true });
   writeFileSync(path.join(dbDir, "voice", f), "fake mp3");
 }
@@ -57,6 +57,15 @@ async function investigate(bountyId: string, cookie: string) {
       : clue.code !== undefined ? await post(`${url}/unlock`, { code: clue.code }, cookie)
       : null;
     if (res) assert.equal((await res.json()).correct, true, `${bountyId}/${clueId}`);
+  }
+  // Catch every lie with the first clue that exposes it
+  const { TESTIMONY } = await import("./bounties");
+  for (const [suspect, topics] of Object.entries(TESTIMONY[bountyId] ?? {})) {
+    for (const [topic, said] of Object.entries(topics)) {
+      if (!said.breakthrough) continue;
+      const res = await post(`/api/bounties/${bountyId}/suspects/${suspect}/ask/${topic}/present`, { clue: said.caughtBy![0] }, cookie);
+      assert.equal((await res.json()).correct, true, `${bountyId}/${suspect}/${topic}`);
+    }
   }
 }
 
@@ -241,7 +250,7 @@ test("game: a buying spree never spends more than the balance", async () => {
 test("game: the culprit is not in the shared (browser) bounty data", async () => {
   const { BOUNTIES } = await import("@shared/game");
   const shipped = JSON.stringify(BOUNTIES);
-  assert.equal(/spatula blaster|lock-up|never take me alive|stamp-blaster|properly filed|Nobody catches|Venus lock-up/.test(shipped), false);
+  assert.equal(/spatula blaster|lock-up|never take me alive|stamp-blaster|properly filed|Nobody catches|Venus lock-up|understand them|Titan lock-up/.test(shipped), false);
 });
 
 test("game: star map counts hunters per fragment, once each", async () => {
@@ -326,6 +335,16 @@ test("game: no clue text or puzzle answer ships to the browser", async () => {
   for (const clues of Object.values(CLUES)) {
     for (const { text } of Object.values(clues)) assert.equal(shipped.includes(text), false, text.slice(0, 40));
   }
+  const { TESTIMONY } = await import("./bounties");
+  for (const suspects of Object.values(TESTIMONY)) {
+    for (const topics of Object.values(suspects)) {
+      for (const said of Object.values(topics)) {
+        assert.equal(shipped.includes(said.text), false, said.text.slice(0, 40));
+        if (said.breakthrough) assert.equal(shipped.includes(said.breakthrough.text), false);
+      }
+    }
+  }
+  assert.equal(/caughtBy/.test(shipped), false);
   assert.equal(/"key"|"code"|"needs"/.test(shipped), false);
   const { shiftLetters } = await import("@shared/game");
   const tele = CLUES["red-sands"].telegram;
@@ -333,8 +352,23 @@ test("game: no clue text or puzzle answer ships to the browser", async () => {
 });
 
 test("game: every hotspot has server clue text, and coded clues have a key", async () => {
-  const { BOUNTIES } = await import("@shared/game");
-  const { CLUES } = await import("./bounties");
+  const { BOUNTIES, isBreakthrough } = await import("@shared/game");
+  const { CLUES, TESTIMONY } = await import("./bounties");
+  for (const b of BOUNTIES.filter((b) => b.interviews)) {
+    const clueIds = b.locations!.flatMap((l) => l.clues.map((c) => c.id));
+    const said = TESTIMONY[b.id] ?? {};
+    const shared = b.interviews!.flatMap((i) => i.topics.map((t) => `${i.suspect}/${t.id}`)).sort();
+    const server = Object.entries(said).flatMap(([s, ts]) => Object.keys(ts).map((t) => `${s}/${t}`)).sort();
+    assert.deepEqual(shared, server, `${b.id} topics`);
+    for (const i of b.interviews!) for (const t of i.topics) if (t.after) assert.ok(clueIds.includes(t.after), `${b.id} after ${t.after}`);
+    const lies = Object.values(said).flatMap((ts) => Object.values(ts)).filter((x) => x.breakthrough);
+    assert.equal(lies.length, b.breakthroughs, `${b.id} breakthroughs`);
+    assert.equal(new Set(lies.map((l) => l.breakthrough!.id)).size, lies.length);
+    for (const l of lies) {
+      assert.ok(isBreakthrough(l.breakthrough!.id));
+      for (const c of l.caughtBy!) assert.ok(clueIds.includes(c), `${b.id} caughtBy ${c}`);
+    }
+  }
   for (const b of BOUNTIES.filter((b) => b.locations)) {
     const shared = b.locations!.flatMap((l) => l.clues);
     assert.deepEqual(shared.map((c) => c.id).sort(), Object.keys(CLUES[b.id] ?? {}).sort(), b.id);
@@ -387,6 +421,40 @@ test("game: Venus bounty pays 1200 and turns up fragment III", async () => {
   assert.equal((await paid.json()).credits, 1200);
   const map = await (await fetch(base + "/api/star-map")).json();
   assert.ok(map.fragments.find((f: { id: string; hunters: number }) => f.id === "venusian-quadrant").hunters >= 1);
+});
+
+test("game: questioning suspects: topics unlock with clues, and the right clue catches a lie", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const ask = (s: string, t: string) => post(`/api/bounties/saturn-orrery/suspects/${s}/ask/${t}`, {}, cookie);
+  const present = (s: string, t: string, clue: string) =>
+    post(`/api/bounties/saturn-orrery/suspects/${s}/ask/${t}/present`, { clue }, cookie);
+  const search = (c: string) => post(`/api/bounties/saturn-orrery/clues/${c}/search`, {}, cookie);
+
+  assert.match((await (await ask("tuttle", "night")).json()).text, /telescope/);
+  assert.equal((await ask("ashgrove", "money")).status, 409); // needs the guestbook first
+  assert.equal((await ask("tuttle", "nope")).status, 404);
+  assert.equal((await present("tuttle", "night", "telescope")).status, 409); // clue not found yet
+
+  await search("telescope");
+  await search("orrery");
+  assert.deepEqual(await (await present("tuttle", "night", "orrery")).json(), { correct: false });
+  assert.deepEqual(await (await present("tuttle", "the-key", "telescope")).json(), { correct: false }); // not a lie
+  const caught = await (await present("tuttle", "night", "telescope")).json();
+  assert.equal(caught.correct, true);
+  assert.match(caught.text, /stepped out/);
+
+  const progress = await (await fetch(base + "/api/bounties/saturn-orrery/progress", { headers: { Cookie: cookie } })).json();
+  assert.ok(progress.found[caught.id].includes("stepped out"));
+
+  // Still can't accuse without every clue and both breakthroughs
+  assert.equal((await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle" }, cookie)).status, 409);
+});
+
+test("game: Saturn bounty pays 1600 and turns up fragment IV", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const paid = await solve("saturn-orrery", "tuttle", cookie);
+  assert.equal(paid.status, 200);
+  assert.equal((await paid.json()).credits, 1600);
 });
 
 test("game: bounties that aren't released yet can't be played", async () => {
@@ -445,4 +513,13 @@ test("voice lines are only served when the hunter may read the same text", async
   assert.equal(await hear("clue/red-sands/telegram"), 200);
   await post("/api/bounties/red-sands/accuse", { suspect: "quill" }, cookie);
   assert.equal(await hear("taunt/red-sands"), 200);
+
+  // Questioning: a topic's line once it can be asked; a caught lie once it's caught
+  assert.equal(await hear("testimony/saturn-orrery/ashgrove--money"), 404);
+  assert.equal(await hear("breakthrough/saturn-orrery/breakthrough-1"), 404);
+  await post("/api/bounties/saturn-orrery/clues/guestbook/search", {}, cookie);
+  assert.equal(await hear("testimony/saturn-orrery/ashgrove--money"), 200);
+  assert.equal(await hear("breakthrough/saturn-orrery/breakthrough-1"), 404);
+  await post("/api/bounties/saturn-orrery/suspects/ashgrove/ask/money/present", { clue: "guestbook" }, cookie);
+  assert.equal(await hear("breakthrough/saturn-orrery/breakthrough-1"), 200);
 });

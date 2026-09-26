@@ -12,6 +12,16 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
       taunt: "Cookie backs against the grill, hand hovering over his spatula blaster. \"You'll never take me alive, hunter!\"",
     },
   },
+  "saturn-orrery": {
+    suspect: "tuttle",
+    outro: "The Saturn Gear clicks back onto its spindle and the Sterling Orrery chimes again. Professor Tuttle will be lecturing on Titan after all, from the inside of the Titan lock-up.",
+    showdown: {
+      opponent: "Professor Orson Tuttle",
+      image: "./game/tuttle-showdown.webp",
+      scene: "./game/showdown-platform-saturn.webp",
+      taunt: "Tuttle snaps his pocket watch shut and reaches for his brass spyglass-pistol. \"Aurora's gears belong to those who understand them, hunter!\"",
+    },
+  },
   "venus-fog": {
     suspect: "vance",
     outro: "The Star of Venus is back around its owner's neck, the fog show runs on schedule again, and Captain Vance is taking the long gondola ride down to the Venus lock-up.",
@@ -48,6 +58,14 @@ export const CLUES: Record<string, Record<string, { text: string; key?: number; 
     servo: { text: "Servo's eyes flicker. 'Cookie clocked out early last night, sir. He took his lunchbox — it looked very heavy. He hasn't come in for his shift today.'" },
     jukebox: { text: "Tucked behind the jukebox: a paper diner cap with 'COOKIE' stitched on the band, dusted with moon glitter. Someone left in a hurry." },
   },
+  "saturn-orrery": {
+    orrery: { text: "The Sterling Orrery stands frozen, its little planets stopped mid-orbit. Where the Saturn Gear should turn there's an empty brass spindle. The gear came off cleanly, with no scratches: someone opened the case with the orrery's own key." },
+    telescope: { text: "The telescope log, in Professor Tuttle's neat hand: \"Ring storm approaching. Dome SHUT 9:05 PM. Reopened 12:40 AM.\" The lens cap is frosted with ring ice that never melted. Nobody looked through this telescope last night." },
+    guestbook: { text: "Last night's entries: \"Lady V. Ashgrove, 8:30 PM. A divine little machine!\" and \"P. Kettleby, porter, 10:15 PM. Cocoa for the Professor. Nobody here, left it on the bench.\" Tucked between the pages: a pawn ticket from a Titan clock dealer, made out to V. Ashgrove." },
+    table: { text: "Lady Ashgrove's table, still set for one. Her dinner check: the seven-course Ring Tasting, ordered at 9:00 PM, signed at 11:50. The waiter robot confirms it. \"Madam never left her seat. Not even for the flambé. She was most insistent.\"" },
+    galley: { text: "In the galley sits Pip's cocoa tray with one cold, untouched cup. His order slip reads: \"Observatory, 10:15, for Prof. Tuttle. Nobody there. Brought it back.\"" },
+    luggage: { text: "In the rack above the Professor's seat: a long velvet case with a claim tag for the Titan Transfer, where the train stops tomorrow. It's locked, and the lining bulges around something round and heavy." },
+  },
   "venus-fog": {
     case: { text: "The Star of Venus is gone from its velvet case. The lights dimmed for the fog show at 11:40, and when they came up, the necklace had vanished. On the table: one wet orchid petal. Wedged under the case: a torn scrap of paper, the LEFT edge of a note, with the digit 4 on it." },
     bandstand: { text: "Maestro Lune's sheet music is still on the stands. His orchestra played straight through the fog show, and the resort radio broadcast it live across Venus: every song from 11 until 1, with his baton tapping between numbers. He never left the stage." },
@@ -63,5 +81,39 @@ export const CLUES: Record<string, Record<string, { text: string; key?: number; 
     skiff: { text: "Dusty Dunmore's racing skiff is caked in dust and its engine is stone cold. On the seat: a race ticket for the Olympus Mons Rally, last Friday from 9 PM to dawn. He finished second. Besides, a skiff this size couldn't haul a Rain-Maker." },
     crates: { text: "The crates say CANNED SUNSHINE, but one is far too heavy, and a chrome fin pokes through the slats. The shipping label: \"To Phobos Station. Checked and sealed by the freight clerk on duty.\"" },
     telegram: { text: "TEN MORE RAIN-MAKERS READY FRIDAY. CRATE THEM AS CANNED SUNSHINE. PHOBOS BUYER PAYS DOUBLE. SIGNED, Q.", key: 2 },
+  },
+};
+
+// What suspects say when questioned. A statement with `caughtBy` is a lie: presenting
+// one of those found clues is a breakthrough (recorded like a clue, with its own text).
+export const TESTIMONY: Record<string, Record<string, Record<string, {
+  text: string;
+  caughtBy?: string[];
+  breakthrough?: { id: string; text: string };
+}>>> = {
+  "saturn-orrery": {
+    ashgrove: {
+      night: { text: "I dined, darling. Seven courses, each more divine than the last. I didn't leave the dining car from nine until nearly midnight." },
+      orrery: { text: "An exquisite machine. I'd have bought it years ago if Aurora Sterling had ever sold anything to anyone." },
+      money: {
+        text: "My fortune? Perfectly intact, thank you. I've never set foot in a pawn shop in my life.",
+        caughtBy: ["guestbook"],
+        breakthrough: { id: "breakthrough-1", text: "Lady Ashgrove lowers her lorgnette. \"Fine. I pawned my grandmother's carriage clock on Titan. I'm broke, darling, and I travel first class on credit. But steal from Aurora's orrery? I'd sooner ride in coach. Ask the waiter robot. I never left my table.\"" },
+      },
+    },
+    pip: {
+      night: { text: "Run off my feet, sir! Cocoa to the observatory at a quarter past ten, but nobody was there, so I brought it back to the galley." },
+      tuttle: { text: "The Professor? Kind old gent. Said he'd be at the telescope all night, watching the ring storm. Funny thing, though: the dome was shut when I went up." },
+      chime: { text: "It chimes every hour, sir, regular as anything. I set my watch by it. Only last night it never chimed at eleven." },
+    },
+    tuttle: {
+      night: {
+        text: "I was at the telescope from nine until well past midnight, observing the ring storm. I never left the observatory. Not once.",
+        caughtBy: ["telescope", "galley", "guestbook"],
+        breakthrough: { id: "breakthrough-2", text: "Professor Tuttle's pipe goes out. \"The dome was shut, yes. I... stepped out. To the baggage car, only for a moment. For some air.\" He won't meet your eye, and his hand goes to the brass key on its ribbon." },
+      },
+      "the-key": { text: "Only I carry the orrery's key. Thirty years, and it's never once left this ribbon." },
+      case: { text: "My lecture slides, for a talk on Titan. Nothing that would interest a bounty hunter." },
+    },
   },
 };

@@ -41,8 +41,8 @@ showdown. Bounties pay credits; credits buy suits, gear and weapon upgrades.
 | 1. First playable bounty | Bounty Office, "The Heart of Luna Heist", quick-draw showdown, credits, shop (suits, bandana, ray-gun), leaderboard, placeholder hero art | **Done** |
 | 2. Real art | ChatGPT-made hero poses (ready, firing, too slow), suspect portraits, Cookie showdown pose, showdown street and Bounty Office scenes | **Done** — plus a relaxed standing pose (Bounty Office) and every pose in red, teal and gold (2026-09-25) |
 | 3. The Sterling Legacy | The story hook (below), map fragments earned from bounties, a community tracker showing how close everyone is | **Built** — Aurora's broadcast (first Bounty Office visit, replay on the desk radio), a 12-piece star map with fragment I from the Heart of Luna, and the community count |
-| 4. Puzzles & RPG | Puzzles inside investigations (safes, circuits, coded telegrams, star charts), an inventory of found items used elsewhere, hunter rank, gadgets that help with puzzles, and conversations with suspects | **Started** — puzzles: coded telegram + decoder dial (Mars), combination lock from torn-note scraps (Venus); a satchel of items kept between bounties, and hunter rank (Greenhorn → Legend of the Spaceways) |
-| 5. More worlds | Tomorrowland-style planets: Mars ("Rustlers of the Red Sands"), Venus ("The Venus Fog Phantom"), each with scenes, puzzles, a fragment and a showdown | **Mars and Venus built** (800 CR / fragment II, 1,200 CR / fragment III); next worlds to be planned |
+| 4. Puzzles & RPG | Puzzles inside investigations (safes, circuits, coded telegrams, star charts), an inventory of found items used elsewhere, hunter rank, gadgets that help with puzzles, and conversations with suspects | **Started** — puzzles: coded telegram + decoder dial (Mars), combination lock from torn-note scraps (Venus), questioning suspects and catching lies with evidence (Saturn); a satchel of items kept between bounties, and hunter rank (Greenhorn → Legend of the Spaceways) |
+| 5. More worlds | Tomorrowland-style planets: Mars ("Rustlers of the Red Sands"), Venus ("The Venus Fog Phantom"), each with scenes, puzzles, a fragment and a showdown | **Mars, Venus and Saturn built** (800 CR / II, 1,200 CR / III, 1,600 CR / IV); next worlds to be planned |
 | 6. Deeper gear | Suits (**live**: red/teal/gold, worn in the office and in showdowns), weapons that change showdowns, gadgets, ship paint | Later |
 | 7. Co-op | Team up with friends on a bounty (shared clues, split reward) | Later, needs live multiplayer |
 
@@ -227,6 +227,19 @@ Art Deco night cities.
   mystery nobody looks into because everyone is chasing the treasure, and
   Aurelia is the hub that makes everything around it run. That reveal belongs
   to Act II or later.
+
+## Saturn: The Stopped Orrery
+
+Aboard the Ring Line Express (a luxury train on Saturn's rings), the Sterling
+Orrery stops and its Saturn Gear is gone. Locations: the Observatory Car
+(orrery, telescope log, guestbook) and the Dining Car (table for one, galley
+cocoa, baggage rack). New system: **questioning suspects.** Each suspect has
+topics (some unlock after a clue); when a story contradicts a found clue,
+presenting that clue is a **breakthrough**, which counts like a clue. Lady
+Ashgrove's lie (the pawn ticket) is a red herring that clears her; Professor
+Tuttle's lie (at the telescope all night, but the dome was shut and nobody was
+there at 10:15) cracks the case. Testimony, which clues catch which lie, and
+the culprit are all server-only.
 
 ## Venus: The Venus Fog Phantom
 

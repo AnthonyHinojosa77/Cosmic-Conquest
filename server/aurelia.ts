@@ -6,6 +6,7 @@ const TROPHIES: Record<string, string> = {
   "heart-of-luna": "a replica of the Heart of Luna",
   "red-sands": "a chrome fin from an Ares Valley Rain-Maker",
   "venus-fog": "a photograph of the Star of Venus",
+  "saturn-orrery": "a brass rubbing of the Saturn Gear",
 };
 
 // Aurelia's text is served only to invited hunters (it isn't in the browser bundle).

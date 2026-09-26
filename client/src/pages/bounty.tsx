@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { HeroArt, preloadHeroPoses, type HeroPose } from "@/components/HeroArt";
-import { usePlayer, useProgress, accuse, claimBounty, searchClue, decodeClue, unlockClue, errorMessage, type ClaimOutcome } from "@/lib/game";
+import { usePlayer, useProgress, accuse, claimBounty, searchClue, decodeClue, unlockClue, askSuspect, presentClue, errorMessage, type ClaimOutcome } from "@/lib/game";
 import {
   bountyById,
   DRAW_WINDOW_MS,
@@ -12,6 +12,7 @@ import {
   STAR_MAP_SIZE,
   numeral,
   cluesNeeded,
+  isBreakthrough,
   bountyEarnedInvite,
   DEFAULT_SUIT,
   ITEMS,
@@ -188,6 +189,140 @@ function Lock({ bountyId, clue, openedText }: { bountyId: string; clue: Clue; op
   );
 }
 
+// --- Questioning suspects ------------------------------------------------------
+
+function Interviews({ bounty, found }: { bounty: Bounty; found: Record<string, string> }) {
+  const suspects = bounty.suspects ?? [];
+  const clues = (bounty.locations ?? []).flatMap((l) => l.clues).filter((c) => found[c.id] !== undefined);
+  const [suspectId, setSuspectId] = useState<string | null>(null);
+  const [topicId, setTopicId] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [caught, setCaught] = useState<Record<string, { id: string; text: string }>>({});
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState("");
+
+  const interview = bounty.interviews?.find((i) => i.suspect === suspectId);
+  const suspect = suspects.find((s) => s.id === suspectId);
+  const key = `${suspectId}/${topicId}`;
+  useVoice(
+    caught[key] ? `breakthrough/${bounty.id}/${caught[key].id}`
+      : topicId && answers[key] !== undefined ? `testimony/${bounty.id}/${suspectId}--${topicId}`
+      : null,
+  );
+
+  const ask = (id: string) => {
+    setTopicId(id);
+    setMessage(null);
+    setEvidence("");
+    if (answers[`${suspectId}/${id}`] !== undefined) return;
+    setBusy(true);
+    askSuspect(bounty.id, suspectId!, id)
+      .then((text) => setAnswers((a) => ({ ...a, [`${suspectId}/${id}`]: text })))
+      .catch((err) => setMessage(errorMessage(err)))
+      .finally(() => setBusy(false));
+  };
+
+  const present = () => {
+    if (!evidence || !topicId) return;
+    setBusy(true);
+    setMessage(null);
+    presentClue(bounty.id, suspectId!, topicId, evidence)
+      .then((r) => {
+        if (r.correct) setCaught((c) => ({ ...c, [key]: { id: r.id, text: r.text } }));
+        else setMessage(`${suspect?.name ?? "They"} doesn't flinch. That doesn't contradict their story.`);
+      })
+      .catch((err) => setMessage(errorMessage(err)))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="space-y-4 max-w-3xl mx-auto" data-testid="panel-interviews">
+      <p className="text-center marker-text text-sm text-[hsl(38,40%,80%)]">
+        Ask what they know. If a story doesn't match your notebook, show them the clue that proves it.
+      </p>
+      <div className="grid grid-cols-3 gap-3">
+        {suspects.map((s) => (
+          <button
+            key={s.id}
+            className={`comic-panel bg-[hsl(38,35%,88%)] p-2 text-center transition-transform ${s.id === suspectId ? "ring-4 ring-[hsl(45,80%,55%)]" : "hover:-translate-y-1"}`}
+            onClick={() => {
+              setSuspectId(s.id);
+              setTopicId(null);
+              setMessage(null);
+            }}
+            aria-pressed={s.id === suspectId}
+            data-testid={`button-question-${s.id}`}
+          >
+            <img src={s.portrait} alt={`Portrait of ${s.name}`} className="w-full aspect-square object-cover rounded border-2 border-[hsl(25,40%,18%)]" draggable={false} />
+            <p className="pulp-title text-xs sm:text-sm mt-1 leading-tight" style={{ color: INK }}>{s.name}</p>
+          </button>
+        ))}
+      </div>
+
+      {interview && suspect && (
+        <Panel title={`🗣 ${suspect.name}`} testId="panel-interview">
+          <div className="flex flex-col gap-2">
+            {interview.topics.map((t) => {
+              const locked = t.after !== undefined && found[t.after] === undefined;
+              return (
+                <button
+                  key={t.id}
+                  className={`retro-btn text-sm text-left ${t.id === topicId ? "gold" : "teal"} disabled:opacity-50`}
+                  disabled={locked || busy}
+                  onClick={() => ask(t.id)}
+                  data-testid={`button-topic-${t.id}`}
+                >
+                  {locked ? "🔒 Find more clues to ask about this" : t.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {topicId && answers[key] !== undefined && (
+            <div className="mt-4 space-y-3">
+              <blockquote className="border-l-4 border-[hsl(0,72%,48%)] pl-3 text-sm leading-relaxed italic" data-testid="text-answer">
+                "{answers[key]}"
+              </blockquote>
+              {caught[key] ? (
+                <p className="text-sm leading-relaxed" role="status" data-testid="text-breakthrough">
+                  <span className="pulp-title text-[hsl(120,50%,30%)]">★ Breakthrough! </span>
+                  {caught[key].text}
+                </p>
+              ) : clues.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="text-xs pulp-title" htmlFor="evidence" style={{ color: INK }}>Show them:</label>
+                  <select
+                    id="evidence"
+                    value={evidence}
+                    onChange={(e) => {
+                      setEvidence(e.target.value);
+                      setMessage(null);
+                    }}
+                    className="text-sm px-2 py-1 bg-[hsl(38,30%,90%)] border-2 border-[hsl(30,20%,68%)] rounded max-w-full"
+                    data-testid="select-evidence"
+                  >
+                    <option value="">Pick a clue…</option>
+                    {clues.map((c) => (
+                      <option key={c.id} value={c.id}>{c.label}</option>
+                    ))}
+                  </select>
+                  <button className="retro-btn gold text-sm" onClick={present} disabled={!evidence || busy} data-testid="button-present">
+                    Present evidence
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-[hsl(25,15%,42%)]">Find clues you can use to test their story.</p>
+              )}
+            </div>
+          )}
+          {message && <p className="text-sm mt-3" role="status" data-testid="text-interview-result">{message}</p>}
+        </Panel>
+      )}
+    </div>
+  );
+}
+
 // --- Investigation ---------------------------------------------------------
 
 function Investigation({
@@ -207,11 +342,14 @@ function Investigation({
   const [codedText, setCodedText] = useState<Record<string, string>>({});
   const [imgLoaded, setImgLoaded] = useState(false);
   const location = locations.find((l) => l.id === locationId) ?? locations[0];
+  const questioning = locationId === "interviews" && bounty.interviews !== undefined;
+  const breakthroughs = Object.keys(found).filter(isBreakthrough);
   const { data: player } = usePlayer();
   const tap = useTapWord();
   const allClues = locations.flatMap((l) => l.clues);
   useVoice(openClue && found[openClue.id] !== undefined ? `clue/${bounty.id}/${openClue.id}` : null);
-  const foundCount = allClues.filter((c) => found[c.id] !== undefined).length;
+  const foundCount = allClues.filter((c) => found[c.id] !== undefined).length + breakthroughs.length;
+  const totalCount = allClues.length + (bounty.breakthroughs ?? 0);
   const needed = cluesNeeded(bounty);
   const ready = foundCount >= needed;
 
@@ -245,8 +383,24 @@ function Investigation({
             {l.name} ({l.clues.filter((c) => found[c.id] !== undefined).length}/{l.clues.length})
           </button>
         ))}
+        {bounty.interviews && (
+          <button
+            className={`retro-btn text-sm ${questioning ? "gold" : "teal"}`}
+            aria-pressed={questioning}
+            onClick={() => {
+              setLocationId("interviews");
+              setOpenClue(null);
+            }}
+            data-testid="button-location-interviews"
+          >
+            🗣 Question suspects ({breakthroughs.length}/{bounty.breakthroughs ?? 0})
+          </button>
+        )}
       </div>
 
+      {questioning ? (
+        <Interviews bounty={bounty} found={found} />
+      ) : (
       <div className="scene-container relative" data-testid={`scene-${location.id}`}>
         <img
           key={location.image}
@@ -272,8 +426,9 @@ function Investigation({
           </button>
         ))}
       </div>
+      )}
 
-      {openClue && (
+      {openClue && !questioning && (
         <Panel title={`🔍 ${openClue.label}`} testId="panel-clue">
           {openClue.lock ? (
             <Lock key={openClue.id} bountyId={bounty.id} clue={openClue} openedText={found[openClue.id]} />
@@ -308,7 +463,7 @@ function Investigation({
         <div className="flex justify-between items-baseline">
           <h2 className="pulp-title text-lg" style={{ color: INK }}>Hunter's Notebook</h2>
           <span className="pulp-title text-sm" style={{ color: ready ? "hsl(120,50%,32%)" : INK }}>
-            {foundCount}/{allClues.length} clues
+            {foundCount}/{totalCount} clues
           </span>
         </div>
         {foundCount === 0 ? (
@@ -317,6 +472,9 @@ function Investigation({
           <ul className="mt-2 space-y-2 text-sm text-[hsl(25,30%,22%)] list-disc pl-5">
             {allClues.filter((c) => found[c.id] !== undefined).map((c) => (
               <li key={c.id}><strong>{c.label}:</strong> {found[c.id]}</li>
+            ))}
+            {breakthroughs.map((id) => (
+              <li key={id}><strong>★ Breakthrough:</strong> {found[id]}</li>
             ))}
           </ul>
         )}
