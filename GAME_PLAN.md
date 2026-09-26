@@ -180,9 +180,10 @@ the **decoder ring**, Professor Venn's lab) and the Red Sands freight depot
 The telegram is a letter-shift code; the ring's engraving says the key is
 "the number of moons of your world" (Mars: 2). Red herrings: Dusty Dunmore
 (racing all night) and Professor Lyra Venn (lab log). The clues point to the
-freight clerk by design; only the showdown and outro stay server-side. Like the
-showdown, the puzzle is honor-system (its answer ships to the browser). Art was made in a separate ChatGPT chat with an existing
-world scene attached as the style reference; sources are in the Drive folder.
+freight clerk by design. All clue text and the decoder key stay on the
+server; the browser only has the coded telegram. Art was made in a separate
+ChatGPT chat with an existing world scene attached as the style reference;
+sources are in the Drive folder.
 
 ## Economy
 
@@ -196,8 +197,13 @@ world scene attached as the style reference; sources are in the Drive folder.
 - **Anonymous players:** anyone who clears their browser cookies starts
   over with a new hunter. They could collect a bounty again, capped by the
   rate limit. Accounts would fix this if it ever matters.
-- **Showdowns are honor-system:** the quick-draw runs in the player's
-  browser, so a technical player could skip it and collect directly. The
-  server still checks the right suspect was named and pays once per hunter.
+- **The server is the referee:** clue text, puzzle answers and culprits live
+  only on the server. It records each clue a hunter finds, checks decoder keys,
+  hands out items only when the right spot is searched, refuses accusations
+  until enough clues are on record, and pays out only after a correct
+  accusation and a showdown that took at least as long as the shortest DRAW!.
+- **Reaction time can't be proven:** the quick-draw itself still runs in the
+  player's browser, so an auto-clicker could win it. No web or downloaded game
+  can fully stop that; the server makes sure the duel actually happened.
 - **Animation:** the showdown and scenes stay mostly still, like
   storybook panels, rather than Cuphead-style frame-by-frame animation.
