@@ -21,6 +21,7 @@ import {
 
 const accusationSchema = z.object({ suspect: z.string().min(1).max(50) });
 const decodeSchema = z.object({ key: z.number().int().min(0).max(25) });
+const unlockSchema = z.object({ code: z.string().regex(/^[0-9]{1,6}$/) });
 
 // The quick-draw can't end sooner than the shortest possible wait for DRAW!.
 // (SHOWDOWN_MIN_MS only exists so tests can shorten it; a bad value falls back.)
@@ -81,6 +82,11 @@ export function registerGameRoutes(app: Express) {
     if (!bounty || !found) return res.status(404).json({ error: "Nothing to find there" });
     const { clue, secret } = found;
     if (clue.grants) grantItem(req.visitorId!, clue.grants);
+    if (clue.lock || secret.code !== undefined) {
+      // Locked: it counts as found once opened.
+      const result: ClueSearch = { locked: true };
+      return res.json(result);
+    }
     if (secret.key !== undefined) {
       // Coded: only the scrambled text; it counts as found once decoded.
       const result: ClueSearch = { coded: shiftLetters(secret.text, secret.key) };
@@ -104,6 +110,24 @@ export function registerGameRoutes(app: Express) {
       return res.status(403).json({ error: "You need something to decode it with" });
     }
     if (parsed.data.key !== found.secret.key) return res.json({ correct: false });
+    recordClue(req.visitorId!, bounty.id, found.clue.id);
+    res.json({ correct: true, text: found.secret.text });
+  });
+
+  // Open a combination lock: needs the clues that reveal the combination, then the right code.
+  app.post("/api/bounties/:id/clues/:clueId/unlock", clueLimiter, (req, res) => {
+    const bounty = liveBounty(req.params.id);
+    const found = bounty && clueOf(bounty, String(req.params.clueId));
+    if (!bounty || !found || found.secret.code === undefined || !found.clue.lock) {
+      return res.status(404).json({ error: "Nothing to unlock there" });
+    }
+    const parsed = unlockSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+    const have = foundClues(req.visitorId!, bounty.id);
+    if (!(found.secret.needs ?? []).every((id) => have.includes(id))) {
+      return res.status(409).json({ error: "You don't know the combination yet. Keep searching." });
+    }
+    if (parsed.data.code !== found.secret.code) return res.json({ correct: false });
     recordClue(req.visitorId!, bounty.id, found.clue.id);
     res.json({ correct: true, text: found.secret.text });
   });

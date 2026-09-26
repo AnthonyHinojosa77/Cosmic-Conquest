@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { HeroArt, preloadHeroPoses, type HeroPose } from "@/components/HeroArt";
-import { usePlayer, useProgress, accuse, claimBounty, searchClue, decodeClue, errorMessage, type ClaimOutcome } from "@/lib/game";
+import { usePlayer, useProgress, accuse, claimBounty, searchClue, decodeClue, unlockClue, errorMessage, type ClaimOutcome } from "@/lib/game";
 import {
   bountyById,
   DRAW_WINDOW_MS,
@@ -141,6 +141,62 @@ function Decoder({
   );
 }
 
+function Lock({ bountyId, clue, openedText }: { bountyId: string; clue: Clue; openedText?: string }) {
+  const [digits, setDigits] = useState<number[]>(() => Array(clue.lock!.dials).fill(0));
+  const [checking, setChecking] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  if (openedText) {
+    return (
+      <>
+        <p className="text-sm leading-relaxed">{openedText}</p>
+        <p className="pulp-title text-[hsl(120,50%,32%)] mt-2" role="status">✓ Unlocked!</p>
+      </>
+    );
+  }
+
+  const turn = (i: number, by: number) => {
+    setMessage(null);
+    setDigits((d) => d.map((v, j) => (j === i ? (v + by + 10) % 10 : v)));
+  };
+  const tryCode = () => {
+    setChecking(true);
+    setMessage(null);
+    unlockClue(bountyId, clue.id, digits.join(""))
+      .then((ok) => !ok && setMessage("The lock won't budge. Wrong combination."))
+      .catch((err) => setMessage(errorMessage(err)))
+      .finally(() => setChecking(false));
+  };
+
+  return (
+    <>
+      <p className="text-sm">A chunky padlock with {clue.lock!.dials} number dials. Someone had to write the combination down somewhere…</p>
+      <div className="flex flex-wrap items-center gap-4 mt-3">
+        <div className="flex gap-2" role="group" aria-label="Combination dials">
+          {digits.map((v, i) => (
+            <div key={i} className="flex flex-col items-center gap-1">
+              <button className="retro-btn teal text-xs px-2 py-1" onClick={() => turn(i, 1)} aria-label={`Dial ${i + 1} up`} data-testid={`button-lock-up-${i}`}>▲</button>
+              <span
+                className="pulp-title text-2xl w-10 text-center rounded border-2 border-[hsl(25,40%,20%)] bg-[hsl(45,40%,94%)]"
+                style={{ color: INK }}
+                aria-label={`Dial ${i + 1}: ${v}`}
+                data-testid={`text-lock-dial-${i}`}
+              >
+                {v}
+              </span>
+              <button className="retro-btn teal text-xs px-2 py-1" onClick={() => turn(i, -1)} aria-label={`Dial ${i + 1} down`} data-testid={`button-lock-down-${i}`}>▼</button>
+            </div>
+          ))}
+        </div>
+        <button className="retro-btn gold text-sm" onClick={tryCode} disabled={checking} data-testid="button-unlock">
+          {checking ? "Trying…" : "Try the combination"}
+        </button>
+      </div>
+      {message && <p className="text-sm mt-2" role="status" data-testid="text-unlock-result">{message}</p>}
+    </>
+  );
+}
+
 // --- Investigation ---------------------------------------------------------
 
 function Investigation({
@@ -169,7 +225,8 @@ function Investigation({
   const search = (clue: Clue) => {
     setOpenClue(clue);
     setSearchError(null);
-    if (found[clue.id] !== undefined || codedText[clue.id] !== undefined) return; // already in hand
+    // Already in hand, or a lock (nothing to fetch until it's opened)
+    if (found[clue.id] !== undefined || codedText[clue.id] !== undefined || clue.lock) return;
     setSearching(clue.id);
     searchClue(bounty.id, clue.id)
       .then((r) => r.coded !== undefined && setCodedText((prev) => ({ ...prev, [clue.id]: r.coded })))
@@ -225,7 +282,9 @@ function Investigation({
 
       {openClue && (
         <Panel title={`🔍 ${openClue.label}`} testId="panel-clue">
-          {openClue.cipher && searchError === null ? (
+          {openClue.lock ? (
+            <Lock key={openClue.id} bountyId={bounty.id} clue={openClue} openedText={found[openClue.id]} />
+          ) : openClue.cipher && searchError === null ? (
             <Decoder
               key={openClue.id}
               bountyId={bounty.id}
