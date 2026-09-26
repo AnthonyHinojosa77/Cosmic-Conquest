@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { PublicVisitor as Visitor } from "@shared/schema";
 import { useMusic } from "@/lib/sound";
+import { useTapWord } from "@/lib/device";
 
 function VisitorTicker({ visitors }: { visitors: Visitor[] }) {
   const recent = useMemo(() => visitors.slice(0, 5), [visitors]);
@@ -49,6 +50,7 @@ function VisitorTicker({ visitors }: { visitors: Visitor[] }) {
 // The Hub is a pulp magazine cover — three clickable comic panels lead to each world
 export default function Hub() {
   useMusic("hub");
+  const tap = useTapWord();
   const [hoveredWorld, setHoveredWorld] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -151,7 +153,7 @@ export default function Hub() {
                   {worlds.find(w => w.id === hoveredWorld)?.title}
                 </span>
                 <span className="block text-[hsl(38,25%,65%)] text-xs mt-0.5">
-                  Click to enter
+                  {tap} to enter
                 </span>
               </div>
             </div>

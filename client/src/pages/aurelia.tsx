@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { OfficeLink } from "@/components/OfficeLink";
 import { useAurelia, errorMessage, AURELIA_KEY } from "@/lib/game";
 import { useMusic, useVoice } from "@/lib/sound";
 import { queryClient } from "@/lib/queryClient";
@@ -9,19 +9,6 @@ import { AURELIA_INVITE_FRAGMENTS, type AureliaSpot } from "@shared/game";
 const NIGHT = "hsl(240,40%,10%)";
 const GOLD = "hsl(45,80%,58%)";
 
-function OfficeLink() {
-  return (
-    <Link href="/bounties">
-      <button
-        className="inline-flex items-center gap-2 text-sm text-[hsl(240,20%,75%)] hover:text-[hsl(45,80%,60%)] transition-colors pulp-title tracking-wider"
-        data-testid="button-back-office"
-      >
-        <span className="text-lg">←</span>
-        <span>Bounty Office</span>
-      </button>
-    </Link>
-  );
-}
 
 // "403: {...}" -> the fragments the hunter holds, if the server turned them away
 function refusal(err: unknown): { have: number; needed: number } | null {
@@ -50,7 +37,7 @@ function Gates({ message }: { message: string }) {
       <p className="marker-text text-[hsl(240,20%,80%)]" data-testid="text-aurelia-refused">
         A robot doorman checks his list, then checks it again. {message}
       </p>
-      <OfficeLink />
+      <OfficeLink className="text-[hsl(240,20%,75%)] hover:text-[hsl(45,80%,60%)]" />
     </main>
   );
 }
@@ -72,7 +59,7 @@ export default function Aurelia() {
     <div className="min-h-screen pb-10 paper-texture" style={{ background: NIGHT }}>
       <div className="border-b-4 px-4 py-3" style={{ background: "hsl(245,45%,16%)", borderColor: GOLD }}>
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-          <OfficeLink />
+          <OfficeLink className="text-[hsl(240,20%,75%)] hover:text-[hsl(45,80%,60%)]" />
           <h1 className="pulp-title text-xl md:text-3xl tracking-[0.2em]" style={{ color: GOLD }}>Aurelia</h1>
           <span className="visitor-ticker text-xs" style={{ background: "hsl(245,40%,22%)" }}>✉ By invitation</span>
         </div>
