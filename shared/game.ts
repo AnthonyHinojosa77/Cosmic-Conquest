@@ -66,6 +66,8 @@ export interface Clue {
   grants?: ItemId;
   // The clue is in code (the server sends the coded text and holds the key); decoding needs `requires`
   cipher?: { requires: ItemId };
+  // The clue is behind a combination lock (the server holds the combination)
+  lock?: { dials: number };
   // Hotspot position over the scene image (percent)
   top: string;
   left: string;
@@ -296,8 +298,63 @@ export const BOUNTIES: Bounty[] = [
     title: "The Venus Fog Phantom",
     planet: "Venus",
     reward: 1200,
-    available: false,
-    teaser: "A masked jewel thief hides in the tropical fog of Venus. Coming soon.",
+    available: true,
+    teaser: "A masked thief lifted the Star of Venus during the sky-resort's midnight fog show.",
+    briefing:
+      "High above the fog seas of Venus floats the Aphrodite Sky Resort, Sterling Atomic's most glamorous address. Last night, during the fog show, a masked figure the guests are calling the Fog Phantom lifted the Star of Venus, the most famous necklace in the solar system, right off a starlet's table. The resort is paying 1,200 credits for the Phantom. Search the Grand Lounge and the Orchid Conservatory, then unmask your thief.",
+    cluesNeeded: 6,
+    locations: [
+      {
+        id: "lounge",
+        name: "Grand Lounge",
+        image: "./scenes/venus-lounge.webp",
+        clues: [
+          { id: "case", label: "The Empty Jewel Case", top: "64%", left: "28%", width: "42%", height: "28%" },
+          { id: "bandstand", label: "The Bandstand", top: "30%", left: "3%", width: "31%", height: "24%" },
+          { id: "keys", label: "Reception Key Board", top: "20%", left: "86%", width: "12%", height: "36%" },
+        ],
+      },
+      {
+        id: "conservatory",
+        name: "Orchid Conservatory",
+        image: "./scenes/venus-conservatory.webp",
+        clues: [
+          { id: "fog-machine", label: "The Fog Machine", top: "15%", left: "2%", width: "18%", height: "55%" },
+          { id: "orchids", label: "Orchid Bed", top: "38%", left: "28%", width: "30%", height: "40%" },
+          { id: "locker", label: "Locked Staff Locker", lock: { dials: 3 }, top: "40%", left: "86%", width: "12%", height: "48%" },
+        ],
+      },
+    ],
+    suspects: [
+      {
+        id: "lune",
+        name: "Maestro Felix Lune",
+        title: "Lounge Bandleader",
+        portrait: "./game/suspect-lune.webp",
+        description: "Conducts the resort orchestra, and conducts himself like a star. Adores a sparkle.",
+      },
+      {
+        id: "fenwick",
+        name: "Dr. Iris Fenwick",
+        title: "Resort Botanist",
+        portrait: "./game/suspect-fenwick.webp",
+        description: "Runs the Orchid Conservatory, and the fog machine that keeps it misty.",
+      },
+      {
+        id: "vance",
+        name: "Captain Teddy Vance",
+        title: "Sky-Gondola Pilot",
+        portrait: "./game/suspect-vance.webp",
+        description: "Flies guests between the cloud islands. Everybody's favorite captain.",
+      },
+    ],
+    accusePrompt: "Who is the Fog Phantom?",
+    fragment: {
+      id: "venusian-quadrant",
+      number: 3,
+      name: "The Venusian Quadrant",
+      caption: "Tucked in the lining of the Star of Venus's velvet case: Aurora Sterling's chart of the Venus cloud-lanes, with a gold arrow pointing out past the asteroid belt, toward the giant planets.",
+    },
   },
 ];
 
@@ -366,7 +423,10 @@ export interface BountyProgress {
 }
 
 // Result of searching a clue: its text, or the coded message if it needs decoding.
-export type ClueSearch = { text: string; coded?: undefined } | { coded: string; text?: undefined };
+export type ClueSearch =
+  | { text: string; coded?: undefined; locked?: undefined }
+  | { coded: string; text?: undefined; locked?: undefined }
+  | { locked: true; text?: undefined; coded?: undefined };
 
 // Public player profile returned by the API (no visitorId).
 export interface PlayerProfile {

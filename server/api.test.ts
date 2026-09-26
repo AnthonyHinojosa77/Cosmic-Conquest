@@ -46,6 +46,7 @@ async function investigate(bountyId: string, cookie: string) {
   for (const [clueId, clue] of Object.entries(CLUES[bountyId])) {
     await post(`/api/bounties/${bountyId}/clues/${clueId}/search`, {}, cookie);
     if (clue.key !== undefined) await post(`/api/bounties/${bountyId}/clues/${clueId}/decode`, { key: clue.key }, cookie);
+    if (clue.code !== undefined) await post(`/api/bounties/${bountyId}/clues/${clueId}/unlock`, { code: clue.code }, cookie);
   }
 }
 
@@ -169,7 +170,7 @@ test("game: full bounty loop — accuse, claim once, buy, equip, leaderboard", a
   assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 409);
 
   // Unavailable / unknown bounties
-  assert.equal((await post("/api/bounties/venus-fog/claim", { suspect: "x" }, cookie)).status, 404);
+  assert.equal((await post("/api/bounties/nope/claim", { suspect: "x" }, cookie)).status, 404);
   assert.equal((await post("/api/bounties/nope/accuse", { suspect: "x" }, cookie)).status, 404);
 
   // The name shown before the first action is the one that got saved
@@ -230,7 +231,7 @@ test("game: a buying spree never spends more than the balance", async () => {
 test("game: the culprit is not in the shared (browser) bounty data", async () => {
   const { BOUNTIES } = await import("@shared/game");
   const shipped = JSON.stringify(BOUNTIES);
-  assert.equal(/spatula blaster|lock-up|never take me alive|stamp-blaster|properly filed/.test(shipped), false);
+  assert.equal(/spatula blaster|lock-up|never take me alive|stamp-blaster|properly filed|Nobody catches|Venus lock-up/.test(shipped), false);
 });
 
 test("game: star map counts hunters per fragment, once each", async () => {
@@ -305,7 +306,7 @@ test("game: clues come from the server; the ring comes from searching; the teleg
 
   // Unknown spots and bounties
   assert.equal((await post("/api/bounties/red-sands/clues/nope/search", {}, cookie)).status, 404);
-  assert.equal((await post("/api/bounties/venus-fog/clues/pad/search", {}, cookie)).status, 404);
+  assert.equal((await post("/api/bounties/nope/clues/pad/search", {}, cookie)).status, 404);
 });
 
 test("game: no clue text or puzzle answer ships to the browser", async () => {
@@ -315,7 +316,7 @@ test("game: no clue text or puzzle answer ships to the browser", async () => {
   for (const clues of Object.values(CLUES)) {
     for (const { text } of Object.values(clues)) assert.equal(shipped.includes(text), false, text.slice(0, 40));
   }
-  assert.equal(/"key"/.test(shipped), false);
+  assert.equal(/"key"|"code"|"needs"/.test(shipped), false);
   const { shiftLetters } = await import("@shared/game");
   const tele = CLUES["red-sands"].telegram;
   assert.equal(shipped.includes(shiftLetters(tele.text, tele.key!).slice(0, 20)), false, "coded text ships");
@@ -327,7 +328,10 @@ test("game: every hotspot has server clue text, and coded clues have a key", asy
   for (const b of BOUNTIES.filter((b) => b.locations)) {
     const shared = b.locations!.flatMap((l) => l.clues);
     assert.deepEqual(shared.map((c) => c.id).sort(), Object.keys(CLUES[b.id] ?? {}).sort(), b.id);
-    for (const c of shared) assert.equal(Boolean(c.cipher), CLUES[b.id][c.id].key !== undefined, `${b.id}/${c.id}`);
+    for (const c of shared) {
+      assert.equal(Boolean(c.cipher), CLUES[b.id][c.id].key !== undefined, `${b.id}/${c.id} cipher`);
+      assert.equal(Boolean(c.lock), CLUES[b.id][c.id].code !== undefined, `${b.id}/${c.id} lock`);
+    }
   }
 });
 
@@ -342,4 +346,31 @@ test("game: hunter rank and the telegram cipher", async () => {
   assert.ok(bountyById("red-sands")!.locations!.flatMap((l) => l.clues).some((c) => c.cipher));
   const tele = CLUES["red-sands"].telegram;
   assert.equal(shiftLetters(shiftLetters(tele.text, tele.key!), -tele.key!), tele.text);
+});
+
+test("game: Venus locker opens only with all three scraps found and the right combination", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const unlock = (code: string) => post("/api/bounties/venus-fog/clues/locker/unlock", { code }, cookie);
+  const search = (id: string) => post(`/api/bounties/venus-fog/clues/${id}/search`, {}, cookie);
+
+  assert.deepEqual(await (await search("locker")).json(), { locked: true });
+  assert.equal((await unlock("418")).status, 409); // no scraps yet
+  await search("case");
+  await search("keys");
+  assert.equal((await unlock("418")).status, 409); // still missing one
+  await search("orchids");
+  assert.equal((await unlock("12a")).status, 400);
+  assert.deepEqual(await (await unlock("841")).json(), { correct: false });
+  const open = await (await unlock("418")).json();
+  assert.equal(open.correct, true);
+  assert.match(open.text, /Star of Venus/);
+});
+
+test("game: Venus bounty pays 1200 and turns up fragment III", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const paid = await solve("venus-fog", "vance", cookie);
+  assert.equal(paid.status, 200);
+  assert.equal((await paid.json()).credits, 1200);
+  const map = await (await fetch(base + "/api/star-map")).json();
+  assert.ok(map.fragments.find((f: { id: string; hunters: number }) => f.id === "venusian-quadrant").hunters >= 1);
 });

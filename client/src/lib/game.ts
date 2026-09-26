@@ -104,3 +104,10 @@ export async function decodeClue(bountyId: string, clueId: string, key: number):
   if (body.correct) await addFound(bountyId, clueId, body.text);
   return body.correct;
 }
+
+// Try a combination on a locked clue; true when the server accepts it.
+export async function unlockClue(bountyId: string, clueId: string, code: string): Promise<boolean> {
+  const body = await (await apiRequest("POST", `/api/bounties/${bountyId}/clues/${clueId}/unlock`, { code })).json();
+  if (body.correct) await addFound(bountyId, clueId, body.text);
+  return body.correct;
+}
