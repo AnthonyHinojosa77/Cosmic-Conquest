@@ -20,6 +20,7 @@ import {
 } from "@shared/game";
 import NotFound from "@/pages/not-found";
 import { useMusic, useVoice } from "@/lib/sound";
+import { TAP, isTouch } from "@/lib/device";
 
 const INK = "hsl(25,40%,15%)";
 type Stage = "briefing" | "investigate" | "accuse" | "showdown" | "done";
@@ -32,7 +33,8 @@ function OfficeLink() {
         data-testid="button-back-office"
       >
         <span className="text-lg">←</span>
-        <span>Bounty Office</span>
+        <span className="hidden sm:inline">Bounty Office</span>
+        <span className="sm:hidden">Office</span>
       </button>
     </Link>
   );
@@ -322,7 +324,7 @@ function Investigation({
           </span>
         </div>
         {foundCount === 0 ? (
-          <p className="text-sm text-[hsl(25,15%,42%)] marker-text mt-2">Click the glowing spots in each location to search.</p>
+          <p className="text-sm text-[hsl(25,15%,42%)] marker-text mt-2">{TAP} the glowing spots in each location to search.</p>
         ) : (
           <ul className="mt-2 space-y-2 text-sm text-[hsl(25,30%,22%)] list-disc pl-5">
             {allClues.filter((c) => found[c.id] !== undefined).map((c) => (
@@ -519,7 +521,7 @@ function Showdown({
         {label[state]}
       </button>
       <p className="text-xs text-[hsl(38,20%,60%)]">
-        Click (or press Space) the instant you see DRAW! You have {windowMs} ms
+        {isTouch ? "Tap the button" : "Click (or press Space)"} the instant you see DRAW! You have {windowMs} ms
         {windowMs > DRAW_WINDOW_MS ? " thanks to your Lucky Ray-Gun." : ". A better blaster from the Outfitters buys you more time."}
       </p>
     </div>
@@ -576,8 +578,8 @@ export default function BountyPage() {
       <div className="bg-[hsl(0,45%,18%)] border-b-4 border-[hsl(45,80%,48%)] px-4 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           <OfficeLink />
-          <h1 className="pulp-title text-lg md:text-2xl text-[hsl(45,80%,55%)] tracking-wider text-center">{bounty.title}</h1>
-          <div className="visitor-ticker text-sm">💰 {bounty.reward} CR</div>
+          <h1 className="pulp-title text-base sm:text-lg md:text-2xl text-[hsl(45,80%,55%)] tracking-wider text-center leading-tight">{bounty.title}</h1>
+          <div className="visitor-ticker text-xs sm:text-sm whitespace-nowrap shrink-0">💰 {bounty.reward} CR</div>
         </div>
       </div>
 

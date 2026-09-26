@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
 import { BackButton } from "@/components/BackButton";
 import type { Prediction } from "@shared/schema";
+import { TAP } from "@/lib/device";
 import { useMusic } from "@/lib/sound";
 
 const exhibits = [
@@ -187,7 +188,7 @@ export default function Expo() {
 
         {!activeHotspot && (
           <p className="text-center text-[hsl(38,20%,50%)] text-xs mt-3 marker-text animate-fade-in">
-            ★ Click the glowing spots to explore the expo ★
+            ★ {TAP} the glowing spots to explore the expo ★
           </p>
         )}
       </div>

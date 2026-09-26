@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
 import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
 import type { MenuItem } from "@shared/schema";
+import { TAP } from "@/lib/device";
 import { useMusic } from "@/lib/sound";
 
 // Hotspot definitions — positioned over the diner illustration
@@ -189,7 +190,7 @@ export default function Diner() {
         {/* Hotspot hint text */}
         {!activeHotspot && (
           <p className="text-center text-[hsl(38,20%,50%)] text-xs mt-3 marker-text animate-fade-in">
-            ★ Click the glowing spots to explore the diner ★
+            ★ {TAP} the glowing spots to explore the diner ★
           </p>
         )}
       </div>

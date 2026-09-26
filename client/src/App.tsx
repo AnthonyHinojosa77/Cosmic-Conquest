@@ -22,7 +22,8 @@ function AppRouter() {
       <Route path="/expo" component={Expo} />
       <Route path="/diner" component={Diner} />
       <Route path="/bounties" component={BountyOffice} />
-      <Route path="/bounty/:id" component={BountyPage} />
+      {/* Keyed by bounty so moving between cases (e.g. back/forward) starts each one fresh */}
+      <Route path="/bounty/:id">{(params) => <BountyPage key={params.id} />}</Route>
       <Route path="/aurelia" component={Aurelia} />
       <Route component={NotFound} />
     </Switch>

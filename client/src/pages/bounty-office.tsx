@@ -317,11 +317,12 @@ export default function BountyOffice() {
       </div>
 
       <main className="max-w-5xl mx-auto px-4 pt-6 grid md:grid-cols-[280px_1fr] gap-6">
-        <div className="space-y-6">
+        {/* On phones the jobs come first; the hunter's card and leaderboard follow. */}
+        <div className="space-y-6 order-2 md:order-1">
           <HeroCard />
           <Leaderboard />
         </div>
-        <div className="space-y-8">
+        <div className="space-y-8 order-1 md:order-2">
           <BountyBoard />
           <StarMap />
           <AureliaCard />

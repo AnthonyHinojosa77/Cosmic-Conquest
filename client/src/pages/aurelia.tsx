@@ -17,7 +17,8 @@ function OfficeLink() {
         data-testid="button-back-office"
       >
         <span className="text-lg">←</span>
-        <span>Bounty Office</span>
+        <span className="hidden sm:inline">Bounty Office</span>
+        <span className="sm:hidden">Office</span>
       </button>
     </Link>
   );
