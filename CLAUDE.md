@@ -46,5 +46,8 @@ npm run build
   from `/api/bounties/:id/clues/:clueId/search`, `/decode` and `/unlock`, and
   the server checks recorded progress before unlocking, accusing and claiming
   (a test fails if clue text, a key or a code appears in `shared/game.ts`).
+  Voice recordings count too: they live in `audio/voice/` and are served only
+  through `/api/voice/...` with the same gates (never put them in `client/public`).
 - Env vars: `PORT`, `DATABASE_PATH`, `TRUST_PROXY` (loaded from `.env` by
-  `server/env.ts`). `SHOWDOWN_MIN_MS` is a test-only knob (default 1500).
+  `server/env.ts`). `SHOWDOWN_MIN_MS` is a test-only knob (default 1500);
+  `AUDIO_DIR` overrides where voice lines are read from (default `./audio/voice`).
