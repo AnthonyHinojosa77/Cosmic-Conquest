@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
-import { eq, desc, sql, inArray } from "drizzle-orm";
-import { players, bountyClaims, playerItems, type Player } from "@shared/schema";
+import { and, eq, desc, sql, inArray } from "drizzle-orm";
+import { players, bountyClaims, playerItems, clueFinds, showdowns, type Player } from "@shared/schema";
 import {
   DEFAULT_SUIT,
   ownsSuit,
@@ -191,10 +191,47 @@ export function getStarMap(): StarMapStatus {
 }
 
 // Put an item in the hunter's satchel (idempotent). Doesn't create a player row.
-export function findItem(visitorId: string, itemId: ItemId): PlayerProfile {
+export function grantItem(visitorId: string, itemId: ItemId) {
   db.insert(playerItems)
     .values({ visitorId, itemId, createdAt: new Date().toISOString() })
     .onConflictDoNothing()
     .run();
-  return getProfile(visitorId);
+}
+
+export function hasItem(visitorId: string, itemId: ItemId): boolean {
+  return itemsOf(visitorId).includes(itemId);
+}
+
+// --- Bounty progress (the server is the referee) ---------------------------
+
+export function recordClue(visitorId: string, bountyId: string, clueId: string) {
+  db.insert(clueFinds)
+    .values({ visitorId, bountyId, clueId, createdAt: new Date().toISOString() })
+    .onConflictDoNothing()
+    .run();
+}
+
+export function foundClues(visitorId: string, bountyId: string): string[] {
+  return db.select({ clueId: clueFinds.clueId })
+    .from(clueFinds)
+    .where(and(eq(clueFinds.visitorId, visitorId), eq(clueFinds.bountyId, bountyId)))
+    .all()
+    .map((r) => r.clueId);
+}
+
+// (Re)start the showdown clock after a correct accusation.
+export function startShowdown(visitorId: string, bountyId: string) {
+  const startedAt = new Date().toISOString();
+  db.insert(showdowns)
+    .values({ visitorId, bountyId, startedAt })
+    .onConflictDoUpdate({ target: [showdowns.visitorId, showdowns.bountyId], set: { startedAt } })
+    .run();
+}
+
+export function showdownStartedAt(visitorId: string, bountyId: string): number | null {
+  const row = db.select({ startedAt: showdowns.startedAt })
+    .from(showdowns)
+    .where(and(eq(showdowns.visitorId, visitorId), eq(showdowns.bountyId, bountyId)))
+    .get();
+  return row ? Date.parse(row.startedAt) : null;
 }

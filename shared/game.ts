@@ -58,14 +58,14 @@ export const ITEMS: Record<ItemId, { name: string; description: string }> = {
   },
 };
 
+// Clue text lives server-side (server/bounties.ts) and is sent when a hunter searches.
 export interface Clue {
   id: string;
   label: string;
-  text: string;
   // Searching this clue hands the hunter an item
   grants?: ItemId;
-  // The clue is in code: shown shifted by `key` letters until decoded with `requires`
-  cipher?: { requires: ItemId; key: number };
+  // The clue is in code (the server sends the coded text and holds the key); decoding needs `requires`
+  cipher?: { requires: ItemId };
   // Hotspot position over the scene image (percent)
   top: string;
   left: string;
@@ -134,19 +134,16 @@ export const BOUNTIES: Bounty[] = [
           {
             id: "dome",
             label: "Moon Colony Dome",
-            text: "The glass dome is intact, but the base panel was unscrewed and put back crooked. There's a sticky smear of malt syrup on the screws — and a trail of glittering moon dust leading toward the exit.",
             top: "37%", left: "30%", width: "30%", height: "33%",
           },
           {
             id: "robot",
             label: "RB-9's Memory Tape",
-            text: "You rewind the Robot Butler's memory tape. 11:52 PM: 'Good evening, sir. The Expo is closed.' The late visitor wore a paper diner cap and smelled strongly of fry oil. Dr. Gearhart, RB-9's inventor, had locked up and gone home at six.",
             top: "39%", left: "70.5%", width: "10%", height: "37%",
           },
           {
             id: "videophone",
             label: "Videophone Call Log",
-            text: "The booth's call log shows Madame Vela Quasar on a single call to Mars from 10:15 PM to 1:40 AM — the light-delay charges alone cost her a fortune. She never left the booth.",
             top: "38%", left: "81.5%", width: "13.5%", height: "32%",
           },
         ],
@@ -159,19 +156,16 @@ export const BOUNTIES: Bounty[] = [
           {
             id: "mixer",
             label: "Malt Mixer",
-            text: "The Moon Malt mixer is clogged with something that glitters. Moon dust, and plenty of it. Whoever was back here last night wasn't making milkshakes.",
             top: "50%", left: "43%", width: "8%", height: "17%",
           },
           {
             id: "servo",
             label: "Servo the Robot Waiter",
-            text: "Servo's eyes flicker. 'Cookie clocked out early last night, sir. He took his lunchbox — it looked very heavy. He hasn't come in for his shift today.'",
             top: "22%", left: "62%", width: "34%", height: "50%",
           },
           {
             id: "jukebox",
             label: "Atomic Jukebox",
-            text: "Tucked behind the jukebox: a paper diner cap with 'COOKIE' stitched on the band, dusted with moon glitter. Someone left in a hurry.",
             top: "36%", left: "1%", width: "16%", height: "34%",
           },
         ],
@@ -227,20 +221,17 @@ export const BOUNTIES: Bounty[] = [
           {
             id: "pad",
             label: "Empty Rain-Maker Pad",
-            text: "Where a Rain-Maker stood last night there's only bare concrete. The four bolts were undone neatly with a proper wrench, not ripped out. Narrow paired wheel tracks lead to the dome's freight door: a monorail freight dolly.",
             top: "60%", left: "28%", width: "40%", height: "16%",
           },
           {
             id: "sprinkles",
             label: "Sprinkles the Farm Robot",
-            text: "Sprinkles plays back his memory tape: \"The Rain-Makers always go missing on a Friday night, sir, just before the 2:10 freight monorail leaves for Phobos.\" Then he pops open his chest drawer and hands you something from the lost-and-found: a brass decoder ring.",
             grants: "decoder-ring",
             top: "45%", left: "70%", width: "16%", height: "33%",
           },
           {
             id: "lab",
             label: "Professor Venn's Lab",
-            text: "Professor Venn has been asking Sterling Atomic to scrap the old Rain-Makers for her new design, which looks bad. But the lab's door log shows she badged in at 8 PM last Friday and didn't leave until sunrise, and the night camera shows her at her bench the whole time.",
             top: "38%", left: "5%", width: "20%", height: "22%",
           },
         ],
@@ -253,20 +244,17 @@ export const BOUNTIES: Bounty[] = [
           {
             id: "skiff",
             label: "Dusty's Sand-Skiff",
-            text: "Dusty Dunmore's racing skiff is caked in dust and its engine is stone cold. On the seat: a race ticket for the Olympus Mons Rally, last Friday from 9 PM to dawn. He finished second. Besides, a skiff this size couldn't haul a Rain-Maker.",
             top: "20%", left: "63%", width: "35%", height: "62%",
           },
           {
             id: "crates",
             label: "Canned Sunshine Crates",
-            text: "The crates say CANNED SUNSHINE, but one is far too heavy, and a chrome fin pokes through the slats. The shipping label: \"To Phobos Station. Checked and sealed by the freight clerk on duty.\"",
             top: "44%", left: "29%", width: "21%", height: "26%",
           },
           {
             id: "telegram",
             label: "Coded Telegram",
-            text: "TEN MORE RAIN-MAKERS READY FRIDAY. CRATE THEM AS CANNED SUNSHINE. PHOBOS BUYER PAYS DOUBLE. SIGNED, Q.",
-            cipher: { requires: "decoder-ring", key: 2 },
+            cipher: { requires: "decoder-ring" },
             top: "27%", left: "3%", width: "17%", height: "30%",
           },
         ],
@@ -341,9 +329,10 @@ export function hunterRank(bounties: number): { title: string; next?: { title: s
   return { title: RANKS[i].title, ...(next ? { next: { title: next.title, needed: next.min - bounties } } : {}) };
 }
 
-// Bounties that hand out an item, so the server only grants items that exist in play.
-export function itemAvailable(id: string): id is ItemId {
-  return BOUNTIES.some((b) => b.available && b.locations?.some((l) => l.clues.some((c) => c.grants === id)));
+
+// Clues a hunter must find before naming a suspect (server and browser agree on this).
+export function cluesNeeded(bounty: Bounty): number {
+  return bounty.cluesNeeded ?? (bounty.locations ?? []).reduce((n, l) => n + l.clues.length, 0);
 }
 
 export const MAP_FRAGMENTS: MapFragment[] = BOUNTIES.flatMap((b) => (b.fragment ? [b.fragment] : []));
@@ -367,6 +356,17 @@ export interface CaseSolution {
   showdown: { opponent: string; image: string; taunt: string; scene?: string };
   outro: string;
 }
+
+// A hunter's progress on one bounty, as the server records it.
+export interface BountyProgress {
+  // Clues found so far (decoded ones included), with their text
+  found: Record<string, string>;
+  // Set once the hunter has named the right suspect (lets a refresh return to the duel)
+  accused?: { suspect: string } & CaseSolution;
+}
+
+// Result of searching a clue: its text, or the coded message if it needs decoding.
+export type ClueSearch = { text: string; coded?: undefined } | { coded: string; text?: undefined };
 
 // Public player profile returned by the API (no visitorId).
 export interface PlayerProfile {

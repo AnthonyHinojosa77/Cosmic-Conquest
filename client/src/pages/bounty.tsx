@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { HeroArt, preloadHeroPoses, type HeroPose } from "@/components/HeroArt";
-import { usePlayer, useFindItem, accuse, claimBounty, errorMessage, type ClaimOutcome } from "@/lib/game";
+import { usePlayer, useProgress, accuse, claimBounty, searchClue, decodeClue, errorMessage, type ClaimOutcome } from "@/lib/game";
 import {
   bountyById,
   DRAW_WINDOW_MS,
@@ -11,6 +11,7 @@ import {
   type Clue,
   STAR_MAP_SIZE,
   numeral,
+  cluesNeeded,
   DEFAULT_SUIT,
   ITEMS,
   shiftLetters,
@@ -47,29 +48,21 @@ function Panel({ title, children, testId }: { title: string; children: React.Rea
 // --- Coded clues --------------------------------------------------------------
 
 function Decoder({
+  bountyId,
   clue,
   hasTool,
-  alreadySolved,
-  onSolved,
+  coded,
+  solvedText,
 }: {
+  bountyId: string;
   clue: Clue;
   hasTool: boolean;
-  alreadySolved: boolean;
-  onSolved: () => void;
+  coded?: string;
+  solvedText?: string;
 }) {
-  const cipher = clue.cipher!;
-  const [dial, setDial] = useState(alreadySolved ? cipher.key : 0);
-  const coded = shiftLetters(clue.text, cipher.key);
-  const solved = dial === cipher.key;
-
-  // Report once, when the dial lands on the key
-  const reported = useRef(alreadySolved);
-  useEffect(() => {
-    if (solved && !reported.current) {
-      reported.current = true;
-      onSolved();
-    }
-  }, [solved, onSolved]);
+  const [dial, setDial] = useState(0);
+  const [checking, setChecking] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   const tape = (text: string) => (
     <p
@@ -81,7 +74,20 @@ function Decoder({
     </p>
   );
 
-  if (!hasTool && !alreadySolved) {
+  if (solvedText) {
+    return (
+      <>
+        {tape(solvedText)}
+        <p className="pulp-title text-[hsl(120,50%,32%)] mt-2" role="status">✓ Decoded!</p>
+      </>
+    );
+  }
+
+  if (coded === undefined) {
+    return <p className="text-sm marker-text text-[hsl(25,15%,42%)]">Searching…</p>;
+  }
+
+  if (!hasTool) {
     return (
       <>
         {tape(coded)}
@@ -90,17 +96,26 @@ function Decoder({
     );
   }
 
+  const tool = ITEMS[clue.cipher!.requires];
+  const tryKey = () => {
+    setChecking(true);
+    setMessage(null);
+    decodeClue(bountyId, clue.id, dial)
+      .then((ok) => !ok && setMessage(`Key ${dial} just gives gibberish. Keep turning.`))
+      .catch((err) => setMessage(errorMessage(err)))
+      .finally(() => setChecking(false));
+  };
+
   return (
     <>
       {tape(shiftLetters(coded, -dial))}
       <p className="text-xs text-[hsl(25,15%,42%)] mt-2 italic">
-        {ITEMS[cipher.requires].name}: {ITEMS[cipher.requires].description}
+        {tool.name}: {tool.description}
       </p>
-      <div className="flex items-center gap-3 mt-3">
+      <div className="flex flex-wrap items-center gap-3 mt-3">
         <button
           className="retro-btn teal text-sm px-3"
           onClick={() => setDial((d) => (d + 25) % 26)}
-          disabled={solved}
           aria-label="Turn the dial back"
           data-testid="button-dial-down"
         >
@@ -112,14 +127,16 @@ function Decoder({
         <button
           className="retro-btn teal text-sm px-3"
           onClick={() => setDial((d) => (d + 1) % 26)}
-          disabled={solved}
           aria-label="Turn the dial forward"
           data-testid="button-dial-up"
         >
           ▶
         </button>
-        {solved && <span className="pulp-title text-[hsl(120,50%,32%)]" role="status">✓ Decoded!</span>}
+        <button className="retro-btn gold text-sm" onClick={tryKey} disabled={checking} data-testid="button-decode">
+          {checking ? "Checking…" : `Decode with key ${dial}`}
+        </button>
       </div>
+      {message && <p className="text-sm mt-2" role="status" data-testid="text-decode-result">{message}</p>}
     </>
   );
 }
@@ -129,24 +146,36 @@ function Decoder({
 function Investigation({
   bounty,
   found,
-  onFind,
   onReady,
 }: {
   bounty: Bounty;
-  found: Set<string>;
-  onFind: (clue: Clue) => void;
+  found: Record<string, string>;
   onReady: () => void;
 }) {
   const locations = bounty.locations ?? [];
   const [locationId, setLocationId] = useState(locations[0]?.id);
   const [openClue, setOpenClue] = useState<Clue | null>(null);
+  const [searching, setSearching] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [codedText, setCodedText] = useState<Record<string, string>>({});
   const [imgLoaded, setImgLoaded] = useState(false);
   const location = locations.find((l) => l.id === locationId) ?? locations[0];
   const { data: player } = usePlayer();
-  const findItem = useFindItem();
   const allClues = locations.flatMap((l) => l.clues);
-  const needed = bounty.cluesNeeded ?? allClues.length;
-  const ready = found.size >= needed;
+  const foundCount = allClues.filter((c) => found[c.id] !== undefined).length;
+  const needed = cluesNeeded(bounty);
+  const ready = foundCount >= needed;
+
+  const search = (clue: Clue) => {
+    setOpenClue(clue);
+    setSearchError(null);
+    if (found[clue.id] !== undefined || codedText[clue.id] !== undefined) return; // already in hand
+    setSearching(clue.id);
+    searchClue(bounty.id, clue.id)
+      .then((r) => r.coded !== undefined && setCodedText((prev) => ({ ...prev, [clue.id]: r.coded })))
+      .catch((err) => setSearchError(errorMessage(err)))
+      .finally(() => setSearching(null));
+  };
 
   return (
     <div className="space-y-4">
@@ -163,7 +192,7 @@ function Investigation({
             }}
             data-testid={`button-location-${l.id}`}
           >
-            {l.name} ({l.clues.filter((c) => found.has(c.id)).length}/{l.clues.length})
+            {l.name} ({l.clues.filter((c) => found[c.id] !== undefined).length}/{l.clues.length})
           </button>
         ))}
       </div>
@@ -180,18 +209,14 @@ function Investigation({
         {imgLoaded && location.clues.map((clue) => (
           <button
             key={clue.id}
-            className={`hotspot ${found.has(clue.id) ? "border-[hsl(120,50%,45%)]/60" : ""}`}
+            className={`hotspot ${found[clue.id] !== undefined ? "border-[hsl(120,50%,45%)]/60" : ""}`}
             style={{ top: clue.top, left: clue.left, width: clue.width, height: clue.height }}
-            onClick={() => {
-              if (!clue.cipher) onFind(clue); // coded clues count once decoded
-              if (clue.grants && !player?.items.includes(clue.grants) && !findItem.isPending) findItem.mutate(clue.grants);
-              setOpenClue(clue);
-            }}
+            onClick={() => search(clue)}
             aria-label={`Search ${clue.label}`}
             title={clue.label}
             data-testid={`hotspot-clue-${clue.id}`}
           >
-            {!found.has(clue.id) && (
+            {found[clue.id] === undefined && (
               <div className="hotspot-indicator" style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }} />
             )}
           </button>
@@ -200,28 +225,28 @@ function Investigation({
 
       {openClue && (
         <Panel title={`🔍 ${openClue.label}`} testId="panel-clue">
-          {openClue.cipher ? (
+          {openClue.cipher && searchError === null ? (
             <Decoder
               key={openClue.id}
+              bountyId={bounty.id}
               clue={openClue}
-              // Finding the tool in this case is enough, even if saving it to the satchel failed
-              hasTool={
-                (player?.items.includes(openClue.cipher.requires) ?? false) ||
-                allClues.some((c) => c.grants === openClue.cipher!.requires && found.has(c.id))
-              }
-              alreadySolved={found.has(openClue.id)}
-              onSolved={() => onFind(openClue)}
+              hasTool={player?.items.includes(openClue.cipher.requires) ?? false}
+              coded={codedText[openClue.id]}
+              solvedText={found[openClue.id]}
             />
+          ) : found[openClue.id] !== undefined ? (
+            <p className="text-sm leading-relaxed">{found[openClue.id]}</p>
+          ) : searching === openClue.id ? (
+            <p className="text-sm marker-text text-[hsl(25,15%,42%)]">Searching…</p>
           ) : (
-            <p className="text-sm leading-relaxed">{openClue.text}</p>
+            <p className="text-sm" role="alert">
+              Couldn't search here{searchError ? `: ${searchError}` : ""}.{" "}
+              <button className="underline" onClick={() => search(openClue)}>Try again</button>
+            </p>
           )}
-          {openClue.grants && (
+          {openClue.grants && player?.items.includes(openClue.grants) && (
             <p className="text-sm mt-3 pulp-title text-[hsl(0,72%,40%)]" role="status" data-testid="text-item-found">
-              {player?.items.includes(openClue.grants)
-                ? `🎒 In your satchel: ${ITEMS[openClue.grants].name}`
-                : findItem.isError
-                  ? `Couldn't pick it up: ${errorMessage(findItem.error)}. Search here again.`
-                  : "🎒 Picking it up…"}
+              🎒 In your satchel: {ITEMS[openClue.grants].name}
             </p>
           )}
         </Panel>
@@ -231,15 +256,15 @@ function Investigation({
         <div className="flex justify-between items-baseline">
           <h2 className="pulp-title text-lg" style={{ color: INK }}>Hunter's Notebook</h2>
           <span className="pulp-title text-sm" style={{ color: ready ? "hsl(120,50%,32%)" : INK }}>
-            {found.size}/{allClues.length} clues
+            {foundCount}/{allClues.length} clues
           </span>
         </div>
-        {found.size === 0 ? (
+        {foundCount === 0 ? (
           <p className="text-sm text-[hsl(25,15%,42%)] marker-text mt-2">Click the glowing spots in each location to search.</p>
         ) : (
           <ul className="mt-2 space-y-2 text-sm text-[hsl(25,30%,22%)] list-disc pl-5">
-            {allClues.filter((c) => found.has(c.id)).map((c) => (
-              <li key={c.id}><strong>{c.label}:</strong> {c.text}</li>
+            {allClues.filter((c) => found[c.id] !== undefined).map((c) => (
+              <li key={c.id}><strong>{c.label}:</strong> {found[c.id]}</li>
             ))}
           </ul>
         )}
@@ -249,7 +274,7 @@ function Investigation({
           onClick={onReady}
           data-testid="button-ready-accuse"
         >
-          {ready ? "★ Name your suspect" : `Find ${needed - found.size} more clue${needed - found.size === 1 ? "" : "s"}`}
+          {ready ? "★ Name your suspect" : `Find ${needed - foundCount} more clue${needed - foundCount === 1 ? "" : "s"}`}
         </button>
       </section>
     </div>
@@ -446,7 +471,7 @@ export default function BountyPage() {
   const bounty = bountyById(params.id);
   const { data: player } = usePlayer();
   const [stage, setStage] = useState<Stage>("briefing");
-  const [found, setFound] = useState<Set<string>>(new Set());
+  const { data: progress } = useProgress(bounty?.available ? bounty.id : null);
   const [suspect, setSuspect] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<ClaimOutcome | null>(null);
   const [solution, setSolution] = useState<CaseSolution | null>(null);
@@ -456,7 +481,6 @@ export default function BountyPage() {
 
   useEffect(() => () => clearTimeout(doneTimer.current), []);
 
-  const onFind = useCallback((clue: Clue) => setFound((prev) => new Set(prev).add(clue.id)), []);
 
   // Collect the reward; on failure the player can retry without replaying the duel.
   const collect = useCallback(() => {
@@ -490,14 +514,31 @@ export default function BountyPage() {
         {stage === "briefing" && (
           <Panel title={`Case File — ${bounty.planet}`} testId="panel-briefing">
             <p className="text-sm leading-relaxed">{bounty.briefing}</p>
-            <button className="retro-btn gold mt-4" onClick={() => setStage("investigate")} data-testid="button-start-investigation">
-              ★ Take the job
-            </button>
+            <div className="flex flex-wrap gap-3 mt-4">
+              <button className="retro-btn gold" onClick={() => setStage("investigate")} data-testid="button-start-investigation">
+                ★ Take the job
+              </button>
+              {progress?.accused && (
+                // Named the culprit before a refresh: go straight back to the duel
+                <button
+                  className="retro-btn"
+                  onClick={() => {
+                    const { suspect: id, ...sol } = progress.accused!;
+                    setSuspect(id);
+                    setSolution(sol);
+                    setStage("showdown");
+                  }}
+                  data-testid="button-resume-showdown"
+                >
+                  Back to the showdown
+                </button>
+              )}
+            </div>
           </Panel>
         )}
 
         {stage === "investigate" && (
-          <Investigation bounty={bounty} found={found} onFind={onFind} onReady={() => setStage("accuse")} />
+          <Investigation bounty={bounty} found={progress?.found ?? {}} onReady={() => setStage("accuse")} />
         )}
 
         {stage === "accuse" && (
