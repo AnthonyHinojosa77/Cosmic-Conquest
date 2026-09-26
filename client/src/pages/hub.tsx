@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { PublicVisitor as Visitor } from "@shared/schema";
+import { useMusic } from "@/lib/sound";
 
 function VisitorTicker({ visitors }: { visitors: Visitor[] }) {
   const recent = useMemo(() => visitors.slice(0, 5), [visitors]);
@@ -47,6 +48,7 @@ function VisitorTicker({ visitors }: { visitors: Visitor[] }) {
 
 // The Hub is a pulp magazine cover — three clickable comic panels lead to each world
 export default function Hub() {
+  useMusic("hub");
   const [hoveredWorld, setHoveredWorld] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imgLoaded, setImgLoaded] = useState(false);

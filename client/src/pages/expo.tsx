@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
 import { BackButton } from "@/components/BackButton";
 import type { Prediction } from "@shared/schema";
+import { useMusic } from "@/lib/sound";
 
 const exhibits = [
   { name: "The Jet-Pack Commuter", icon: "🚀", desc: "Personal flight devices for daily travel — no more traffic jams." },
@@ -59,6 +60,7 @@ const hotspots = [
 ];
 
 export default function Expo() {
+  useMusic("hub");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
   const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
   const [imgLoaded, setImgLoaded] = useState(false);

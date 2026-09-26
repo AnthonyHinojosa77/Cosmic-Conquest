@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
 import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
 import type { Postcard } from "@shared/schema";
+import { useMusic } from "@/lib/sound";
 
 const destinations = [
   { name: "Mars", tagline: "The Red Frontier", desc: "Rust-colored canyons and the tallest volcano in the system." },
@@ -58,6 +59,7 @@ const hotspots = [
 
 
 export default function Voyages() {
+  useMusic("hub");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
   const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
   const [imgLoaded, setImgLoaded] = useState(false);

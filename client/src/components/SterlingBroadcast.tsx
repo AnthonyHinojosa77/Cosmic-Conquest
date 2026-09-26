@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useVoice } from "@/lib/sound";
 
 // Aurora Sterling's last broadcast: the story hook new hunters hear first.
 // Act I only — pure promise and wonder, no cracks (see GAME_PLAN.md).
@@ -23,6 +24,7 @@ export function markBroadcastHeard() {
 
 export function SterlingBroadcast({ onClose }: { onClose: () => void }) {
   const dialog = useRef<HTMLDivElement>(null);
+  useVoice("aurora/broadcast");
   const button = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {

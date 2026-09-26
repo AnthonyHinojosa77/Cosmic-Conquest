@@ -19,6 +19,7 @@ import {
   type SuitId,
 } from "@shared/game";
 import NotFound from "@/pages/not-found";
+import { useMusic, useVoice } from "@/lib/sound";
 
 const INK = "hsl(25,40%,15%)";
 type Stage = "briefing" | "investigate" | "accuse" | "showdown" | "done";
@@ -219,6 +220,7 @@ function Investigation({
   const location = locations.find((l) => l.id === locationId) ?? locations[0];
   const { data: player } = usePlayer();
   const allClues = locations.flatMap((l) => l.clues);
+  useVoice(openClue && found[openClue.id] !== undefined ? `clue/${bounty.id}/${openClue.id}` : null);
   const foundCount = allClues.filter((c) => found[c.id] !== undefined).length;
   const needed = cluesNeeded(bounty);
   const ready = foundCount >= needed;
@@ -541,6 +543,15 @@ export default function BountyPage() {
 
   useEffect(() => () => clearTimeout(doneTimer.current), []);
 
+  // Venus gets its own lounge music; every duel gets the showdown theme.
+  useMusic(!bounty?.available ? null : stage === "showdown" ? "showdown" : bounty.id === "venus-fog" ? "venus" : "investigate");
+  useVoice(
+    !bounty?.available ? null
+      : stage === "briefing" ? `briefing/${bounty.id}`
+      : stage === "showdown" && solution ? `taunt/${bounty.id}`
+      : stage === "done" && outcome === "paid" ? `outro/${bounty.id}`
+      : null,
+  );
 
   // Collect the reward; on failure the player can retry without replaying the duel.
   const collect = useCallback(() => {

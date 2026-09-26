@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useAurelia, errorMessage, AURELIA_KEY } from "@/lib/game";
+import { useMusic, useVoice } from "@/lib/sound";
 import { queryClient } from "@/lib/queryClient";
 import { AURELIA_INVITE_FRAGMENTS, type AureliaSpot } from "@shared/game";
 
@@ -62,6 +63,8 @@ export default function Aurelia() {
   const [imgLoaded, setImgLoaded] = useState(false);
 
   const location = locations?.find((l) => l.id === locationId) ?? locations?.[0];
+  useMusic("aurelia");
+  useVoice(open && location ? `aurelia/${location.id}/${open.id}` : null);
   const refused = !locations && error ? refusal(error) : null;
   const failed = !locations && error && !refused ? errorMessage(error) : null;
 

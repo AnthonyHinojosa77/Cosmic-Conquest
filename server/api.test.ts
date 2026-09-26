@@ -1,6 +1,6 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "fs";
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
 import express from "express";
@@ -9,6 +9,11 @@ import type { AddressInfo } from "net";
 
 const dbDir = mkdtempSync(path.join(tmpdir(), "cosmic-conquest-test-"));
 process.env.DATABASE_PATH = path.join(dbDir, "test.db");
+process.env.AUDIO_DIR = path.join(dbDir, "voice");
+for (const f of ["clue/red-sands/telegram.mp3", "taunt/red-sands/line.mp3", "aurora/broadcast/line.mp3", "aurelia/tower/lilies.mp3"]) {
+  mkdirSync(path.dirname(path.join(dbDir, "voice", f)), { recursive: true });
+  writeFileSync(path.join(dbDir, "voice", f), "fake mp3");
+}
 process.env.SHOWDOWN_MIN_MS = "800"; // shorter than the real 1.5 s, long enough to test reliably
 
 let server: Server;
@@ -424,4 +429,20 @@ test("game: Aurelia admits only hunters with all three star map pieces", async (
   assert.ok(registrar.text.includes(callsign) && registrar.text.includes("Marshal"));
   const trophies = city[1].spots.find((s: { id: string }) => s.id === "trophies");
   assert.match(trophies.text, /Heart of Luna.*Rain-Maker.*Star of Venus/);
+});
+
+test("voice lines are only served when the hunter may read the same text", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const hear = async (p: string) => (await fetch(`${base}/api/voice/${p}`, { headers: { Cookie: cookie } })).status;
+
+  assert.equal(await hear("aurora/broadcast"), 200);
+  assert.equal(await hear("clue/red-sands/telegram"), 404); // not decoded yet
+  assert.equal(await hear("taunt/red-sands"), 404); // culprit not named yet
+  assert.equal(await hear("aurelia/tower/lilies"), 404); // not invited
+  assert.equal(await hear("clue/red-sands/..%2F..%2Fdata"), 404);
+
+  await investigate("red-sands", cookie);
+  assert.equal(await hear("clue/red-sands/telegram"), 200);
+  await post("/api/bounties/red-sands/accuse", { suspect: "quill" }, cookie);
+  assert.equal(await hear("taunt/red-sands"), 200);
 });

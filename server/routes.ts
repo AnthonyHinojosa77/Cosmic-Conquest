@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertPostcardSchema, insertPredictionSchema, insertMenuItemSchema, insertVisitorSchema, type Visitor, type PublicVisitor } from "@shared/schema";
 import { apiLimiter, writeLimiter, visitorIdentity } from "./middleware";
 import { registerGameRoutes } from "./gameRoutes";
+import { registerVoiceRoutes } from "./voice";
 
 // visitorId is the visitor's rf_vid cookie value; never expose it publicly.
 function publicVisitor({ visitorId: _visitorId, ...rest }: Visitor): PublicVisitor {
@@ -97,6 +98,7 @@ export async function registerRoutes(
   });
 
   registerGameRoutes(app);
+  registerVoiceRoutes(app);
 
   return httpServer;
 }
