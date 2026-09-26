@@ -43,10 +43,15 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Play a bounty the honest way: search every spot, decode coded clues, name the suspect.
 async function investigate(bountyId: string, cookie: string) {
   const { CLUES } = await import("./bounties");
-  for (const [clueId, clue] of Object.entries(CLUES[bountyId])) {
-    await post(`/api/bounties/${bountyId}/clues/${clueId}/search`, {}, cookie);
-    if (clue.key !== undefined) await post(`/api/bounties/${bountyId}/clues/${clueId}/decode`, { key: clue.key }, cookie);
-    if (clue.code !== undefined) await post(`/api/bounties/${bountyId}/clues/${clueId}/unlock`, { code: clue.code }, cookie);
+  const clues = Object.entries(CLUES[bountyId]);
+  for (const [clueId] of clues) await post(`/api/bounties/${bountyId}/clues/${clueId}/search`, {}, cookie);
+  // Puzzles last, once everything they depend on is found
+  for (const [clueId, clue] of clues) {
+    const url = `/api/bounties/${bountyId}/clues/${clueId}`;
+    const res = clue.key !== undefined ? await post(`${url}/decode`, { key: clue.key }, cookie)
+      : clue.code !== undefined ? await post(`${url}/unlock`, { code: clue.code }, cookie)
+      : null;
+    if (res) assert.equal((await res.json()).correct, true, `${bountyId}/${clueId}`);
   }
 }
 
@@ -331,6 +336,10 @@ test("game: every hotspot has server clue text, and coded clues have a key", asy
     for (const c of shared) {
       assert.equal(Boolean(c.cipher), CLUES[b.id][c.id].key !== undefined, `${b.id}/${c.id} cipher`);
       assert.equal(Boolean(c.lock), CLUES[b.id][c.id].code !== undefined, `${b.id}/${c.id} lock`);
+      if (c.lock) {
+        assert.equal(c.lock.dials, CLUES[b.id][c.id].code!.length, `${b.id}/${c.id} dials`);
+        for (const need of CLUES[b.id][c.id].needs ?? []) assert.ok(CLUES[b.id][need], `${b.id}/${c.id} needs ${need}`);
+      }
     }
   }
 });
@@ -373,4 +382,24 @@ test("game: Venus bounty pays 1200 and turns up fragment III", async () => {
   assert.equal((await paid.json()).credits, 1200);
   const map = await (await fetch(base + "/api/star-map")).json();
   assert.ok(map.fragments.find((f: { id: string; hunters: number }) => f.id === "venusian-quadrant").hunters >= 1);
+});
+
+test("game: bounties that aren't released yet can't be played", async () => {
+  const { BOUNTIES } = await import("@shared/game");
+  const venus = BOUNTIES.find((b) => b.id === "venus-fog")!;
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  venus.available = false;
+  try {
+    for (const [url, body] of [
+      ["/api/bounties/venus-fog/clues/case/search", {}],
+      ["/api/bounties/venus-fog/clues/locker/unlock", { code: "418" }],
+      ["/api/bounties/venus-fog/accuse", { suspect: "vance" }],
+      ["/api/bounties/venus-fog/claim", { suspect: "vance" }],
+    ] as const) {
+      assert.equal((await post(url, body, cookie)).status, 404, url);
+    }
+    assert.equal((await fetch(base + "/api/bounties/venus-fog/progress", { headers: { Cookie: cookie } })).status, 404);
+  } finally {
+    venus.available = true;
+  }
 });

@@ -155,7 +155,10 @@ function Lock({ bountyId, clue, openedText }: { bountyId: string; clue: Clue; op
     );
   }
 
-  const turn = (i: number, by: number) => setDigits((d) => d.map((v, j) => (j === i ? (v + by + 10) % 10 : v)));
+  const turn = (i: number, by: number) => {
+    setMessage(null);
+    setDigits((d) => d.map((v, j) => (j === i ? (v + by + 10) % 10 : v)));
+  };
   const tryCode = () => {
     setChecking(true);
     setMessage(null);
@@ -222,7 +225,8 @@ function Investigation({
   const search = (clue: Clue) => {
     setOpenClue(clue);
     setSearchError(null);
-    if (found[clue.id] !== undefined || codedText[clue.id] !== undefined) return; // already in hand
+    // Already in hand, or a lock (nothing to fetch until it's opened)
+    if (found[clue.id] !== undefined || codedText[clue.id] !== undefined || clue.lock) return;
     setSearching(clue.id);
     searchClue(bounty.id, clue.id)
       .then((r) => r.coded !== undefined && setCodedText((prev) => ({ ...prev, [clue.id]: r.coded })))

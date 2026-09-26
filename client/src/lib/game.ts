@@ -98,16 +98,15 @@ export async function searchClue(bountyId: string, clueId: string): Promise<Clue
   return result;
 }
 
-// Try a key on a coded clue; true when the server accepts it.
-export async function decodeClue(bountyId: string, clueId: string, key: number): Promise<boolean> {
-  const body = await (await apiRequest("POST", `/api/bounties/${bountyId}/clues/${clueId}/decode`, { key })).json();
+// Submit a puzzle answer; true (and the clue is found) when the server accepts it.
+async function solveClue(bountyId: string, clueId: string, action: "decode" | "unlock", answer: object): Promise<boolean> {
+  const body = await (await apiRequest("POST", `/api/bounties/${bountyId}/clues/${clueId}/${action}`, answer)).json();
   if (body.correct) await addFound(bountyId, clueId, body.text);
   return body.correct;
 }
 
-// Try a combination on a locked clue; true when the server accepts it.
-export async function unlockClue(bountyId: string, clueId: string, code: string): Promise<boolean> {
-  const body = await (await apiRequest("POST", `/api/bounties/${bountyId}/clues/${clueId}/unlock`, { code })).json();
-  if (body.correct) await addFound(bountyId, clueId, body.text);
-  return body.correct;
-}
+// Try a key on a coded clue.
+export const decodeClue = (bountyId: string, clueId: string, key: number) => solveClue(bountyId, clueId, "decode", { key });
+
+// Try a combination on a locked clue.
+export const unlockClue = (bountyId: string, clueId: string, code: string) => solveClue(bountyId, clueId, "unlock", { code });

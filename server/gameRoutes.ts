@@ -82,7 +82,7 @@ export function registerGameRoutes(app: Express) {
     if (!bounty || !found) return res.status(404).json({ error: "Nothing to find there" });
     const { clue, secret } = found;
     if (clue.grants) grantItem(req.visitorId!, clue.grants);
-    if (secret.code !== undefined) {
+    if (clue.lock || secret.code !== undefined) {
       // Locked: it counts as found once opened.
       const result: ClueSearch = { locked: true };
       return res.json(result);
@@ -118,7 +118,7 @@ export function registerGameRoutes(app: Express) {
   app.post("/api/bounties/:id/clues/:clueId/unlock", clueLimiter, (req, res) => {
     const bounty = liveBounty(req.params.id);
     const found = bounty && clueOf(bounty, String(req.params.clueId));
-    if (!bounty || !found || found.secret.code === undefined) {
+    if (!bounty || !found || found.secret.code === undefined || !found.clue.lock) {
       return res.status(404).json({ error: "Nothing to unlock there" });
     }
     const parsed = unlockSchema.safeParse(req.body);

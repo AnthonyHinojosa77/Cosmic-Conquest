@@ -299,7 +299,7 @@ export const BOUNTIES: Bounty[] = [
     planet: "Venus",
     reward: 1200,
     available: true,
-    teaser: "A masked thief lifted the Star of Venus during the sky-resort's midnight fog show.",
+    teaser: "A masked thief lifted the Star of Venus during the sky-resort's fog show.",
     briefing:
       "High above the fog seas of Venus floats the Aphrodite Sky Resort, Sterling Atomic's most glamorous address. Last night, during the fog show, a masked figure the guests are calling the Fog Phantom lifted the Star of Venus, the most famous necklace in the solar system, right off a starlet's table. The resort is paying 1,200 credits for the Phantom. Search the Grand Lounge and the Orchid Conservatory, then unmask your thief.",
     cluesNeeded: 6,
