@@ -4,7 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
 import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
 import type { Postcard } from "@shared/schema";
-import { TAP } from "@/lib/device";
+import { HotspotHint } from "@/components/HotspotHint";
 import { useMusic } from "@/lib/sound";
 
 const destinations = [
@@ -168,7 +168,7 @@ export default function Voyages() {
 
         {!activeHotspot && (
           <p className="text-center text-[hsl(38,20%,50%)] text-xs mt-3 marker-text animate-fade-in">
-            ★ {TAP} the glowing spots to explore the travel agency ★
+            <HotspotHint place="travel agency" />
           </p>
         )}
       </div>

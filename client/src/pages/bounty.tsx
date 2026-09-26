@@ -20,25 +20,12 @@ import {
 } from "@shared/game";
 import NotFound from "@/pages/not-found";
 import { useMusic, useVoice } from "@/lib/sound";
-import { TAP, isTouch } from "@/lib/device";
+import { useIsTouch, useTapWord } from "@/lib/device";
+import { OfficeLink } from "@/components/OfficeLink";
 
 const INK = "hsl(25,40%,15%)";
 type Stage = "briefing" | "investigate" | "accuse" | "showdown" | "done";
 
-function OfficeLink() {
-  return (
-    <Link href="/bounties">
-      <button
-        className="inline-flex items-center gap-2 text-sm text-[hsl(38,25%,65%)] hover:text-[hsl(45,80%,55%)] transition-colors pulp-title tracking-wider"
-        data-testid="button-back-office"
-      >
-        <span className="text-lg">←</span>
-        <span className="hidden sm:inline">Bounty Office</span>
-        <span className="sm:hidden">Office</span>
-      </button>
-    </Link>
-  );
-}
 
 function Panel({ title, children, testId }: { title: string; children: React.ReactNode; testId?: string }) {
   return (
@@ -221,6 +208,7 @@ function Investigation({
   const [imgLoaded, setImgLoaded] = useState(false);
   const location = locations.find((l) => l.id === locationId) ?? locations[0];
   const { data: player } = usePlayer();
+  const tap = useTapWord();
   const allClues = locations.flatMap((l) => l.clues);
   useVoice(openClue && found[openClue.id] !== undefined ? `clue/${bounty.id}/${openClue.id}` : null);
   const foundCount = allClues.filter((c) => found[c.id] !== undefined).length;
@@ -324,7 +312,7 @@ function Investigation({
           </span>
         </div>
         {foundCount === 0 ? (
-          <p className="text-sm text-[hsl(25,15%,42%)] marker-text mt-2">{TAP} the glowing spots in each location to search.</p>
+          <p className="text-sm text-[hsl(25,15%,42%)] marker-text mt-2">{tap} the glowing spots in each location to search.</p>
         ) : (
           <ul className="mt-2 space-y-2 text-sm text-[hsl(25,30%,22%)] list-disc pl-5">
             {allClues.filter((c) => found[c.id] !== undefined).map((c) => (
@@ -423,6 +411,7 @@ function Showdown({
   suit: SuitId;
   onWin: () => void;
 }) {
+  const isTouch = useIsTouch();
   const [state, setState] = useState<DrawState>("idle");
   const [reaction, setReaction] = useState<number | null>(null);
   const drawAt = useRef(0);
@@ -514,7 +503,13 @@ function Showdown({
       </div>
       <button
         className={`retro-btn text-xl px-8 py-4 ${state === "draw" ? "gold" : ""}`}
-        onClick={fire}
+        // Fire on press, not release: on phones the finger's time on the glass
+        // would otherwise count against the draw. Keyboard/assistive clicks still work.
+        onPointerDown={(e) => {
+          e.preventDefault();
+          fire();
+        }}
+        onClick={(e) => e.detail === 0 && fire()}
         disabled={state === "won"}
         data-testid="button-draw"
       >
