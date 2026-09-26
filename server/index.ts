@@ -3,6 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { pingDb, closeDb } from "./storage";
 
 const app = express();
 
@@ -65,6 +66,12 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Liveness check for hosting platforms (outside /api, so no rate limits or cookies)
+  app.get("/health", (_req, res) => {
+    const ok = pingDb();
+    res.status(ok ? 200 : 503).json({ ok });
+  });
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -104,4 +111,23 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
+
+  // Stop cleanly: finish open requests, then save the database properly.
+  let stopping = false;
+  const stop = (signal: string) => {
+    if (stopping) return;
+    stopping = true;
+    log(`received ${signal}, stopping`);
+    httpServer.close(() => {
+      closeDb();
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.error("Requests didn't finish within 10s; closing anyway");
+      closeDb();
+      process.exit(1);
+    }, 10_000).unref();
+  };
+  process.on("SIGINT", () => stop("SIGINT"));
+  process.on("SIGTERM", () => stop("SIGTERM"));
 })();

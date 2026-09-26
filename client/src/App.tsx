@@ -13,6 +13,7 @@ import BountyPage from "@/pages/bounty";
 import Aurelia from "@/pages/aurelia";
 import NotFound from "@/pages/not-found";
 import { SoundToggle } from "@/components/SoundToggle";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 function AppRouter() {
   return (
@@ -36,7 +37,9 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <Router hook={useHashLocation}>
-          <AppRouter />
+          <ErrorBoundary>
+            <AppRouter />
+          </ErrorBoundary>
           <SoundToggle />
         </Router>
       </TooltipProvider>
