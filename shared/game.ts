@@ -90,6 +90,12 @@ export interface Suspect {
   description: string;
 }
 
+// Aurora Sterling's last broadcast (shown on screen and spoken by her voice line).
+export const AURORA_BROADCAST = {
+  intro: "This is Aurora Sterling.",
+  quote: "Everything I built, I built for the bold. My fortune waits among the stars. Whoever finds it inherits tomorrow.",
+};
+
 // Sterling's star map: each bounty turns up one fragment. The map is meant to
 // be large; the other fragments arrive with future bounties and worlds.
 export const STAR_MAP_SIZE = 12;

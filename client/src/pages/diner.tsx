@@ -4,6 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
 import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
 import type { MenuItem } from "@shared/schema";
+import { useMusic } from "@/lib/sound";
 
 // Hotspot definitions — positioned over the diner illustration
 const hotspots = [
@@ -58,6 +59,7 @@ const houseMenu = [
 
 
 export default function Diner() {
+  useMusic("hub");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
   const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
   const [imgLoaded, setImgLoaded] = useState(false);

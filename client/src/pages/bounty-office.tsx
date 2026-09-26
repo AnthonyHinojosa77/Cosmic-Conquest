@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { BackButton } from "@/components/BackButton";
 import { HeroArt, preloadHeroPoses } from "@/components/HeroArt";
 import { StarMap } from "@/components/StarMap";
+import { useMusic } from "@/lib/sound";
 import { SterlingBroadcast, hasHeardBroadcast, markBroadcastHeard } from "@/components/SterlingBroadcast";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
 import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ITEMS, ownsSuit, hunterRank, fragmentsFor, AURELIA_INVITE_FRAGMENTS } from "@shared/game";
@@ -274,6 +275,7 @@ function Leaderboard() {
 
 export default function BountyOffice() {
   const { data: player } = usePlayer();
+  useMusic("office");
   // New hunters hear Aurora Sterling's broadcast once; the desk radio replays it.
   const [broadcast, setBroadcast] = useState(() => !hasHeardBroadcast());
   const closeBroadcast = useCallback(() => {

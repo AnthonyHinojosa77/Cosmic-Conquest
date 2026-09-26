@@ -39,12 +39,12 @@ const unlockSchema = z.object({ code: z.string().regex(/^[0-9]{1,6}$/) });
 const envMin = Number(process.env.SHOWDOWN_MIN_MS);
 const SHOWDOWN_MIN_MS = Number.isFinite(envMin) && envMin >= 0 ? envMin : 1500;
 
-function liveBounty(id: unknown): Bounty | undefined {
+export function liveBounty(id: unknown): Bounty | undefined {
   const bounty = bountyById(String(id));
   return bounty?.available ? bounty : undefined;
 }
 
-function clueOf(bounty: Bounty, clueId: string) {
+export function clueOf(bounty: Bounty, clueId: string) {
   const clue = bounty.locations?.flatMap((l) => l.clues).find((c) => c.id === clueId);
   const secret = CLUES[bounty.id]?.[clueId];
   return clue && secret ? { clue, secret } : undefined;

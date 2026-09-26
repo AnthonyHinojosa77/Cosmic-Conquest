@@ -104,6 +104,24 @@ arrives only in Act II and III.
   and scipy). New art goes into `client/public/` as the finished `.webp`
   only; don't commit the full-size source PNGs.
 
+## Sound (owner's call, 2026-09-26)
+
+- **Music (Suno Pro):** noir jazz for the Bounty Office and investigations, big
+  band for Aurelia and the Venus resort, synthwave for showdowns and the hub.
+  Prompts are in the Drive folder "Retro Futurism/Music"; each `<name>.mp3`
+  saved there is imported with `script/audio/music.sh` (AAC 96 kbps,
+  loudness-evened) into `client/public/audio/music/`.
+- **Voices (ElevenLabs Starter):** a noir narrator reads briefings, clues,
+  outros and Aurelia; culprits voice their taunts; Aurora voices her broadcast.
+  `npx tsx script/audio/voices.ts` makes missing lines (key from the macOS
+  Keychain item `elevenlabs-api-key`); cast is set at the top of that script.
+  Files live in `audio/voice/` (outside the public folder) and `/api/voice/...`
+  serves each one only when the hunter may read the same text.
+- Sound is off until the player turns it on (corner button, hidden until any
+  audio exists). Music ducks while someone speaks.
+- The game plays well on phones (owner, 2026-09-26): check new screens at
+  phone width.
+
 ## Art prompts (for ChatGPT, Grok or similar)
 
 Paste the **style block** first, then one of the item prompts. Keep the
