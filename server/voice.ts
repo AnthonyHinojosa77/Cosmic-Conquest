@@ -32,7 +32,7 @@ function gateFor(scope: string, a: string, b?: string): Gate | null {
     return (v) => topic.after === undefined || foundClues(v, a).includes(topic.after);
   }
   // A caught lie: once the hunter has caught it
-  if (scope === "breakthrough" && bounty && b) return (v) => foundClues(v, a).includes(b);
+  if (scope === "breakthrough" && bounty?.breakthroughs?.includes(b ?? "")) return (v) => foundClues(v, a).includes(b!);
   if (scope === "aurelia" && b) return (v) => invitedToAurelia(getProfile(v).completedBounties);
   return null;
 }

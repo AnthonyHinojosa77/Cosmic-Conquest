@@ -121,11 +121,6 @@ export interface Interview {
   topics: InterviewTopic[];
 }
 
-// What a suspect says when asked about a topic.
-export interface Testimony {
-  text: string;
-}
-
 export interface Bounty {
   id: string;
   title: string;
@@ -140,8 +135,9 @@ export interface Bounty {
   accusePrompt?: string;
   fragment?: MapFragment;
   interviews?: Interview[];
-  // Lies to catch while questioning (each one counts like a clue)
-  breakthroughs?: number;
+  // Ids of the lies to catch while questioning (each counts like a clue). Only ids:
+  // who lies, and which clue catches them, stays server-side.
+  breakthroughs?: string[];
 }
 
 export const BOUNTIES: Bounty[] = [
@@ -322,6 +318,69 @@ export const BOUNTIES: Bounty[] = [
     },
   },
   {
+    id: "venus-fog",
+    title: "The Venus Fog Phantom",
+    planet: "Venus",
+    reward: 1200,
+    available: true,
+    teaser: "A masked thief lifted the Star of Venus during the sky-resort's fog show.",
+    briefing:
+      "High above the fog seas of Venus floats the Aphrodite Sky Resort, Sterling Atomic's most glamorous address. Last night, during the fog show, a masked figure the guests are calling the Fog Phantom lifted the Star of Venus, the most famous necklace in the solar system, right off a starlet's table. The resort is paying 1,200 credits for the Phantom. Search the Grand Lounge and the Orchid Conservatory, then unmask your thief.",
+    cluesNeeded: 6,
+    locations: [
+      {
+        id: "lounge",
+        name: "Grand Lounge",
+        image: "./scenes/venus-lounge.webp",
+        clues: [
+          { id: "case", label: "The Empty Jewel Case", top: "64%", left: "28%", width: "42%", height: "28%" },
+          { id: "bandstand", label: "The Bandstand", top: "30%", left: "3%", width: "31%", height: "24%" },
+          { id: "keys", label: "Reception Key Board", top: "20%", left: "86%", width: "12%", height: "36%" },
+        ],
+      },
+      {
+        id: "conservatory",
+        name: "Orchid Conservatory",
+        image: "./scenes/venus-conservatory.webp",
+        clues: [
+          { id: "fog-machine", label: "The Fog Machine", top: "15%", left: "2%", width: "18%", height: "55%" },
+          { id: "orchids", label: "Orchid Bed", top: "38%", left: "28%", width: "30%", height: "40%" },
+          { id: "locker", label: "Locked Staff Locker", lock: { dials: 3 }, top: "40%", left: "86%", width: "12%", height: "48%" },
+        ],
+      },
+    ],
+    suspects: [
+      {
+        id: "lune",
+        name: "Maestro Felix Lune",
+        title: "Lounge Bandleader",
+        portrait: "./game/suspect-lune.webp",
+        description: "Conducts the resort orchestra, and conducts himself like a star. Adores a sparkle.",
+      },
+      {
+        id: "fenwick",
+        name: "Dr. Iris Fenwick",
+        title: "Resort Botanist",
+        portrait: "./game/suspect-fenwick.webp",
+        description: "Runs the Orchid Conservatory, and the fog machine that keeps it misty.",
+      },
+      {
+        id: "vance",
+        name: "Captain Teddy Vance",
+        title: "Sky-Gondola Pilot",
+        portrait: "./game/suspect-vance.webp",
+        description: "Flies guests between the cloud islands. Everybody's favorite captain.",
+      },
+    ],
+    accusePrompt: "Who is the Fog Phantom?",
+    fragment: {
+      id: "venusian-quadrant",
+      number: 3,
+      name: "The Venusian Quadrant",
+      caption: "Tucked in the lining of the Star of Venus's velvet case: Aurora Sterling's chart of the Venus cloud-lanes, with a gold arrow pointing out past the asteroid belt, toward the giant planets.",
+    },
+  },
+  {
     id: "saturn-orrery",
     title: "The Stopped Orrery",
     planet: "Saturn",
@@ -330,8 +389,7 @@ export const BOUNTIES: Bounty[] = [
     teaser: "The golden orrery aboard the Ring Line Express stopped mid-journey, and its master gear is gone.",
     briefing:
       "The Ring Line Express glides around Saturn on a track laid across the rings themselves, and its pride is the Sterling Orrery: a golden clockwork model of the solar system that Aurora Sterling gave to the Saturn colonies. Last night, somewhere between the Cassini Gap and the Titan Transfer, it stopped. Its master gear, the Saturn Gear, is missing. The Ring Line is paying 1,600 credits to get it back. Search the Observatory Car and the Dining Car, question the three passengers who were awake that night, and catch whoever is lying.",
-    cluesNeeded: 8,
-    breakthroughs: 2,
+    breakthroughs: ["breakthrough-1", "breakthrough-2"],
     locations: [
       {
         id: "observatory",
@@ -411,69 +469,6 @@ export const BOUNTIES: Bounty[] = [
       caption: "Engraved on the back of the Saturn Gear, too small to see without a loupe: a chart of Saturn's moons in Aurora Sterling's own hand, and a line of gold stars leading on toward Uranus and Neptune.",
     },
   },
-  {
-    id: "venus-fog",
-    title: "The Venus Fog Phantom",
-    planet: "Venus",
-    reward: 1200,
-    available: true,
-    teaser: "A masked thief lifted the Star of Venus during the sky-resort's fog show.",
-    briefing:
-      "High above the fog seas of Venus floats the Aphrodite Sky Resort, Sterling Atomic's most glamorous address. Last night, during the fog show, a masked figure the guests are calling the Fog Phantom lifted the Star of Venus, the most famous necklace in the solar system, right off a starlet's table. The resort is paying 1,200 credits for the Phantom. Search the Grand Lounge and the Orchid Conservatory, then unmask your thief.",
-    cluesNeeded: 6,
-    locations: [
-      {
-        id: "lounge",
-        name: "Grand Lounge",
-        image: "./scenes/venus-lounge.webp",
-        clues: [
-          { id: "case", label: "The Empty Jewel Case", top: "64%", left: "28%", width: "42%", height: "28%" },
-          { id: "bandstand", label: "The Bandstand", top: "30%", left: "3%", width: "31%", height: "24%" },
-          { id: "keys", label: "Reception Key Board", top: "20%", left: "86%", width: "12%", height: "36%" },
-        ],
-      },
-      {
-        id: "conservatory",
-        name: "Orchid Conservatory",
-        image: "./scenes/venus-conservatory.webp",
-        clues: [
-          { id: "fog-machine", label: "The Fog Machine", top: "15%", left: "2%", width: "18%", height: "55%" },
-          { id: "orchids", label: "Orchid Bed", top: "38%", left: "28%", width: "30%", height: "40%" },
-          { id: "locker", label: "Locked Staff Locker", lock: { dials: 3 }, top: "40%", left: "86%", width: "12%", height: "48%" },
-        ],
-      },
-    ],
-    suspects: [
-      {
-        id: "lune",
-        name: "Maestro Felix Lune",
-        title: "Lounge Bandleader",
-        portrait: "./game/suspect-lune.webp",
-        description: "Conducts the resort orchestra, and conducts himself like a star. Adores a sparkle.",
-      },
-      {
-        id: "fenwick",
-        name: "Dr. Iris Fenwick",
-        title: "Resort Botanist",
-        portrait: "./game/suspect-fenwick.webp",
-        description: "Runs the Orchid Conservatory, and the fog machine that keeps it misty.",
-      },
-      {
-        id: "vance",
-        name: "Captain Teddy Vance",
-        title: "Sky-Gondola Pilot",
-        portrait: "./game/suspect-vance.webp",
-        description: "Flies guests between the cloud islands. Everybody's favorite captain.",
-      },
-    ],
-    accusePrompt: "Who is the Fog Phantom?",
-    fragment: {
-      id: "venusian-quadrant",
-      number: 3,
-      name: "The Venusian Quadrant",
-      caption: "Tucked in the lining of the Star of Venus's velvet case: Aurora Sterling's chart of the Venus cloud-lanes, with a gold arrow pointing out past the asteroid belt, toward the giant planets.",
-    },
-  },
 ];
 
 export function bountyById(id: string): Bounty | undefined {
@@ -507,11 +502,8 @@ export function hunterRank(bounties: number): { title: string; next?: { title: s
 
 // Clues a hunter must find before naming a suspect (server and browser agree on this).
 export function cluesNeeded(bounty: Bounty): number {
-  return bounty.cluesNeeded ?? (bounty.locations ?? []).reduce((n, l) => n + l.clues.length, 0) + (bounty.breakthroughs ?? 0);
+  return bounty.cluesNeeded ?? (bounty.locations ?? []).reduce((n, l) => n + l.clues.length, 0) + (bounty.breakthroughs?.length ?? 0);
 }
-
-// Breakthroughs (caught lies) are recorded alongside clues with these ids.
-export const isBreakthrough = (id: string) => id.startsWith("breakthrough-");
 
 // Aurelia: the private planet of the rich. Hunters are invited once they've
 // recovered this many star map pieces.
@@ -569,6 +561,8 @@ export interface CaseSolution {
 export interface BountyProgress {
   // Clues found so far (decoded ones included), with their text
   found: Record<string, string>;
+  // Lies already caught: "<suspect>/<topic>" -> breakthrough id
+  caught?: Record<string, string>;
   // Set once the hunter has named the right suspect (lets a refresh return to the duel)
   accused?: { suspect: string } & CaseSolution;
 }

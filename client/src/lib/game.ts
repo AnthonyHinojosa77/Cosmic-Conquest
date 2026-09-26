@@ -132,6 +132,8 @@ export async function presentClue(
   clue: string,
 ): Promise<{ correct: false } | { correct: true; id: string; text: string }> {
   const body = await (await apiRequest("POST", `/api/bounties/${bountyId}/suspects/${suspect}/ask/${topic}/present`, { clue })).json();
-  if (body.correct) await addFound(bountyId, body.id, body.text);
+  if (body.correct) {
+    await addFound(bountyId, body.id, body.text); // re-reads progress, which now lists this caught lie
+  }
   return body;
 }

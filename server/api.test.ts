@@ -352,7 +352,7 @@ test("game: no clue text or puzzle answer ships to the browser", async () => {
 });
 
 test("game: every hotspot has server clue text, and coded clues have a key", async () => {
-  const { BOUNTIES, isBreakthrough } = await import("@shared/game");
+  const { BOUNTIES } = await import("@shared/game");
   const { CLUES, TESTIMONY } = await import("./bounties");
   for (const b of BOUNTIES.filter((b) => b.interviews)) {
     const clueIds = b.locations!.flatMap((l) => l.clues.map((c) => c.id));
@@ -362,10 +362,9 @@ test("game: every hotspot has server clue text, and coded clues have a key", asy
     assert.deepEqual(shared, server, `${b.id} topics`);
     for (const i of b.interviews!) for (const t of i.topics) if (t.after) assert.ok(clueIds.includes(t.after), `${b.id} after ${t.after}`);
     const lies = Object.values(said).flatMap((ts) => Object.values(ts)).filter((x) => x.breakthrough);
-    assert.equal(lies.length, b.breakthroughs, `${b.id} breakthroughs`);
-    assert.equal(new Set(lies.map((l) => l.breakthrough!.id)).size, lies.length);
+    assert.deepEqual(lies.map((l) => l.breakthrough!.id).sort(), [...(b.breakthroughs ?? [])].sort(), `${b.id} breakthroughs`);
+    for (const id of b.breakthroughs ?? []) assert.ok(!clueIds.includes(id), `${b.id}: ${id} clashes with a clue id`);
     for (const l of lies) {
-      assert.ok(isBreakthrough(l.breakthrough!.id));
       for (const c of l.caughtBy!) assert.ok(clueIds.includes(c), `${b.id} caughtBy ${c}`);
     }
   }
@@ -445,6 +444,7 @@ test("game: questioning suspects: topics unlock with clues, and the right clue c
 
   const progress = await (await fetch(base + "/api/bounties/saturn-orrery/progress", { headers: { Cookie: cookie } })).json();
   assert.ok(progress.found[caught.id].includes("stepped out"));
+  assert.deepEqual(progress.caught, { "tuttle/night": caught.id }); // survives leaving the tab or reloading
 
   // Still can't accuse without every clue and both breakthroughs
   assert.equal((await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle" }, cookie)).status, 409);

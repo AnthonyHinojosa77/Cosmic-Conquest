@@ -52,11 +52,11 @@ export function clueOf(bounty: Bounty, clueId: string) {
 }
 
 // A topic the hunter may ask about right now, with what the suspect says.
-function topicOf(visitorId: string, bounty: Bounty, suspect: string, topicId: string) {
+function topicOf(found: string[], bounty: Bounty, suspect: string, topicId: string) {
   const topic = bounty.interviews?.find((i) => i.suspect === suspect)?.topics.find((t) => t.id === topicId);
   const said = TESTIMONY[bounty.id]?.[suspect]?.[topicId];
   if (!topic || !said) return { status: "missing" as const };
-  if (topic.after && !foundClues(visitorId, bounty.id).includes(topic.after)) return { status: "locked" as const };
+  if (topic.after && !found.includes(topic.after)) return { status: "locked" as const };
   return { status: "ok" as const, said };
 }
 
@@ -72,14 +72,23 @@ function textOf(bountyId: string, id: string): string | undefined {
 
 function progressOf(visitorId: string, bounty: Bounty): BountyProgress {
   const found: Record<string, string> = {};
-  for (const id of foundClues(visitorId, bounty.id)) {
+  const ids = foundClues(visitorId, bounty.id);
+  for (const id of ids) {
     const text = textOf(bounty.id, id);
     if (text) found[id] = text;
+  }
+  // Which statements were caught (only once caught, so this reveals nothing new)
+  const caught: Record<string, string> = {};
+  for (const [suspect, topics] of Object.entries(TESTIMONY[bounty.id] ?? {})) {
+    for (const [topic, said] of Object.entries(topics)) {
+      if (said.breakthrough && ids.includes(said.breakthrough.id)) caught[`${suspect}/${topic}`] = said.breakthrough.id;
+    }
   }
   const solution = BOUNTY_SOLUTIONS[bounty.id];
   const accused = showdownStartedAt(visitorId, bounty.id) !== null;
   return {
     found,
+    ...(Object.keys(caught).length ? { caught } : {}),
     ...(accused && solution
       ? { accused: { suspect: solution.suspect, showdown: solution.showdown, outro: solution.outro } }
       : {}),
@@ -167,7 +176,8 @@ export function registerGameRoutes(app: Express) {
   app.post("/api/bounties/:id/suspects/:suspect/ask/:topic", clueLimiter, (req, res) => {
     const bounty = liveBounty(req.params.id);
     if (!bounty) return res.status(404).json({ error: "No such bounty" });
-    const t = topicOf(req.visitorId!, bounty, String(req.params.suspect), String(req.params.topic));
+    const found = foundClues(req.visitorId!, bounty.id);
+    const t = topicOf(found, bounty, String(req.params.suspect), String(req.params.topic));
     if (t.status === "missing") return res.status(404).json({ error: "They have nothing to say about that" });
     if (t.status === "locked") return res.status(409).json({ error: "Find more clues before you ask about that" });
     res.json({ text: t.said.text });
@@ -180,10 +190,11 @@ export function registerGameRoutes(app: Express) {
     if (!bounty) return res.status(404).json({ error: "No such bounty" });
     const parsed = presentSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const t = topicOf(req.visitorId!, bounty, String(req.params.suspect), String(req.params.topic));
+    const found = foundClues(req.visitorId!, bounty.id);
+    const t = topicOf(found, bounty, String(req.params.suspect), String(req.params.topic));
     if (t.status === "missing") return res.status(404).json({ error: "They have nothing to say about that" });
     if (t.status === "locked") return res.status(409).json({ error: "Find more clues before you ask about that" });
-    if (!foundClues(req.visitorId!, bounty.id).includes(parsed.data.clue)) {
+    if (!found.includes(parsed.data.clue)) {
       return res.status(409).json({ error: "You haven't found that clue" });
     }
     const { breakthrough, caughtBy } = t.said;

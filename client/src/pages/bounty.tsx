@@ -12,7 +12,6 @@ import {
   STAR_MAP_SIZE,
   numeral,
   cluesNeeded,
-  isBreakthrough,
   bountyEarnedInvite,
   DEFAULT_SUIT,
   ITEMS,
@@ -191,13 +190,21 @@ function Lock({ bountyId, clue, openedText }: { bountyId: string; clue: Clue; op
 
 // --- Questioning suspects ------------------------------------------------------
 
-function Interviews({ bounty, found }: { bounty: Bounty; found: Record<string, string> }) {
+function Interviews({
+  bounty,
+  found,
+  caughtTopics,
+}: {
+  bounty: Bounty;
+  found: Record<string, string>;
+  // Lies already caught (from the server): "<suspect>/<topic>" -> breakthrough id
+  caughtTopics: Record<string, string>;
+}) {
   const suspects = bounty.suspects ?? [];
   const clues = (bounty.locations ?? []).flatMap((l) => l.clues).filter((c) => found[c.id] !== undefined);
   const [suspectId, setSuspectId] = useState<string | null>(null);
   const [topicId, setTopicId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [caught, setCaught] = useState<Record<string, { id: string; text: string }>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [evidence, setEvidence] = useState("");
@@ -205,8 +212,10 @@ function Interviews({ bounty, found }: { bounty: Bounty; found: Record<string, s
   const interview = bounty.interviews?.find((i) => i.suspect === suspectId);
   const suspect = suspects.find((s) => s.id === suspectId);
   const key = `${suspectId}/${topicId}`;
+  const caughtId = caughtTopics[key];
+  const caught = caughtId && found[caughtId] !== undefined ? { id: caughtId, text: found[caughtId] } : null;
   useVoice(
-    caught[key] ? `breakthrough/${bounty.id}/${caught[key].id}`
+    caught ? `breakthrough/${bounty.id}/${caught.id}`
       : topicId && answers[key] !== undefined ? `testimony/${bounty.id}/${suspectId}--${topicId}`
       : null,
   );
@@ -229,8 +238,7 @@ function Interviews({ bounty, found }: { bounty: Bounty; found: Record<string, s
     setMessage(null);
     presentClue(bounty.id, suspectId!, topicId, evidence)
       .then((r) => {
-        if (r.correct) setCaught((c) => ({ ...c, [key]: { id: r.id, text: r.text } }));
-        else setMessage(`${suspect?.name ?? "They"} doesn't flinch. That doesn't contradict their story.`);
+        if (!r.correct) setMessage(`${suspect?.name ?? "They"} doesn't flinch. That doesn't contradict their story.`);
       })
       .catch((err) => setMessage(errorMessage(err)))
       .finally(() => setBusy(false));
@@ -284,10 +292,10 @@ function Interviews({ bounty, found }: { bounty: Bounty; found: Record<string, s
               <blockquote className="border-l-4 border-[hsl(0,72%,48%)] pl-3 text-sm leading-relaxed italic" data-testid="text-answer">
                 "{answers[key]}"
               </blockquote>
-              {caught[key] ? (
+              {caught ? (
                 <p className="text-sm leading-relaxed" role="status" data-testid="text-breakthrough">
                   <span className="pulp-title text-[hsl(120,50%,30%)]">★ Breakthrough! </span>
-                  {caught[key].text}
+                  {caught.text}
                 </p>
               ) : clues.length > 0 ? (
                 <div className="flex flex-wrap items-center gap-2">
@@ -328,10 +336,12 @@ function Interviews({ bounty, found }: { bounty: Bounty; found: Record<string, s
 function Investigation({
   bounty,
   found,
+  caughtTopics,
   onReady,
 }: {
   bounty: Bounty;
   found: Record<string, string>;
+  caughtTopics: Record<string, string>;
   onReady: () => void;
 }) {
   const locations = bounty.locations ?? [];
@@ -343,13 +353,13 @@ function Investigation({
   const [imgLoaded, setImgLoaded] = useState(false);
   const location = locations.find((l) => l.id === locationId) ?? locations[0];
   const questioning = locationId === "interviews" && bounty.interviews !== undefined;
-  const breakthroughs = Object.keys(found).filter(isBreakthrough);
+  const breakthroughs = (bounty.breakthroughs ?? []).filter((id) => found[id] !== undefined);
   const { data: player } = usePlayer();
   const tap = useTapWord();
   const allClues = locations.flatMap((l) => l.clues);
   useVoice(openClue && found[openClue.id] !== undefined ? `clue/${bounty.id}/${openClue.id}` : null);
   const foundCount = allClues.filter((c) => found[c.id] !== undefined).length + breakthroughs.length;
-  const totalCount = allClues.length + (bounty.breakthroughs ?? 0);
+  const totalCount = allClues.length + (bounty.breakthroughs?.length ?? 0);
   const needed = cluesNeeded(bounty);
   const ready = foundCount >= needed;
 
@@ -371,8 +381,8 @@ function Investigation({
         {locations.map((l) => (
           <button
             key={l.id}
-            className={`retro-btn text-sm ${l.id === location.id ? "gold" : "teal"}`}
-            aria-pressed={l.id === location.id}
+            className={`retro-btn text-sm ${!questioning && l.id === location.id ? "gold" : "teal"}`}
+            aria-pressed={!questioning && l.id === location.id}
             onClick={() => {
               setLocationId(l.id);
               setOpenClue(null);
@@ -393,13 +403,13 @@ function Investigation({
             }}
             data-testid="button-location-interviews"
           >
-            🗣 Question suspects ({breakthroughs.length}/{bounty.breakthroughs ?? 0})
+            🗣 Question suspects ({breakthroughs.length}/{bounty.breakthroughs?.length ?? 0})
           </button>
         )}
       </div>
 
       {questioning ? (
-        <Interviews bounty={bounty} found={found} />
+        <Interviews bounty={bounty} found={found} caughtTopics={caughtTopics} />
       ) : (
       <div className="scene-container relative" data-testid={`scene-${location.id}`}>
         <img
@@ -428,7 +438,7 @@ function Investigation({
       </div>
       )}
 
-      {openClue && !questioning && (
+      {openClue && (
         <Panel title={`🔍 ${openClue.label}`} testId="panel-clue">
           {openClue.lock ? (
             <Lock key={openClue.id} bountyId={bounty.id} clue={openClue} openedText={found[openClue.id]} />
@@ -764,7 +774,7 @@ export default function BountyPage() {
         )}
 
         {stage === "investigate" && (
-          <Investigation bounty={bounty} found={progress?.found ?? {}} onReady={() => setStage("accuse")} />
+          <Investigation bounty={bounty} found={progress?.found ?? {}} caughtTopics={progress?.caught ?? {}} onReady={() => setStage("accuse")} />
         )}
 
         {stage === "accuse" && (
