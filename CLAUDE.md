@@ -46,4 +46,4 @@ npm run build
   server checks recorded progress before accusing and claiming (a test fails
   if clue text or a key appears in `shared/game.ts`).
 - Env vars: `PORT`, `DATABASE_PATH`, `TRUST_PROXY` (loaded from `.env` by
-  `server/env.ts`).
+  `server/env.ts`). `SHOWDOWN_MIN_MS` is a test-only knob (default 1500).

@@ -11,6 +11,7 @@ import {
   type Clue,
   STAR_MAP_SIZE,
   numeral,
+  cluesNeeded,
   DEFAULT_SUIT,
   ITEMS,
   shiftLetters,
@@ -50,14 +51,15 @@ function Decoder({
   bountyId,
   clue,
   hasTool,
+  coded,
   solvedText,
 }: {
   bountyId: string;
   clue: Clue;
   hasTool: boolean;
+  coded?: string;
   solvedText?: string;
 }) {
-  const coded = clue.cipher!.coded;
   const [dial, setDial] = useState(0);
   const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -79,6 +81,10 @@ function Decoder({
         <p className="pulp-title text-[hsl(120,50%,32%)] mt-2" role="status">✓ Decoded!</p>
       </>
     );
+  }
+
+  if (coded === undefined) {
+    return <p className="text-sm marker-text text-[hsl(25,15%,42%)]">Searching…</p>;
   }
 
   if (!hasTool) {
@@ -151,21 +157,22 @@ function Investigation({
   const [openClue, setOpenClue] = useState<Clue | null>(null);
   const [searching, setSearching] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [codedText, setCodedText] = useState<Record<string, string>>({});
   const [imgLoaded, setImgLoaded] = useState(false);
   const location = locations.find((l) => l.id === locationId) ?? locations[0];
   const { data: player } = usePlayer();
   const allClues = locations.flatMap((l) => l.clues);
   const foundCount = allClues.filter((c) => found[c.id] !== undefined).length;
-  const needed = bounty.cluesNeeded ?? allClues.length;
+  const needed = cluesNeeded(bounty);
   const ready = foundCount >= needed;
 
   const search = (clue: Clue) => {
     setOpenClue(clue);
     setSearchError(null);
-    // Coded clues are decoded in the panel; found clues are already in hand.
-    if (clue.cipher || found[clue.id] !== undefined) return;
+    if (found[clue.id] !== undefined || codedText[clue.id] !== undefined) return; // already in hand
     setSearching(clue.id);
     searchClue(bounty.id, clue.id)
+      .then((r) => r.coded !== undefined && setCodedText((prev) => ({ ...prev, [clue.id]: r.coded })))
       .catch((err) => setSearchError(errorMessage(err)))
       .finally(() => setSearching(null));
   };
@@ -218,12 +225,13 @@ function Investigation({
 
       {openClue && (
         <Panel title={`🔍 ${openClue.label}`} testId="panel-clue">
-          {openClue.cipher ? (
+          {openClue.cipher && searchError === null ? (
             <Decoder
               key={openClue.id}
               bountyId={bounty.id}
               clue={openClue}
               hasTool={player?.items.includes(openClue.cipher.requires) ?? false}
+              coded={codedText[openClue.id]}
               solvedText={found[openClue.id]}
             />
           ) : found[openClue.id] !== undefined ? (
@@ -506,9 +514,26 @@ export default function BountyPage() {
         {stage === "briefing" && (
           <Panel title={`Case File — ${bounty.planet}`} testId="panel-briefing">
             <p className="text-sm leading-relaxed">{bounty.briefing}</p>
-            <button className="retro-btn gold mt-4" onClick={() => setStage("investigate")} data-testid="button-start-investigation">
-              ★ Take the job
-            </button>
+            <div className="flex flex-wrap gap-3 mt-4">
+              <button className="retro-btn gold" onClick={() => setStage("investigate")} data-testid="button-start-investigation">
+                ★ Take the job
+              </button>
+              {progress?.accused && (
+                // Named the culprit before a refresh: go straight back to the duel
+                <button
+                  className="retro-btn"
+                  onClick={() => {
+                    const { suspect: id, ...sol } = progress.accused!;
+                    setSuspect(id);
+                    setSolution(sol);
+                    setStage("showdown");
+                  }}
+                  data-testid="button-resume-showdown"
+                >
+                  Back to the showdown
+                </button>
+              )}
+            </div>
           </Panel>
         )}
 

@@ -64,8 +64,8 @@ export interface Clue {
   label: string;
   // Searching this clue hands the hunter an item
   grants?: ItemId;
-  // The clue is in code (letters shifted by a secret key); decoding needs `requires`
-  cipher?: { requires: ItemId; coded: string };
+  // The clue is in code (the server sends the coded text and holds the key); decoding needs `requires`
+  cipher?: { requires: ItemId };
   // Hotspot position over the scene image (percent)
   top: string;
   left: string;
@@ -254,7 +254,7 @@ export const BOUNTIES: Bounty[] = [
           {
             id: "telegram",
             label: "Coded Telegram",
-            cipher: { requires: "decoder-ring", coded: "VGP OQTG TCKP-OCMGTU TGCFA HTKFCA. ETCVG VJGO CU ECPPGF UWPUJKPG. RJQDQU DWAGT RCAU FQWDNG. UKIPGF, S." },
+            cipher: { requires: "decoder-ring" },
             top: "27%", left: "3%", width: "17%", height: "30%",
           },
         ],
@@ -330,6 +330,11 @@ export function hunterRank(bounties: number): { title: string; next?: { title: s
 }
 
 
+// Clues a hunter must find before naming a suspect (server and browser agree on this).
+export function cluesNeeded(bounty: Bounty): number {
+  return bounty.cluesNeeded ?? (bounty.locations ?? []).reduce((n, l) => n + l.clues.length, 0);
+}
+
 export const MAP_FRAGMENTS: MapFragment[] = BOUNTIES.flatMap((b) => (b.fragment ? [b.fragment] : []));
 
 // Fragments a player holds, from the bounties they've collected.
@@ -352,18 +357,18 @@ export interface CaseSolution {
   outro: string;
 }
 
-// Public player profile returned by the API (no visitorId).
 // A hunter's progress on one bounty, as the server records it.
 export interface BountyProgress {
   // Clues found so far (decoded ones included), with their text
   found: Record<string, string>;
-  // Set once the hunter has named the right suspect
-  showdown?: CaseSolution;
+  // Set once the hunter has named the right suspect (lets a refresh return to the duel)
+  accused?: { suspect: string } & CaseSolution;
 }
 
 // Result of searching a clue: its text, or the coded message if it needs decoding.
 export type ClueSearch = { text: string; coded?: undefined } | { coded: string; text?: undefined };
 
+// Public player profile returned by the API (no visitorId).
 export interface PlayerProfile {
   callsign: string;
   credits: number;

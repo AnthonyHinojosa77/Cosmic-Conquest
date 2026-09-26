@@ -9,7 +9,7 @@ import type { AddressInfo } from "net";
 
 const dbDir = mkdtempSync(path.join(tmpdir(), "cosmic-conquest-test-"));
 process.env.DATABASE_PATH = path.join(dbDir, "test.db");
-process.env.SHOWDOWN_MIN_MS = "150"; // keep tests quick; the real minimum is 1.5 s
+process.env.SHOWDOWN_MIN_MS = "800"; // shorter than the real 1.5 s, long enough to test reliably
 
 let server: Server;
 let base: string;
@@ -52,7 +52,7 @@ async function investigate(bountyId: string, cookie: string) {
 async function solve(bountyId: string, suspect: string, cookie: string) {
   await investigate(bountyId, cookie);
   await post(`/api/bounties/${bountyId}/accuse`, { suspect }, cookie);
-  await wait(200); // the showdown
+  await wait(850); // the showdown
   return post(`/api/bounties/${bountyId}/claim`, { suspect }, cookie);
 }
 
@@ -160,7 +160,7 @@ test("game: full bounty loop — accuse, claim once, buy, equip, leaderboard", a
   assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie)).status, 422);
   // Too soon after naming him: the showdown can't be over yet
   assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 409);
-  await wait(200);
+  await wait(850);
   const paid = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
   assert.equal(paid.status, 200);
   const afterClaim = await paid.json();
@@ -264,7 +264,9 @@ test("game: Mars bounty pays 800 to the right suspect and turns up fragment II",
   // (clues first, then the accusations)
   const right = await (await post("/api/bounties/red-sands/accuse", { suspect: "quill" }, cookie)).json();
   assert.equal(right.showdown.scene, "./game/showdown-street-mars.webp");
-  await wait(200);
+  const resumed = await (await fetch(base + "/api/bounties/red-sands/progress", { headers: { Cookie: cookie } })).json();
+  assert.equal(resumed.accused.suspect, "quill"); // lets a refresh go back to the duel
+  await wait(850);
   const paid = await (await post("/api/bounties/red-sands/claim", { suspect: "quill" }, cookie)).json();
   assert.equal(paid.credits, 800);
   const map = await (await fetch(base + "/api/star-map")).json();
@@ -272,6 +274,7 @@ test("game: Mars bounty pays 800 to the right suspect and turns up fragment II",
 });
 
 test("game: clues come from the server; the ring comes from searching; the telegram needs the right key", async () => {
+  const { shiftLetters } = await import("@shared/game");
   const start = await fetch(base + "/api/player");
   const cookie = cookieOf(start);
   assert.deepEqual((await start.json()).items, []);
@@ -281,6 +284,7 @@ test("game: clues come from the server; the ring comes from searching; the teleg
   assert.equal((await decode(2)).status, 403);
   const coded = await (await post("/api/bounties/red-sands/clues/telegram/search", {}, cookie)).json();
   assert.ok(coded.coded && coded.text === undefined);
+  assert.match(shiftLetters(coded.coded, -2), /CANNED SUNSHINE/);
 
   // Searching Sprinkles hands over the ring (once)
   const sprinkles = await (await post("/api/bounties/red-sands/clues/sprinkles/search", {}, cookie)).json();
@@ -297,7 +301,7 @@ test("game: clues come from the server; the ring comes from searching; the teleg
   // Progress survives a refresh
   const progress = await (await fetch(base + "/api/bounties/red-sands/progress", { headers: { Cookie: cookie } })).json();
   assert.deepEqual(Object.keys(progress.found).sort(), ["sprinkles", "telegram"]);
-  assert.equal(progress.showdown, undefined);
+  assert.equal(progress.accused, undefined);
 
   // Unknown spots and bounties
   assert.equal((await post("/api/bounties/red-sands/clues/nope/search", {}, cookie)).status, 404);
@@ -312,6 +316,19 @@ test("game: no clue text or puzzle answer ships to the browser", async () => {
     for (const { text } of Object.values(clues)) assert.equal(shipped.includes(text), false, text.slice(0, 40));
   }
   assert.equal(/"key"/.test(shipped), false);
+  const { shiftLetters } = await import("@shared/game");
+  const tele = CLUES["red-sands"].telegram;
+  assert.equal(shipped.includes(shiftLetters(tele.text, tele.key!).slice(0, 20)), false, "coded text ships");
+});
+
+test("game: every hotspot has server clue text, and coded clues have a key", async () => {
+  const { BOUNTIES } = await import("@shared/game");
+  const { CLUES } = await import("./bounties");
+  for (const b of BOUNTIES.filter((b) => b.locations)) {
+    const shared = b.locations!.flatMap((l) => l.clues);
+    assert.deepEqual(shared.map((c) => c.id).sort(), Object.keys(CLUES[b.id] ?? {}).sort(), b.id);
+    for (const c of shared) assert.equal(Boolean(c.cipher), CLUES[b.id][c.id].key !== undefined, `${b.id}/${c.id}`);
+  }
 });
 
 test("game: hunter rank and the telegram cipher", async () => {
@@ -322,6 +339,7 @@ test("game: hunter rank and the telegram cipher", async () => {
   assert.equal(shiftLetters(shiftLetters("RAIN-MAKERS, Q.", 2), -2), "RAIN-MAKERS, Q.");
   assert.equal(shiftLetters("XYZ", 2), "ZAB");
   const { CLUES } = await import("./bounties");
-  const telegram = bountyById("red-sands")!.locations!.flatMap((l) => l.clues).find((c) => c.cipher)!;
-  assert.equal(shiftLetters(telegram.cipher!.coded, -CLUES["red-sands"].telegram.key!), CLUES["red-sands"].telegram.text);
+  assert.ok(bountyById("red-sands")!.locations!.flatMap((l) => l.clues).some((c) => c.cipher));
+  const tele = CLUES["red-sands"].telegram;
+  assert.equal(shiftLetters(shiftLetters(tele.text, tele.key!), -tele.key!), tele.text);
 });

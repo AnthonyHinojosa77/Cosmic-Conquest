@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { z } from "zod";
 import { updatePlayerSchema } from "@shared/schema";
-import { bountyById, type Bounty, type BountyProgress, type ClueSearch } from "@shared/game";
+import { bountyById, cluesNeeded, shiftLetters, type Bounty, type BountyProgress, type ClueSearch } from "@shared/game";
 import { gameLimiter, clueLimiter } from "./middleware";
 import { BOUNTY_SOLUTIONS, CLUES } from "./bounties";
 import {
@@ -23,7 +23,9 @@ const accusationSchema = z.object({ suspect: z.string().min(1).max(50) });
 const decodeSchema = z.object({ key: z.number().int().min(0).max(25) });
 
 // The quick-draw can't end sooner than the shortest possible wait for DRAW!.
-const SHOWDOWN_MIN_MS = Number(process.env.SHOWDOWN_MIN_MS ?? 1500);
+// (SHOWDOWN_MIN_MS only exists so tests can shorten it; a bad value falls back.)
+const envMin = Number(process.env.SHOWDOWN_MIN_MS);
+const SHOWDOWN_MIN_MS = Number.isFinite(envMin) && envMin >= 0 ? envMin : 1500;
 
 function liveBounty(id: unknown): Bounty | undefined {
   const bounty = bountyById(String(id));
@@ -36,10 +38,6 @@ function clueOf(bounty: Bounty, clueId: string) {
   return clue && secret ? { clue, secret } : undefined;
 }
 
-function cluesNeeded(bounty: Bounty): number {
-  return bounty.cluesNeeded ?? (bounty.locations ?? []).reduce((n, l) => n + l.clues.length, 0);
-}
-
 function progressOf(visitorId: string, bounty: Bounty): BountyProgress {
   const found: Record<string, string> = {};
   for (const id of foundClues(visitorId, bounty.id)) {
@@ -48,7 +46,12 @@ function progressOf(visitorId: string, bounty: Bounty): BountyProgress {
   }
   const solution = BOUNTY_SOLUTIONS[bounty.id];
   const accused = showdownStartedAt(visitorId, bounty.id) !== null;
-  return { found, ...(accused && solution ? { showdown: { showdown: solution.showdown, outro: solution.outro } } : {}) };
+  return {
+    found,
+    ...(accused && solution
+      ? { accused: { suspect: solution.suspect, showdown: solution.showdown, outro: solution.outro } }
+      : {}),
+  };
 }
 
 export function registerGameRoutes(app: Express) {
@@ -78,8 +81,9 @@ export function registerGameRoutes(app: Express) {
     if (!bounty || !found) return res.status(404).json({ error: "Nothing to find there" });
     const { clue, secret } = found;
     if (clue.grants) grantItem(req.visitorId!, clue.grants);
-    if (secret.key !== undefined && clue.cipher) {
-      const result: ClueSearch = { coded: clue.cipher.coded };
+    if (secret.key !== undefined) {
+      // Coded: only the scrambled text; it counts as found once decoded.
+      const result: ClueSearch = { coded: shiftLetters(secret.text, secret.key) };
       return res.json(result);
     }
     recordClue(req.visitorId!, bounty.id, clue.id);

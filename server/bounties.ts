@@ -1,5 +1,4 @@
-import type { CaseSolution } from "@shared/game";
-
+import { shiftLetters, type CaseSolution } from "@shared/game";
 
 // Server-only bounty solutions — kept out of shared/ so they don't ship to the browser.
 // The showdown/outro name the culprit, so they're only sent after a correct accusation.
