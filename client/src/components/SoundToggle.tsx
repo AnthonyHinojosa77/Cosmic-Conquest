@@ -6,7 +6,7 @@ export function SoundToggle() {
   if (!hasAudio) return null;
   return (
     <button
-      className="retro-btn text-sm fixed z-40 shadow-lg"
+      className="retro-btn text-sm fixed z-[60] shadow-lg"
       style={{
         right: "calc(1rem + env(safe-area-inset-right, 0px))",
         bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))",

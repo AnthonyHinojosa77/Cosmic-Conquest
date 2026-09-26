@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useVoice } from "@/lib/sound";
+import { setSoundOn, useSound, useVoice } from "@/lib/sound";
+import { AURORA_BROADCAST } from "@shared/game";
 
 // Aurora Sterling's last broadcast: the story hook new hunters hear first.
 // Act I only — pure promise and wonder, no cracks (see GAME_PLAN.md).
@@ -25,7 +26,7 @@ export function markBroadcastHeard() {
 export function SterlingBroadcast({ onClose }: { onClose: () => void }) {
   const dialog = useRef<HTMLDivElement>(null);
   useVoice("aurora/broadcast");
-  const button = useRef<HTMLButtonElement>(null);
+  const { on: soundOn, hasAudio } = useSound();
 
   useEffect(() => {
     // Focus the dialog itself (not the button, which is still fading in) and
@@ -35,9 +36,13 @@ export function SterlingBroadcast({ onClose }: { onClose: () => void }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key === "Tab") {
-        // The button is the only control: keep focus inside the dialog.
+        // Keep focus inside the dialog, cycling through its buttons.
+        const buttons = Array.from(dialog.current?.querySelectorAll("button") ?? []);
+        if (buttons.length === 0) return;
         e.preventDefault();
-        button.current?.focus({ preventScroll: true });
+        const i = buttons.indexOf(document.activeElement as HTMLButtonElement);
+        const next = e.shiftKey ? (i <= 0 ? buttons.length - 1 : i - 1) : (i + 1) % buttons.length;
+        buttons[next].focus({ preventScroll: true });
       }
     };
     window.addEventListener("keydown", onKey);
@@ -75,14 +80,13 @@ export function SterlingBroadcast({ onClose }: { onClose: () => void }) {
           </p>
           <p className="text-sm animate-fade-in" style={line(1)}>
             The voice that built the monorails, the Moon colonies and the World's Fair of Tomorrow:
-            <span className="font-semibold"> "This is Aurora Sterling."</span>
+            <span className="font-semibold"> "{AURORA_BROADCAST.intro}"</span>
           </p>
           <blockquote
             className="pulp-title text-2xl leading-snug text-[hsl(0,72%,40%)] animate-fade-in"
             style={line(2)}
           >
-            "Everything I built, I built for the bold. My fortune waits among the stars.
-            Whoever finds it inherits tomorrow."
+            "{AURORA_BROADCAST.quote}"
           </blockquote>
           <p className="marker-text text-sm text-[hsl(25,15%,42%)] animate-fade-in" style={line(3)}>
             …and the signal dissolves into static. No one has seen her since.
@@ -91,15 +95,17 @@ export function SterlingBroadcast({ onClose }: { onClose: () => void }) {
             Every bounty hunter, dreamer and crook in the system is searching now. Each bounty you
             close turns up a piece of her star map.
           </p>
-          <button
-            ref={button}
-            className="retro-btn gold animate-fade-in"
-            style={line(5)}
-            onClick={onClose}
-            data-testid="button-join-search"
-          >
-            ★ Join the search
-          </button>
+          <div className="flex flex-wrap items-center gap-3 animate-fade-in" style={line(5)}>
+            <button className="retro-btn gold" onClick={onClose} data-testid="button-join-search">
+              ★ Join the search
+            </button>
+            {hasAudio && !soundOn && (
+              // The corner sound button sits behind this dialog, so offer it here too.
+              <button className="retro-btn teal text-sm" onClick={() => setSoundOn(true)} data-testid="button-broadcast-sound">
+                🔊 Hear it with sound
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

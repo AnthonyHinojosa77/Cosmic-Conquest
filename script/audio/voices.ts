@@ -11,7 +11,7 @@
 import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { BOUNTIES } from "@shared/game";
+import { AURORA_BROADCAST, BOUNTIES } from "@shared/game";
 import { BOUNTY_SOLUTIONS, CLUES } from "../../server/bounties";
 import { aureliaFor } from "../../server/aurelia";
 
@@ -46,10 +46,9 @@ function lines(): Line[] {
     {
       file: "aurora/broadcast/line.mp3",
       role: "aurora",
-      text: "This is Aurora Sterling. Everything I built, I built for the bold. My fortune waits among the stars. Whoever finds it inherits tomorrow.",
+      text: `${AURORA_BROADCAST.intro} ${AURORA_BROADCAST.quote}`,
     },
   ];
-  const culprit: Record<string, Role> = { "heart-of-luna": "cookie", "red-sands": "quill", "venus-fog": "vance" };
   for (const b of BOUNTIES.filter((b) => b.available)) {
     if (b.briefing) out.push({ file: `briefing/${b.id}/line.mp3`, role: "narrator", text: b.briefing });
     for (const [id, clue] of Object.entries(CLUES[b.id] ?? {})) {
@@ -57,7 +56,7 @@ function lines(): Line[] {
     }
     const sol = BOUNTY_SOLUTIONS[b.id];
     if (sol) {
-      out.push({ file: `taunt/${b.id}/line.mp3`, role: culprit[b.id] ?? "narrator", text: quoted(sol.showdown.taunt) });
+      out.push({ file: `taunt/${b.id}/line.mp3`, role: sol.suspect in CAST ? (sol.suspect as Role) : "narrator", text: quoted(sol.showdown.taunt) });
       out.push({ file: `outro/${b.id}/line.mp3`, role: "narrator", text: sol.outro });
     }
   }

@@ -1,26 +1,26 @@
 import type { Express } from "express";
 import path from "path";
 import fs from "fs";
-import { bountyById, invitedToAurelia } from "@shared/game";
-import { CLUES } from "./bounties";
+import { invitedToAurelia } from "@shared/game";
+import { liveBounty, clueOf } from "./gameRoutes";
 import { foundClues, showdownStartedAt, getProfile } from "./gameStorage";
 
 // Voice lines are recordings of clue text, taunts and so on, so they give away as much
 // as the words do. They live outside the public folder and are only served when the
 // hunter is allowed to read the same text.
-const AUDIO_DIR = process.env.AUDIO_DIR ?? path.resolve(process.cwd(), "audio", "voice");
+const AUDIO_DIR = path.resolve(process.env.AUDIO_DIR ?? path.join(process.cwd(), "audio", "voice"));
 const ID = /^[a-z0-9-]{1,40}$/;
 
 type Gate = (visitorId: string) => boolean;
 
 function gateFor(scope: string, a: string, b?: string): Gate | null {
   if (scope === "aurora" && a === "broadcast" && !b) return () => true;
-  const bounty = bountyById(a);
-  if (scope === "briefing" && bounty?.available && !b) return () => true;
-  if (scope === "clue" && bounty?.available && b && CLUES[a]?.[b]) {
+  const bounty = liveBounty(a);
+  if (scope === "briefing" && bounty && !b) return () => true;
+  if (scope === "clue" && bounty && b && clueOf(bounty, b)) {
     return (v) => foundClues(v, a).includes(b);
   }
-  if ((scope === "taunt" || scope === "outro") && bounty?.available && !b) {
+  if ((scope === "taunt" || scope === "outro") && bounty && !b) {
     return (v) => showdownStartedAt(v, a) !== null;
   }
   if (scope === "aurelia" && b) return (v) => invitedToAurelia(getProfile(v).completedBounties);
