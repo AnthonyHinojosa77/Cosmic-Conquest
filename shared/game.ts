@@ -107,6 +107,20 @@ export interface MapFragment {
   caption: string;
 }
 
+// Questioning suspects: topics a hunter can ask about. What they say, and which
+// clue catches them in a lie, is server-side (server/bounties.ts).
+export interface InterviewTopic {
+  id: string;
+  label: string;
+  // Only askable once this clue has been found
+  after?: string;
+}
+
+export interface Interview {
+  suspect: string;
+  topics: InterviewTopic[];
+}
+
 export interface Bounty {
   id: string;
   title: string;
@@ -120,6 +134,10 @@ export interface Bounty {
   cluesNeeded?: number;
   accusePrompt?: string;
   fragment?: MapFragment;
+  interviews?: Interview[];
+  // Ids of the lies to catch while questioning (each counts like a clue). Only ids:
+  // who lies, and which clue catches them, stays server-side.
+  breakthroughs?: string[];
 }
 
 export const BOUNTIES: Bounty[] = [
@@ -362,6 +380,95 @@ export const BOUNTIES: Bounty[] = [
       caption: "Tucked in the lining of the Star of Venus's velvet case: Aurora Sterling's chart of the Venus cloud-lanes, with a gold arrow pointing out past the asteroid belt, toward the giant planets.",
     },
   },
+  {
+    id: "saturn-orrery",
+    title: "The Stopped Orrery",
+    planet: "Saturn",
+    reward: 1600,
+    available: true,
+    teaser: "The golden orrery aboard the Ring Line Express stopped mid-journey, and its master gear is gone.",
+    briefing:
+      "The Ring Line Express glides around Saturn on a track laid across the rings themselves, and its pride is the Sterling Orrery: a golden clockwork model of the solar system that Aurora Sterling gave to the Saturn colonies. Last night, somewhere between the Cassini Gap and the Titan Transfer, it stopped. Its master gear, the Saturn Gear, is missing. The Ring Line is paying 1,600 credits to get it back. Search the Observatory Car and the Dining Car, question the three passengers who were awake that night, and catch whoever is lying.",
+    breakthroughs: ["breakthrough-1", "breakthrough-2"],
+    locations: [
+      {
+        id: "observatory",
+        name: "Observatory Car",
+        image: "./scenes/saturn-observatory.webp",
+        clues: [
+          { id: "orrery", label: "The Sterling Orrery", top: "18%", left: "38%", width: "42%", height: "62%" },
+          { id: "telescope", label: "The Great Telescope", top: "5%", left: "74%", width: "25%", height: "42%" },
+          { id: "guestbook", label: "Observatory Guestbook", top: "60%", left: "2%", width: "30%", height: "22%" },
+        ],
+      },
+      {
+        id: "dining",
+        name: "Dining Car",
+        image: "./scenes/saturn-dining.webp",
+        clues: [
+          { id: "table", label: "Table for One", top: "55%", left: "2%", width: "47%", height: "30%" },
+          { id: "galley", label: "The Galley", top: "15%", left: "50%", width: "17%", height: "55%" },
+          { id: "luggage", label: "Baggage Rack", top: "5%", left: "70%", width: "28%", height: "25%" },
+        ],
+      },
+    ],
+    interviews: [
+      {
+        suspect: "ashgrove",
+        topics: [
+          { id: "night", label: "Where were you last night?" },
+          { id: "orrery", label: "What do you make of the orrery?" },
+          { id: "money", label: "About that pawn ticket…", after: "guestbook" },
+        ],
+      },
+      {
+        suspect: "pip",
+        topics: [
+          { id: "night", label: "What did you do last night?" },
+          { id: "tuttle", label: "Tell me about the Professor." },
+          { id: "chime", label: "Anything odd about the orrery?" },
+        ],
+      },
+      {
+        suspect: "tuttle",
+        topics: [
+          { id: "night", label: "Where were you last night?" },
+          { id: "the-key", label: "Who can open the orrery?" },
+          { id: "case", label: "What's in your velvet case?", after: "luggage" },
+        ],
+      },
+    ],
+    suspects: [
+      {
+        id: "ashgrove",
+        name: "Lady Vivienne Ashgrove",
+        title: "Society Collector",
+        portrait: "./game/suspect-ashgrove.webp",
+        description: "Collects antique clocks, and makes sure everyone knows it.",
+      },
+      {
+        id: "pip",
+        name: "Pip Kettleby",
+        title: "Ring Line Porter",
+        portrait: "./game/suspect-pip.webp",
+        description: "Knows every cabin on the train. Runs on cocoa and good intentions.",
+      },
+      {
+        id: "tuttle",
+        name: "Professor Orson Tuttle",
+        title: "Keeper of the Orrery",
+        portrait: "./game/suspect-tuttle.webp",
+        description: "Has tended the Sterling Orrery for thirty years. Very calm about all this.",
+      },
+    ],
+    accusePrompt: "Who took the Saturn Gear?",
+    fragment: {
+      id: "saturnian-quadrant",
+      number: 4,
+      name: "The Saturnian Quadrant",
+      caption: "Engraved on the back of the Saturn Gear, too small to see without a loupe: a chart of Saturn's moons in Aurora Sterling's own hand, and a line of gold stars leading on toward Uranus and Neptune.",
+    },
+  },
 ];
 
 export function bountyById(id: string): Bounty | undefined {
@@ -395,7 +502,7 @@ export function hunterRank(bounties: number): { title: string; next?: { title: s
 
 // Clues a hunter must find before naming a suspect (server and browser agree on this).
 export function cluesNeeded(bounty: Bounty): number {
-  return bounty.cluesNeeded ?? (bounty.locations ?? []).reduce((n, l) => n + l.clues.length, 0);
+  return bounty.cluesNeeded ?? (bounty.locations ?? []).reduce((n, l) => n + l.clues.length, 0) + (bounty.breakthroughs?.length ?? 0);
 }
 
 // Aurelia: the private planet of the rich. Hunters are invited once they've
@@ -454,6 +561,8 @@ export interface CaseSolution {
 export interface BountyProgress {
   // Clues found so far (decoded ones included), with their text
   found: Record<string, string>;
+  // Lies already caught: "<suspect>/<topic>" -> breakthrough id
+  caught?: Record<string, string>;
   // Set once the hunter has named the right suspect (lets a refresh return to the duel)
   accused?: { suspect: string } & CaseSolution;
 }
