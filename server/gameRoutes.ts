@@ -197,7 +197,7 @@ export function registerGameRoutes(app: Express) {
         needed: AURELIA_INVITE_FRAGMENTS,
       });
     }
-    res.json(aureliaFor(profile.callsign, profile.completedBounties.length));
+    res.json(aureliaFor(profile.callsign, profile.completedBounties));
   });
 
   app.get("/api/star-map", (_req, res) => {

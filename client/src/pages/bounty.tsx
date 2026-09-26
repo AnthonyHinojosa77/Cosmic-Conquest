@@ -12,8 +12,7 @@ import {
   STAR_MAP_SIZE,
   numeral,
   cluesNeeded,
-  fragmentsFor,
-  AURELIA_INVITE_FRAGMENTS,
+  bountyEarnedInvite,
   DEFAULT_SUIT,
   ITEMS,
   shiftLetters,
@@ -648,7 +647,7 @@ export default function BountyPage() {
                 <p className="marker-text text-xs text-[hsl(25,15%,42%)] mt-2">
                   It's pinned to Sterling's Star Map in the Bounty Office.
                 </p>
-                {outcome === "paid" && player && fragmentsFor(player.completedBounties).length === AURELIA_INVITE_FRAGMENTS && (
+                {outcome === "paid" && player && bountyEarnedInvite(player.completedBounties, bounty.id) && (
                   <p className="pulp-title text-base text-[hsl(245,45%,30%)] mt-3" data-testid="text-aurelia-invite">
                     ✉ Along with your reward comes an envelope sealed in gold wax: an invitation to Aurelia.
                   </p>

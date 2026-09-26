@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { errorMessage } from "@/lib/game";
-import { AURELIA_INVITE_FRAGMENTS, type AureliaLocation, type AureliaSpot } from "@shared/game";
+import { useAurelia, errorMessage, AURELIA_KEY } from "@/lib/game";
+import { queryClient } from "@/lib/queryClient";
+import { AURELIA_INVITE_FRAGMENTS, type AureliaSpot } from "@shared/game";
 
 // Aurelia's own look: indigo night, silver and gold (Art Deco), on the same paper.
 const NIGHT = "hsl(240,40%,10%)";
@@ -20,6 +20,18 @@ function OfficeLink() {
       </button>
     </Link>
   );
+}
+
+// "403: {...}" -> the fragments the hunter holds, if the server turned them away
+function refusal(err: unknown): { have: number; needed: number } | null {
+  const raw = err instanceof Error ? err.message : "";
+  if (!raw.startsWith("403")) return null;
+  try {
+    const body = JSON.parse(raw.replace(/^\d+:\s*/, ""));
+    return { have: body.have ?? 0, needed: body.needed ?? AURELIA_INVITE_FRAGMENTS };
+  } catch {
+    return { have: 0, needed: AURELIA_INVITE_FRAGMENTS };
+  }
 }
 
 // Uninvited hunters only get as far as the gates.
@@ -43,14 +55,15 @@ function Gates({ message }: { message: string }) {
 }
 
 export default function Aurelia() {
-  const { data: locations, error, isLoading } = useQuery<AureliaLocation[]>({ queryKey: ["/api/aurelia"] });
+  const { data: locations, error, isLoading } = useAurelia();
   const [locationId, setLocationId] = useState<string | null>(null);
   const [open, setOpen] = useState<AureliaSpot | null>(null);
   const [seen, setSeen] = useState<Set<string>>(new Set());
   const [imgLoaded, setImgLoaded] = useState(false);
 
   const location = locations?.find((l) => l.id === locationId) ?? locations?.[0];
-  const refused = error ? errorMessage(error) : null;
+  const refused = !locations && error ? refusal(error) : null;
+  const failed = !locations && error && !refused ? errorMessage(error) : null;
 
   return (
     <div className="min-h-screen pb-10 paper-texture" style={{ background: NIGHT }}>
@@ -66,12 +79,17 @@ export default function Aurelia() {
 
       {refused && (
         <Gates
-          message={
-            refused.includes("list")
-              ? `"I'm afraid your name isn't on the list." Hunters are invited once they've recovered ${AURELIA_INVITE_FRAGMENTS} pieces of Sterling's star map.`
-              : `(${refused})`
-          }
+          message={`"I'm afraid your name isn't on the list." Hunters are invited once they've recovered ${refused.needed} pieces of Sterling's star map (you hold ${refused.have}).`}
         />
+      )}
+
+      {failed && (
+        <div className="text-center mt-10 space-y-3" role="alert">
+          <p className="marker-text text-[hsl(240,20%,80%)]">The line to Aurelia is crackling: {failed}</p>
+          <button className="retro-btn gold text-sm" onClick={() => queryClient.invalidateQueries({ queryKey: AURELIA_KEY })}>
+            Try again
+          </button>
+        </div>
       )}
 
       {location && (
@@ -86,6 +104,7 @@ export default function Aurelia() {
                 className={`retro-btn text-sm ${l.id === location.id ? "gold" : "teal"}`}
                 aria-pressed={l.id === location.id}
                 onClick={() => {
+                  if (l.id === location.id) return;
                   setLocationId(l.id);
                   setOpen(null);
                   setImgLoaded(false);

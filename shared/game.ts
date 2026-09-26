@@ -400,6 +400,11 @@ export function invitedToAurelia(completedBounties: readonly string[]): boolean 
   return fragmentsFor(completedBounties).length >= AURELIA_INVITE_FRAGMENTS;
 }
 
+// True when collecting this bounty is what earned the invitation.
+export function bountyEarnedInvite(completedBounties: readonly string[], bountyId: string): boolean {
+  return invitedToAurelia(completedBounties) && !invitedToAurelia(completedBounties.filter((id) => id !== bountyId));
+}
+
 export interface AureliaSpot {
   id: string;
   label: string;

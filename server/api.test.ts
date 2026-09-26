@@ -422,4 +422,6 @@ test("game: Aurelia admits only hunters with all three star map pieces", async (
   const callsign = (await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json()).callsign;
   const registrar = city[1].spots.find((s: { id: string }) => s.id === "registrar");
   assert.ok(registrar.text.includes(callsign) && registrar.text.includes("Marshal"));
+  const trophies = city[1].spots.find((s: { id: string }) => s.id === "trophies");
+  assert.match(trophies.text, /Heart of Luna.*Rain-Maker.*Star of Venus/);
 });

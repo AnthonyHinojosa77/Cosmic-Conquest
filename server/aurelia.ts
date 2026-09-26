@@ -1,11 +1,21 @@
 import { hunterRank } from "@shared/game";
 import type { AureliaLocation } from "@shared/game";
 
-// Aurelia's places and what hunters discover there. Served only to invited hunters,
-// so the city stays a privilege (none of this ships in the browser bundle).
+// What each solved case leaves in the Guild's trophy case.
+const TROPHIES: Record<string, string> = {
+  "heart-of-luna": "a replica of the Heart of Luna",
+  "red-sands": "a chrome fin from an Ares Valley Rain-Maker",
+  "venus-fog": "a photograph of the Star of Venus",
+};
+
+// Aurelia's text is served only to invited hunters (it isn't in the browser bundle).
+// The scene images are ordinary public files; only the words and the way in are gated.
 // Act I: wonder only. Aurora's disappearance is hinted at, never explained.
-export function aureliaFor(callsign: string, bounties: number): AureliaLocation[] {
-  const rank = hunterRank(bounties).title;
+export function aureliaFor(callsign: string, completedBounties: readonly string[]): AureliaLocation[] {
+  const rank = hunterRank(completedBounties.length).title;
+  const trophies = completedBounties.flatMap((id) => (TROPHIES[id] ? [TROPHIES[id]] : []));
+  const trophyList =
+    trophies.length > 1 ? `${trophies.slice(0, -1).join(", ")} and ${trophies[trophies.length - 1]}` : trophies[0] ?? "your first case file";
   return [
     {
       id: "plaza",
@@ -58,7 +68,7 @@ export function aureliaFor(callsign: string, bounties: number): AureliaLocation[
         {
           id: "trophies",
           label: "The Trophy Case",
-          text: `Behind the glass: a replica of the Heart of Luna, a chrome fin from an Ares Valley Rain-Maker, and a photograph of the Star of Venus. Each brass plate reads "Recovered by ${callsign}."`,
+          text: `Behind the glass: ${trophyList}. Each brass plate reads "Recovered by ${callsign}."`,
           top: "50%", left: "77%", width: "21%", height: "30%",
         },
         {
