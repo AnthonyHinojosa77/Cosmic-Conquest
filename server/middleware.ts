@@ -27,6 +27,17 @@ export const writeLimiter = rateLimit({
 });
 
 // Game actions (customizing, buying, claiming) — more generous than content writes
+// Searching and decoding clues: generous, since a bounty takes a dozen or so.
+export const clueLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req: Request, res: Response) => {
+    res.status(429).json({ error: "Easy there, hunter — too many searches. Try again in a few minutes." });
+  },
+});
+
 export const gameLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 60,

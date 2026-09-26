@@ -78,6 +78,21 @@ sqlite.exec(`
     \`created_at\` text NOT NULL
   );
   CREATE UNIQUE INDEX IF NOT EXISTS \`player_items_visitor_item_unique\` ON \`player_items\` (\`visitor_id\`,\`item_id\`);
+  CREATE TABLE IF NOT EXISTS \`clue_finds\` (
+    \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    \`visitor_id\` text NOT NULL,
+    \`bounty_id\` text NOT NULL,
+    \`clue_id\` text NOT NULL,
+    \`created_at\` text NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS \`clue_finds_visitor_bounty_clue_unique\` ON \`clue_finds\` (\`visitor_id\`,\`bounty_id\`,\`clue_id\`);
+  CREATE TABLE IF NOT EXISTS \`showdowns\` (
+    \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    \`visitor_id\` text NOT NULL,
+    \`bounty_id\` text NOT NULL,
+    \`started_at\` text NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS \`showdowns_visitor_bounty_unique\` ON \`showdowns\` (\`visitor_id\`,\`bounty_id\`);
 `);
 
 // Enforce one vote per visitor per item at the database level. Kept separate so

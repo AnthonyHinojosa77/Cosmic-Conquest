@@ -133,3 +133,24 @@ export const playerItems = sqliteTable("player_items", {
 }, (table) => [
   uniqueIndex("player_items_visitor_item_unique").on(table.visitorId, table.itemId),
 ]);
+
+// Clues a hunter has found in a bounty (the server hands out clue text)
+export const clueFinds = sqliteTable("clue_finds", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  visitorId: text("visitor_id").notNull(),
+  bountyId: text("bounty_id").notNull(),
+  clueId: text("clue_id").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("clue_finds_visitor_bounty_clue_unique").on(table.visitorId, table.bountyId, table.clueId),
+]);
+
+// When a hunter named the right suspect and stepped into the showdown
+export const showdowns = sqliteTable("showdowns", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  visitorId: text("visitor_id").notNull(),
+  bountyId: text("bounty_id").notNull(),
+  startedAt: text("started_at").notNull(),
+}, (table) => [
+  uniqueIndex("showdowns_visitor_bounty_unique").on(table.visitorId, table.bountyId),
+]);

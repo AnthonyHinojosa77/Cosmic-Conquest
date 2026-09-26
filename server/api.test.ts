@@ -9,6 +9,7 @@ import type { AddressInfo } from "net";
 
 const dbDir = mkdtempSync(path.join(tmpdir(), "cosmic-conquest-test-"));
 process.env.DATABASE_PATH = path.join(dbDir, "test.db");
+process.env.SHOWDOWN_MIN_MS = "150"; // keep tests quick; the real minimum is 1.5 s
 
 let server: Server;
 let base: string;
@@ -35,6 +36,24 @@ function post(url: string, body: unknown, cookie?: string) {
     headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}) },
     body: JSON.stringify(body),
   });
+}
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Play a bounty the honest way: search every spot, decode coded clues, name the suspect.
+async function investigate(bountyId: string, cookie: string) {
+  const { CLUES } = await import("./bounties");
+  for (const [clueId, clue] of Object.entries(CLUES[bountyId])) {
+    await post(`/api/bounties/${bountyId}/clues/${clueId}/search`, {}, cookie);
+    if (clue.key !== undefined) await post(`/api/bounties/${bountyId}/clues/${clueId}/decode`, { key: clue.key }, cookie);
+  }
+}
+
+async function solve(bountyId: string, suspect: string, cookie: string) {
+  await investigate(bountyId, cookie);
+  await post(`/api/bounties/${bountyId}/accuse`, { suspect }, cookie);
+  await wait(200); // the showdown
+  return post(`/api/bounties/${bountyId}/claim`, { suspect }, cookie);
 }
 
 function cookieOf(res: Response): string {
@@ -125,6 +144,11 @@ test("game: full bounty loop — accuse, claim once, buy, equip, leaderboard", a
   assert.equal(fresh.suit, "silver");
   assert.equal("visitorId" in fresh, false);
 
+  // Can't accuse before finding clues, or collect before accusing
+  assert.equal((await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie" }, cookie)).status, 409);
+  assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 409);
+  await investigate("heart-of-luna", cookie);
+
   // Wrong and right accusations
   const wrong = await post("/api/bounties/heart-of-luna/accuse", { suspect: "vela" }, cookie);
   assert.deepEqual(await wrong.json(), { correct: false });
@@ -134,6 +158,9 @@ test("game: full bounty loop — accuse, claim once, buy, equip, leaderboard", a
 
   // Claims: wrong suspect refused, right one paid exactly once
   assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie)).status, 422);
+  // Too soon after naming him: the showdown can't be over yet
+  assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 409);
+  await wait(200);
   const paid = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
   assert.equal(paid.status, 200);
   const afterClaim = await paid.json();
@@ -192,7 +219,7 @@ test("game: full bounty loop — accuse, claim once, buy, equip, leaderboard", a
 test("game: a buying spree never spends more than the balance", async () => {
   const start = await fetch(base + "/api/player");
   const cookie = cookieOf(start);
-  await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie); // 500 credits
+  await solve("heart-of-luna", "cookie", cookie); // 500 credits
   const results = await Promise.all([1, 2, 3].map(() => post("/api/shop/raygun/buy", {}, cookie)));
   const profile = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
   assert.equal(results.filter((r) => r.status === 200).length, 1); // bought once
@@ -213,7 +240,7 @@ test("game: star map counts hunters per fragment, once each", async () => {
   assert.equal(before.total, 12);
 
   const cookie = cookieOf(await fetch(base + "/api/player"));
-  await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  await solve("heart-of-luna", "cookie", cookie);
   await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie); // 409, not counted twice
 
   const after = await (await fetch(base + "/api/star-map")).json();
@@ -232,26 +259,59 @@ test("game: star map fragments have unique ids and numbers within the map", asyn
 
 test("game: Mars bounty pays 800 to the right suspect and turns up fragment II", async () => {
   const cookie = cookieOf(await fetch(base + "/api/player"));
+  await investigate("red-sands", cookie);
   assert.deepEqual(await (await post("/api/bounties/red-sands/accuse", { suspect: "venn" }, cookie)).json(), { correct: false });
+  // (clues first, then the accusations)
   const right = await (await post("/api/bounties/red-sands/accuse", { suspect: "quill" }, cookie)).json();
   assert.equal(right.showdown.scene, "./game/showdown-street-mars.webp");
+  await wait(200);
   const paid = await (await post("/api/bounties/red-sands/claim", { suspect: "quill" }, cookie)).json();
   assert.equal(paid.credits, 800);
   const map = await (await fetch(base + "/api/star-map")).json();
   assert.ok(map.fragments.find((f: { id: string; hunters: number }) => f.id === "martian-quadrant").hunters >= 1);
 });
 
-test("game: items go in the satchel once; unknown items are refused", async () => {
+test("game: clues come from the server; the ring comes from searching; the telegram needs the right key", async () => {
   const start = await fetch(base + "/api/player");
   const cookie = cookieOf(start);
   assert.deepEqual((await start.json()).items, []);
-  const first = await post("/api/items/decoder-ring/find", {}, cookie);
-  assert.equal(first.status, 200);
-  assert.deepEqual((await first.json()).items, ["decoder-ring"]);
-  const again = await (await post("/api/items/decoder-ring/find", {}, cookie)).json();
-  assert.deepEqual(again.items, ["decoder-ring"]);
-  assert.equal((await post("/api/items/golden-lasso/find", {}, cookie)).status, 404);
-  assert.equal((await post("/api/items/constructor/find", {}, cookie)).status, 404);
+  const decode = (key: number) => post("/api/bounties/red-sands/clues/telegram/decode", { key }, cookie);
+
+  // No ring yet: can't decode, and searching the telegram only shows the code
+  assert.equal((await decode(2)).status, 403);
+  const coded = await (await post("/api/bounties/red-sands/clues/telegram/search", {}, cookie)).json();
+  assert.ok(coded.coded && coded.text === undefined);
+
+  // Searching Sprinkles hands over the ring (once)
+  const sprinkles = await (await post("/api/bounties/red-sands/clues/sprinkles/search", {}, cookie)).json();
+  assert.match(sprinkles.text, /decoder ring/);
+  await post("/api/bounties/red-sands/clues/sprinkles/search", {}, cookie);
+  assert.deepEqual((await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json()).items, ["decoder-ring"]);
+
+  // Wrong key, then the right one
+  assert.deepEqual(await (await decode(3)).json(), { correct: false });
+  const right = await (await decode(2)).json();
+  assert.equal(right.correct, true);
+  assert.match(right.text, /CANNED SUNSHINE/);
+
+  // Progress survives a refresh
+  const progress = await (await fetch(base + "/api/bounties/red-sands/progress", { headers: { Cookie: cookie } })).json();
+  assert.deepEqual(Object.keys(progress.found).sort(), ["sprinkles", "telegram"]);
+  assert.equal(progress.showdown, undefined);
+
+  // Unknown spots and bounties
+  assert.equal((await post("/api/bounties/red-sands/clues/nope/search", {}, cookie)).status, 404);
+  assert.equal((await post("/api/bounties/venus-fog/clues/pad/search", {}, cookie)).status, 404);
+});
+
+test("game: no clue text or puzzle answer ships to the browser", async () => {
+  const { BOUNTIES } = await import("@shared/game");
+  const { CLUES } = await import("./bounties");
+  const shipped = JSON.stringify(BOUNTIES);
+  for (const clues of Object.values(CLUES)) {
+    for (const { text } of Object.values(clues)) assert.equal(shipped.includes(text), false, text.slice(0, 40));
+  }
+  assert.equal(/"key"/.test(shipped), false);
 });
 
 test("game: hunter rank and the telegram cipher", async () => {
@@ -261,6 +321,7 @@ test("game: hunter rank and the telegram cipher", async () => {
   assert.equal(hunterRank(99).next, undefined);
   assert.equal(shiftLetters(shiftLetters("RAIN-MAKERS, Q.", 2), -2), "RAIN-MAKERS, Q.");
   assert.equal(shiftLetters("XYZ", 2), "ZAB");
+  const { CLUES } = await import("./bounties");
   const telegram = bountyById("red-sands")!.locations!.flatMap((l) => l.clues).find((c) => c.cipher)!;
-  assert.notEqual(shiftLetters(telegram.text, telegram.cipher!.key), telegram.text);
+  assert.equal(shiftLetters(telegram.cipher!.coded, -CLUES["red-sands"].telegram.key!), CLUES["red-sands"].telegram.text);
 });
