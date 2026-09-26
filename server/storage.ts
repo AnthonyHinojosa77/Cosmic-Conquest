@@ -108,6 +108,28 @@ try {
 
 export const db = drizzle(sqlite);
 
+// For the /health check: is the database answering?
+const ping = sqlite.prepare("SELECT 1");
+export function pingDb(): boolean {
+  try {
+    ping.get();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// On shutdown: fold the write-ahead log into the main file and close cleanly.
+export function closeDb(): void {
+  try {
+    sqlite.pragma("wal_checkpoint(TRUNCATE)");
+  } catch (err) {
+    console.error("Couldn't checkpoint the database on shutdown:", err);
+  } finally {
+    sqlite.close();
+  }
+}
+
 export type VoteResult<T> =
   | { status: "ok"; item: T }
   | { status: "not_found" }

@@ -13,6 +13,7 @@ import BountyPage from "@/pages/bounty";
 import Aurelia from "@/pages/aurelia";
 import NotFound from "@/pages/not-found";
 import { SoundToggle } from "@/components/SoundToggle";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 function AppRouter() {
   return (
@@ -23,7 +24,9 @@ function AppRouter() {
       <Route path="/diner" component={Diner} />
       <Route path="/bounties" component={BountyOffice} />
       {/* Keyed by bounty so moving between cases (e.g. back/forward) starts each one fresh */}
-      <Route path="/bounty/:id">{(params) => <BountyPage key={params.id} />}</Route>
+      <Route path="/bounty/:id">
+        {(params) => <BountyPage key={params.id} />}
+      </Route>
       <Route path="/aurelia" component={Aurelia} />
       <Route component={NotFound} />
     </Switch>
@@ -32,15 +35,19 @@ function AppRouter() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router hook={useHashLocation}>
-          <AppRouter />
-          <SoundToggle />
-        </Router>
-      </TooltipProvider>
-    </QueryClientProvider>
+    // Outermost, so a crash anywhere (sound button, toasts, providers) shows the
+    // "try again" card rather than a blank page
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Router hook={useHashLocation}>
+            <AppRouter />
+            <SoundToggle />
+          </Router>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
