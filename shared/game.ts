@@ -68,11 +68,38 @@ export interface Clue {
   cipher?: { requires: ItemId };
   // The clue is behind a combination lock (the server holds the combination)
   lock?: { dials: number };
+  // The clue is somewhere on a sea chart: pick the right square (the server holds which one)
+  chart?: SeaChart;
   // Hotspot position over the scene image (percent)
   top: string;
   left: string;
   width: string;
   height: string;
+}
+
+// A harbor chart of squares: columns A, B, C… run west to east, rows 1, 2, 3… north to
+// south. The chart is public; which square hides the answer, and the clues that narrow
+// it down, stay server-side.
+export interface SeaChart {
+  cols: number;
+  rows: number;
+  // Squares of deep water, e.g. "C3"
+  deep: string[];
+  // Squares inside the Beacon's light
+  lit: string[];
+  marks: { cell: string; name: string; icon: "dome" | "arch" | "beacon" | "wreck" | "kelp" }[];
+}
+
+// Column 3 is "C"; column 3, row 3 is square "C3" (both count from 1).
+export const chartColumn = (col: number) => String.fromCharCode(64 + col);
+export const chartCell = (col: number, row: number) => `${chartColumn(col)}${row}`;
+
+export function onChart(chart: SeaChart, cell: string): boolean {
+  const m = /^([A-Z])([1-9][0-9]?)$/.exec(cell);
+  if (!m) return false;
+  const col = m[1].charCodeAt(0) - 64;
+  const row = Number(m[2]);
+  return col <= chart.cols && row >= 1 && row <= chart.rows;
 }
 
 export interface BountyLocation {
@@ -467,6 +494,86 @@ export const BOUNTIES: Bounty[] = [
       number: 4,
       name: "The Saturnian Quadrant",
       caption: "Engraved on the back of the Saturn Gear, too small to see without a loupe: a chart of Saturn's moons in Aurora Sterling's own hand, and a line of gold stars leading on toward Uranus and Neptune.",
+    },
+  },
+  {
+    id: "neptune-deep",
+    title: "The Golden Submarine",
+    planet: "Neptune",
+    reward: 2000,
+    // Waiting on its art (scenes, portraits, showdown); see GAME_PLAN.md
+    available: false,
+    teaser: "Aurora Sterling's own golden submarine vanished from its berth, deep beneath Neptune's sea.",
+    briefing:
+      "On the floor of Neptune's blue sea sits the Aquadome, a glass city of promenades, coral gardens and the famous Aquacade. Its pride is the Tomorrow, the golden submarine Aurora Sterling piloted herself. Last night it slipped out of the Sterling Submarine Pen and vanished into the deep. The Aquadome is paying 2,000 credits to get it back. Search the Submarine Pen and the Glass Promenade, work out on the harbor chart where the thief hid her, send down the diving bell, then name your culprit.",
+    locations: [
+      {
+        id: "pen",
+        name: "Sterling Submarine Pen",
+        image: "./scenes/neptune-pen.webp",
+        clues: [
+          { id: "berth", label: "The Tomorrow's Empty Berth", top: "50%", left: "30%", width: "36%", height: "30%" },
+          { id: "chamber", label: "Decompression Chamber", top: "25%", left: "76%", width: "22%", height: "50%" },
+          {
+            id: "chart",
+            label: "Harbor Master's Sea Chart",
+            chart: {
+              cols: 6,
+              rows: 5,
+              deep: ["C1", "C2", "D2", "C3", "D3", "E3", "B4", "C4", "D4", "C5"],
+              lit: ["D3", "E3", "F3", "D4", "E4", "F4", "D5", "E5", "F5"],
+              marks: [
+                { cell: "F1", name: "The Aquadome", icon: "dome" },
+                { cell: "D2", name: "Wreck of the Sea Queen", icon: "wreck" },
+                { cell: "A3", name: "The Coral Arch", icon: "arch" },
+                { cell: "E4", name: "The Beacon", icon: "beacon" },
+                { cell: "A5", name: "Kelp Forest", icon: "kelp" },
+              ],
+            },
+            top: "62%", left: "2%", width: "24%", height: "34%",
+          },
+        ],
+      },
+      {
+        id: "promenade",
+        name: "The Glass Promenade",
+        image: "./scenes/neptune-promenade.webp",
+        clues: [
+          { id: "sonar", label: "Sonar Lookout", top: "40%", left: "3%", width: "20%", height: "40%" },
+          { id: "beacon", label: "Call Box to the Beacon", top: "20%", left: "40%", width: "22%", height: "40%" },
+          { id: "stage-door", label: "Aquacade Stage Door", top: "35%", left: "74%", width: "22%", height: "50%" },
+        ],
+      },
+    ],
+    suspects: [
+      {
+        id: "brine",
+        name: "Captain Silas Brine",
+        title: "Tour Submarine Skipper",
+        portrait: "./game/suspect-brine.webp",
+        description: "Runs the Neptune Belle's glass-bottom tours. Calls the Tomorrow \"that gold-plated bathtub\" and wants her berth.",
+      },
+      {
+        id: "rusty",
+        name: "\"Rusty\" Mackerel",
+        title: "Salvage Diver",
+        portrait: "./game/suspect-rusty.webp",
+        description: "Says anything that sinks is finders-keepers. Has strong opinions about gold.",
+      },
+      {
+        id: "coralie",
+        name: "Coralie Finn",
+        title: "Star of the Aquacade",
+        portrait: "./game/suspect-coralie.webp",
+        description: "The Mermaid of Neptune. Holds her breath for four minutes, and her audience for two hours.",
+      },
+    ],
+    accusePrompt: "Who took the Tomorrow?",
+    fragment: {
+      id: "neptunian-quadrant",
+      number: 5,
+      name: "The Neptunian Quadrant",
+      caption: "The thief emptied every chart drawer aboard the Tomorrow, but never thought to unscrew the ship's wheel. Inside its golden hub: Aurora Sterling's chart of Neptune's seas, with a line of gold stars doubling back toward Uranus and its moons.",
     },
   },
 ];

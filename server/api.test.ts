@@ -250,7 +250,7 @@ test("game: a buying spree never spends more than the balance", async () => {
 test("game: the culprit is not in the shared (browser) bounty data", async () => {
   const { BOUNTIES } = await import("@shared/game");
   const shipped = JSON.stringify(BOUNTIES);
-  assert.equal(/spatula blaster|lock-up|never take me alive|stamp-blaster|properly filed|Nobody catches|Venus lock-up|understand them|Titan lock-up/.test(shipped), false);
+  assert.equal(/spatula blaster|lock-up|never take me alive|stamp-blaster|properly filed|Nobody catches|Venus lock-up|understand them|Titan lock-up|dives deepest|harpoon|coralie-showdown/.test(shipped), false);
 });
 
 test("game: star map counts hunters per fragment, once each", async () => {
@@ -352,7 +352,7 @@ test("game: no clue text or puzzle answer ships to the browser", async () => {
 });
 
 test("game: every hotspot has server clue text, and coded clues have a key", async () => {
-  const { BOUNTIES } = await import("@shared/game");
+  const { BOUNTIES, onChart } = await import("@shared/game");
   const { CLUES, TESTIMONY } = await import("./bounties");
   for (const b of BOUNTIES.filter((b) => b.interviews)) {
     const clueIds = b.locations!.flatMap((l) => l.clues.map((c) => c.id));
@@ -373,11 +373,15 @@ test("game: every hotspot has server clue text, and coded clues have a key", asy
     assert.deepEqual(shared.map((c) => c.id).sort(), Object.keys(CLUES[b.id] ?? {}).sort(), b.id);
     for (const c of shared) {
       assert.equal(Boolean(c.cipher), CLUES[b.id][c.id].key !== undefined, `${b.id}/${c.id} cipher`);
-      assert.equal(Boolean(c.lock), CLUES[b.id][c.id].code !== undefined, `${b.id}/${c.id} lock`);
-      if (c.lock) {
-        assert.equal(c.lock.dials, CLUES[b.id][c.id].code!.length, `${b.id}/${c.id} dials`);
-        for (const need of CLUES[b.id][c.id].needs ?? []) assert.ok(CLUES[b.id][need], `${b.id}/${c.id} needs ${need}`);
+      assert.equal(Boolean(c.lock || c.chart), CLUES[b.id][c.id].code !== undefined, `${b.id}/${c.id} lock or chart`);
+      if (c.lock) assert.equal(c.lock.dials, CLUES[b.id][c.id].code!.length, `${b.id}/${c.id} dials`);
+      if (c.chart) {
+        assert.ok(onChart(c.chart, CLUES[b.id][c.id].code!), `${b.id}/${c.id} square`);
+        for (const cell of [...c.chart.deep, ...c.chart.lit, ...c.chart.marks.map((m) => m.cell)]) {
+          assert.ok(onChart(c.chart, cell), `${b.id}/${c.id} ${cell}`);
+        }
       }
+      for (const need of CLUES[b.id][c.id].needs ?? []) assert.ok(CLUES[b.id][need], `${b.id}/${c.id} needs ${need}`);
     }
   }
 });
@@ -456,6 +460,72 @@ test("game: Saturn bounty pays 1600 and turns up fragment IV", async () => {
   assert.equal(paid.status, 200);
   assert.equal((await paid.json()).credits, 1600);
 });
+
+// Neptune waits on its art, so these tests play it as if it were released.
+async function released(bountyId: string, play: () => Promise<void>) {
+  const { bountyById } = await import("@shared/game");
+  const bounty = bountyById(bountyId)!;
+  const was = bounty.available;
+  bounty.available = true;
+  try {
+    await play();
+  } finally {
+    bounty.available = was;
+  }
+}
+
+test("game: Neptune's diving bell needs all three chart clues, then the right square", () => released("neptune-deep", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const dive = (code: string) => post("/api/bounties/neptune-deep/clues/chart/unlock", { code }, cookie);
+  const search = (id: string) => post(`/api/bounties/neptune-deep/clues/${id}/search`, {}, cookie);
+
+  assert.deepEqual(await (await search("chart")).json(), { locked: true });
+  assert.equal((await dive("C3")).status, 409); // no chart clues yet
+  await search("sonar");
+  await search("chamber");
+  assert.equal((await dive("C3")).status, 409); // still missing the Beacon
+  await search("beacon");
+  for (const bad of ["G1", "A6", "c3", "C03", "A0", "418", ""]) assert.equal((await dive(bad)).status, 400, bad);
+  assert.equal((await post("/api/bounties/venus-fog/clues/locker/unlock", { code: "C3" }, cookie)).status, 400); // a lock takes numbers
+  for (const wrong of ["B3", "D3", "D2"]) assert.deepEqual(await (await dive(wrong)).json(), { correct: false }, wrong);
+  const found = await (await dive("C3")).json();
+  assert.equal(found.correct, true);
+  assert.match(found.text, /C\.F\./);
+
+  const progress = await (await fetch(base + "/api/bounties/neptune-deep/progress", { headers: { Cookie: cookie } })).json();
+  assert.equal(progress.found.chart, found.text); // the dive survives a refresh
+  assert.equal((await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie" }, cookie)).status, 409); // berth and stage door still unsearched
+}));
+
+test("game: the chart clues point to exactly one square", async () => {
+  const { bountyById, chartCell } = await import("@shared/game");
+  const chart = bountyById("neptune-deep")!.locations!.flatMap((l) => l.clues).find((c) => c.chart)!.chart!;
+  const arch = chart.marks.find((m) => m.icon === "arch")!.cell;
+  const squares: string[] = [];
+  for (let c = 1; c <= chart.cols; c++) for (let r = 1; r <= chart.rows; r++) squares.push(chartCell(c, r));
+  const east = (s: string) => s[1] === arch[1] && s[0] > arch[0]; // sonar: due east of the Coral Arch, same row
+  const deep = (s: string) => chart.deep.includes(s); // Rusty: only the Deep is deep enough
+  const dark = (s: string) => !chart.lit.includes(s); // the Beacon keeper: nothing came into the light
+  assert.deepEqual(squares.filter((s) => east(s) && deep(s) && dark(s)), ["C3"]);
+  // Every clue matters: any two of them still leave more than one square
+  for (const [a, b] of [[east, deep], [east, dark], [deep, dark]]) {
+    assert.ok(squares.filter((s) => a(s) && b(s)).length > 1);
+  }
+});
+
+test("game: Neptune bounty pays 2000 and turns up fragment V", () => released("neptune-deep", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  await investigate("neptune-deep", cookie);
+  assert.deepEqual(await (await post("/api/bounties/neptune-deep/accuse", { suspect: "rusty" }, cookie)).json(), { correct: false });
+  const right = await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie" }, cookie)).json();
+  assert.equal(right.showdown.scene, "./game/showdown-promenade-neptune.webp");
+  await wait(850);
+  const paid = await post("/api/bounties/neptune-deep/claim", { suspect: "coralie" }, cookie);
+  assert.equal(paid.status, 200);
+  assert.equal((await paid.json()).credits, 2000);
+  const map = await (await fetch(base + "/api/star-map")).json();
+  assert.equal(map.fragments.find((f: { id: string; hunters: number }) => f.id === "neptunian-quadrant").hunters, 1);
+}));
 
 test("game: bounties that aren't released yet can't be played", async () => {
   const { BOUNTIES } = await import("@shared/game");

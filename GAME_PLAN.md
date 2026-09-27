@@ -41,8 +41,8 @@ showdown. Bounties pay credits; credits buy suits, gear and weapon upgrades.
 | 1. First playable bounty | Bounty Office, "The Heart of Luna Heist", quick-draw showdown, credits, shop (suits, bandana, ray-gun), leaderboard, placeholder hero art | **Done** |
 | 2. Real art | ChatGPT-made hero poses (ready, firing, too slow), suspect portraits, Cookie showdown pose, showdown street and Bounty Office scenes | **Done** — plus a relaxed standing pose (Bounty Office) and every pose in red, teal and gold (2026-09-25) |
 | 3. The Sterling Legacy | The story hook (below), map fragments earned from bounties, a community tracker showing how close everyone is | **Built** — Aurora's broadcast (first Bounty Office visit, replay on the desk radio), a 12-piece star map with fragment I from the Heart of Luna, and the community count |
-| 4. Puzzles & RPG | Puzzles inside investigations (safes, circuits, coded telegrams, star charts), an inventory of found items used elsewhere, hunter rank, gadgets that help with puzzles, and conversations with suspects | **Started** — puzzles: coded telegram + decoder dial (Mars), combination lock from torn-note scraps (Venus), questioning suspects and catching lies with evidence (Saturn); a satchel of items kept between bounties, and hunter rank (Greenhorn → Legend of the Spaceways) |
-| 5. More worlds | Tomorrowland-style planets: Mars ("Rustlers of the Red Sands"), Venus ("The Venus Fog Phantom"), each with scenes, puzzles, a fragment and a showdown | **Mars, Venus and Saturn built** (800 CR / II, 1,200 CR / III, 1,600 CR / IV); next worlds to be planned |
+| 4. Puzzles & RPG | Puzzles inside investigations (safes, circuits, coded telegrams, star charts), an inventory of found items used elsewhere, hunter rank, gadgets that help with puzzles, and conversations with suspects | **Started** — puzzles: coded telegram + decoder dial (Mars), combination lock from torn-note scraps (Venus), questioning suspects and catching lies with evidence (Saturn), finding a hiding place on a sea chart (Neptune); a satchel of items kept between bounties, and hunter rank (Greenhorn → Legend of the Spaceways) |
+| 5. More worlds | Tomorrowland-style planets: Mars ("Rustlers of the Red Sands"), Venus ("The Venus Fog Phantom"), each with scenes, puzzles, a fragment and a showdown | **Mars, Venus and Saturn built** (800 CR / II, 1,200 CR / III, 1,600 CR / IV); **Neptune written, waiting on art** (2,000 CR / V, "Coming soon" on the Wanted board until then) |
 | 6. Deeper gear | Suits (**live**: red/teal/gold, worn in the office and in showdowns), weapons that change showdowns, gadgets, ship paint | Later |
 | 7. Co-op | Team up with friends on a bounty (shared clues, split reward) | Later, needs live multiplayer |
 
@@ -240,6 +240,65 @@ Ashgrove's lie (the pawn ticket) is a red herring that clears her; Professor
 Tuttle's lie (at the telescope all night, but the dome was shut and nobody was
 there at 10:15) cracks the case. Testimony, which clues catch which lie, and
 the culprit are all server-only.
+
+## Neptune: The Golden Submarine
+
+On the floor of Neptune's sea sits the Aquadome, a glass city of promenades and
+the famous Aquacade (a mermaid show). Aurora Sterling's own golden submarine,
+the *Tomorrow*, slips out of the Sterling Submarine Pen overnight. Locations: the
+Submarine Pen (empty berth, decompression chamber, harbor master's sea chart) and
+the Glass Promenade (sonar lookout, call box to the Beacon, Aquacade stage door).
+
+New puzzle: **the sea chart.** A 6 × 5 grid (columns A–F, rows 1–5) with deep
+water, the Beacon's light and landmarks drawn on it. Three clues narrow down where
+the thief hid the sub: the sonar tape (due east of the Coral Arch, same row),
+Rusty Mackerel (only the Deep is deep enough) and the Beacon keeper (nothing came
+into the light). Only one square fits all three, and any two leave more than one
+(a test checks this). The server only sends the diving bell down once all three
+are found; the right square turns up the sub and the thief's initials. Red
+herrings: Captain Brine (circling the Beacon with twenty passengers) and Rusty
+Mackerel (sealed in the decompression chamber all night). Culprit, square and
+clue text are server-only. The motive ties into the story: the thief wanted
+Aurora's star map, and never found it (it's in the ship's wheel).
+
+**Art still to make** (then Claude sets the hotspots on the scenes and releases
+the bounty). Same style block and style-reference image as the other worlds;
+finished files go in `client/public/` under these names:
+
+1. `scenes/neptune-pen.webp` (wide, 3:2): *Interior of a grand 1950s atomic-age
+   submarine dock on the sea floor, under a huge riveted glass dome with deep blue
+   ocean and fish outside. Center-left: an empty berth, a pool of rippling water
+   with mooring ropes coiled neatly on brass cleats and a gold nameplate reading
+   "TOMORROW". Right: a round riveted decompression chamber with a porthole door,
+   a grumpy bearded face peering out of the porthole. Lower-left foreground: a
+   harbor master's wooden chart table with a sea chart spread out, a brass diving
+   bell hanging from a crane above it. No other people.*
+2. `scenes/neptune-promenade.webp` (wide, 3:2): *A curving glass-walled Googie
+   boulevard inside an undersea city. Through the glass: deep blue ocean, fish,
+   and far away a lighthouse-like beacon tower glowing on the seabed. Left: a sonar
+   lookout station, a round console with a green sonar screen and a friendly
+   vintage robot operator wearing headphones. Center, against the glass: a brass
+   call-box telephone on a post, the distant beacon beyond it. Right: the stage
+   door of the Aquacade theater, with a seashell marquee and a star on the door.
+   No people.*
+3. `game/suspect-brine.webp` (square portrait): *Captain Silas Brine, a grizzled
+   old tour-submarine captain with a white sea-captain's beard, a navy captain's
+   cap with a gold anchor badge, a pipe and a double-breasted pea coat, scowling.*
+4. `game/suspect-rusty.webp` (square portrait): *"Rusty" Mackerel, a burly salvage
+   diver with a bushy red beard, a canvas diving suit and a brass diving helmet
+   under one arm, grinning slyly.*
+5. `game/suspect-coralie.webp` (square portrait): *Coralie Finn, a glamorous 1950s
+   aquacade swimming star with a flowered white swim cap, red lipstick, a teal
+   swimsuit trimmed with shimmering green mermaid-scale sequins and a dazzling
+   showbiz smile.*
+6. `game/coralie-showdown.webp` (full body on a plain cream background, facing
+   left): *Coralie Finn in a sleek teal diving suit with green mermaid-scale
+   sequin trim, her flowered swim cap in one hand, aiming a pearl-handled harpoon
+   pistol in a quick-draw stance.*
+7. `game/showdown-promenade-neptune.webp` (wide, 3:2): *The Glass Promenade at
+   night: a long, empty, curving glass corridor on the sea floor, deep ocean
+   outside with fish and glowing jellyfish, a clear open floor for a duel, two
+   long shadows facing each other. No people.*
 
 ## Venus: The Venus Fog Phantom
 

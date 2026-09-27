@@ -8,6 +8,7 @@ import {
   invitedToAurelia,
   fragmentsFor,
   AURELIA_INVITE_FRAGMENTS,
+  onChart,
   type Bounty,
   type BountyProgress,
   type ClueSearch,
@@ -32,7 +33,8 @@ import {
 
 const accusationSchema = z.object({ suspect: z.string().min(1).max(50) });
 const decodeSchema = z.object({ key: z.number().int().min(0).max(25) });
-const unlockSchema = z.object({ code: z.string().regex(/^[0-9]{1,6}$/) });
+// A lock's digits, or a square on a sea chart ("C3")
+const unlockSchema = z.object({ code: z.string().regex(/^[0-9]{1,6}$|^[A-Z][1-9][0-9]?$/) });
 const presentSchema = z.object({ clue: z.string().min(1).max(50) });
 
 // The quick-draw can't end sooner than the shortest possible wait for DRAW!.
@@ -154,20 +156,29 @@ export function registerGameRoutes(app: Express) {
     res.json({ correct: true, text: found.secret.text });
   });
 
-  // Open a combination lock: needs the clues that reveal the combination, then the right code.
+  // Open a combination lock, or dive to a square on a sea chart: needs the clues that
+  // reveal the answer, then the right code (a lock's digits, or the square).
   app.post("/api/bounties/:id/clues/:clueId/unlock", clueLimiter, (req, res) => {
     const bounty = liveBounty(req.params.id);
     const found = bounty && clueOf(bounty, String(req.params.clueId));
-    if (!bounty || !found || found.secret.code === undefined || !found.clue.lock) {
+    const { lock, chart } = found ? found.clue : {};
+    if (!bounty || !found || found.secret.code === undefined || !(lock || chart)) {
       return res.status(404).json({ error: "Nothing to unlock there" });
     }
     const parsed = unlockSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+    const { code } = parsed.data;
+    // A lock takes digits; a chart takes one of its own squares
+    if (chart ? !onChart(chart, code) : !/^[0-9]+$/.test(code)) {
+      return res.status(400).json({ error: chart ? "That square isn't on the chart" : "A lock takes numbers" });
+    }
     const have = foundClues(req.visitorId!, bounty.id);
     if (!(found.secret.needs ?? []).every((id) => have.includes(id))) {
-      return res.status(409).json({ error: "You don't know the combination yet. Keep searching." });
+      return res.status(409).json({
+        error: chart ? "You don't know where to dive yet. Keep searching." : "You don't know the combination yet. Keep searching.",
+      });
     }
-    if (parsed.data.code !== found.secret.code) return res.json({ correct: false });
+    if (code !== found.secret.code) return res.json({ correct: false });
     recordClue(req.visitorId!, bounty.id, found.clue.id);
     res.json({ correct: true, text: found.secret.text });
   });
