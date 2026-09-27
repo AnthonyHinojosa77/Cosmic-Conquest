@@ -41,8 +41,8 @@ npm run build
   `server/gameStorage.ts` + `server/gameRoutes.ts`. Credits/purchases/claims
   are always decided server-side. Roadmap and art prompts: `GAME_PLAN.md`.
 - Anti-cheat rule: nothing that answers a case ships to the browser. Clue text,
-  decoder keys, lock combinations (`code`, plus the `needs` clues that reveal
-  them) and culprits live in `server/bounties.ts`; the client gets clue text
+  decoder keys, lock combinations and sea-chart squares (`code`, plus the `needs`
+  clues that reveal them) and culprits live in `server/bounties.ts`; the client gets clue text
   from `/api/bounties/:id/clues/:clueId/search`, `/decode` and `/unlock`, and
   the server checks recorded progress before unlocking, accusing and claiming
   (a test fails if clue text, a key or a code appears in `shared/game.ts`).

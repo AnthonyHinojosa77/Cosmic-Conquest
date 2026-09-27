@@ -9,6 +9,9 @@ import {
   type Bounty,
   type CaseSolution,
   type Clue,
+  type SeaChart,
+  chartCell,
+  chartColumn,
   STAR_MAP_SIZE,
   numeral,
   cluesNeeded,
@@ -184,6 +187,119 @@ function Lock({ bountyId, clue, openedText }: { bountyId: string; clue: Clue; op
         </button>
       </div>
       {message && <p className="text-sm mt-2" role="status" data-testid="text-unlock-result">{message}</p>}
+    </>
+  );
+}
+
+// --- Sea chart: work out the square, then send the diving bell down ------------
+
+type ChartMark = SeaChart["marks"][number];
+
+function MarkIcon({ icon }: { icon: ChartMark["icon"] }) {
+  const paths: Record<ChartMark["icon"], React.ReactNode> = {
+    dome: <path d="M3 18h18M5 18a7 7 0 0 1 14 0M12 11V6M9 18v-4M15 18v-4" />,
+    arch: <path d="M4 20v-8a8 8 0 0 1 16 0v8M9 20v-7a3 3 0 0 1 6 0v7" />,
+    beacon: <path d="M10 20l1-10h2l1 10M8 20h8M10.5 10V7h3v3M12 4v1M6 5l2.5 2M18 5l-2.5 2" />,
+    wreck: <path d="M2 13l19-4-1.5 5.5L5.5 18zM11 11L9.5 3.5M10 4.5l5.5 5" />,
+    kelp: <path d="M7 21c-2-4 2-6 0-10s2-6 0-8M12 21c2-4-2-6 0-10s-2-6 0-8M17 21c-2-4 2-6 0-10" />,
+  };
+  return (
+    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {paths[icon]}
+    </svg>
+  );
+}
+
+const SHALLOW = "hsl(185,38%,80%)";
+const DEEP = "hsl(200,55%,30%)";
+// The Beacon's light: gold stripes over the water, so deep and shallow still show through
+const GLOW = "repeating-linear-gradient(45deg, hsla(45,95%,58%,0.85) 0 5px, transparent 5px 11px)";
+
+function Chart({ bountyId, clue, foundText }: { bountyId: string; clue: Clue; foundText?: string }) {
+  const chart = clue.chart!;
+  const [cell, setCell] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  if (foundText) {
+    return (
+      <>
+        <p className="text-sm leading-relaxed">{foundText}</p>
+        <p className="pulp-title text-[hsl(120,50%,32%)] mt-2" role="status">✓ Found it!</p>
+      </>
+    );
+  }
+
+  const deep = new Set(chart.deep);
+  const lit = new Set(chart.lit);
+  const marks = new Map(chart.marks.map((m) => [m.cell, m]));
+  const cols = Array.from({ length: chart.cols }, (_, i) => i + 1);
+  const rows = Array.from({ length: chart.rows }, (_, i) => i + 1);
+
+  const dive = () => {
+    if (!cell) return;
+    setChecking(true);
+    setMessage(null);
+    unlockClue(bountyId, clue.id, cell)
+      .then((ok) => !ok && setMessage(`The diving bell finds nothing at ${cell} but sand and one very surprised octopus.`))
+      .catch((err) => setMessage(errorMessage(err)))
+      .finally(() => setChecking(false));
+  };
+
+  return (
+    <>
+      <p className="text-sm">Pick a square on the chart, then send the diving bell down to search it. North is up; east is to the right.</p>
+      <div
+        className="grid gap-0.5 mt-3 p-1 max-w-[26rem] mx-auto rounded border-2 border-[hsl(25,40%,20%)] bg-[hsl(38,35%,86%)]"
+        style={{ gridTemplateColumns: `1.25rem repeat(${chart.cols}, minmax(0, 1fr))` }}
+        role="group"
+        aria-label="Sea chart"
+        data-testid="chart-grid"
+      >
+        <span />
+        {cols.map((c) => (
+          <span key={c} className="pulp-title text-xs text-center" style={{ color: INK }}>{chartColumn(c)}</span>
+        ))}
+        {rows.map((r) => (
+          <div key={r} className="contents">
+            <span className="pulp-title text-xs self-center text-center" style={{ color: INK }}>{r}</span>
+            {cols.map((c) => {
+              const id = chartCell(c, r);
+              const mark = marks.get(id);
+              const isDeep = deep.has(id);
+              const base = isDeep ? DEEP : SHALLOW;
+              return (
+                <button
+                  key={id}
+                  className={`aspect-square flex items-center justify-center rounded-sm ${cell === id ? "ring-4 ring-[hsl(0,72%,48%)] z-10" : ""}`}
+                  style={{ background: lit.has(id) ? `${GLOW}, ${base}` : base, color: isDeep ? "hsl(45,60%,92%)" : INK }}
+                  onClick={() => {
+                    setCell(id);
+                    setMessage(null);
+                  }}
+                  aria-pressed={cell === id}
+                  aria-label={`${id}${mark ? `, ${mark.name}` : ""}, ${isDeep ? "deep water" : "shallows"}${lit.has(id) ? ", in the Beacon's light" : ""}`}
+                  data-testid={`chart-cell-${id}`}
+                >
+                  {mark && <MarkIcon icon={mark.icon} />}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 text-xs" style={{ color: INK }}>
+        {chart.marks.map((m) => (
+          <li key={m.cell} className="flex items-center gap-1.5"><MarkIcon icon={m.icon} /> {m.name}</li>
+        ))}
+        <li className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-sm shrink-0" style={{ background: DEEP }} /> Dark water: the Deep</li>
+        <li className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-sm shrink-0" style={{ background: SHALLOW }} /> Pale water: the shallows</li>
+        <li className="flex items-center gap-1.5"><span className="w-5 h-5 rounded-sm shrink-0" style={{ background: `${GLOW}, ${SHALLOW}` }} /> Gold stripes: the Beacon's light</li>
+      </ul>
+      <button className="retro-btn gold text-sm mt-3" onClick={dive} disabled={!cell || checking} data-testid="button-dive">
+        {checking ? "Diving…" : cell ? `Send the diving bell to ${cell}` : "Pick a square first"}
+      </button>
+      {message && <p className="text-sm mt-2" role="status" data-testid="text-dive-result">{message}</p>}
     </>
   );
 }
@@ -366,8 +482,8 @@ function Investigation({
   const search = (clue: Clue) => {
     setOpenClue(clue);
     setSearchError(null);
-    // Already in hand, or a lock (nothing to fetch until it's opened)
-    if (found[clue.id] !== undefined || codedText[clue.id] !== undefined || clue.lock) return;
+    // Already in hand, or a lock or chart (nothing to fetch until it's solved)
+    if (found[clue.id] !== undefined || codedText[clue.id] !== undefined || clue.lock || clue.chart) return;
     setSearching(clue.id);
     searchClue(bounty.id, clue.id)
       .then((r) => r.coded !== undefined && setCodedText((prev) => ({ ...prev, [clue.id]: r.coded })))
@@ -442,6 +558,8 @@ function Investigation({
         <Panel title={`🔍 ${openClue.label}`} testId="panel-clue">
           {openClue.lock ? (
             <Lock key={openClue.id} bountyId={bounty.id} clue={openClue} openedText={found[openClue.id]} />
+          ) : openClue.chart ? (
+            <Chart key={openClue.id} bountyId={bounty.id} clue={openClue} foundText={found[openClue.id]} />
           ) : openClue.cipher && searchError === null ? (
             <Decoder
               key={openClue.id}

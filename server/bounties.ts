@@ -32,6 +32,16 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
       taunt: "Vance swirls his fog-grey cape and flashes that famous grin. \"Nobody catches the Fog Phantom, hunter. Nobody!\"",
     },
   },
+  "neptune-deep": {
+    suspect: "coralie",
+    outro: "The Tomorrow is back in her berth, polished and gleaming, and the Aquacade is holding auditions for a new mermaid. Coralie Finn is practicing her breath-holding in the Triton lock-up.",
+    showdown: {
+      opponent: "Coralie Finn",
+      image: "./game/coralie-showdown.webp",
+      scene: "./game/showdown-promenade-neptune.webp",
+      taunt: "Coralie Finn peels off her flowered swim cap and levels a pearl-handled harpoon pistol. \"Aurora's fortune belongs to whoever dives deepest, hunter!\"",
+    },
+  },
   "red-sands": {
     suspect: "quill",
     outro: "The Rain-Makers are back on their pads, the Ares Valley crops are drinking again, and Rigby Quill is filing his own paperwork in the Phobos lock-up.",
@@ -47,8 +57,9 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
 // Server-only clue text, sent to a hunter when they search that spot (so reading the
 // browser code reveals nothing). A clue with a `key` is in code: its text is only
 // released when the hunter decodes it with that key.
-// A clue with a `code` is behind a combination lock; `needs` lists the clues that
-// reveal the combination, which must be found before the lock will open.
+// A clue with a `code` is behind a combination lock, or hidden on a sea chart (then the
+// code is the square, like "C3"); `needs` lists the clues that reveal the combination
+// or the square, which must be found before the lock will open or the dive will go.
 export const CLUES: Record<string, Record<string, { text: string; key?: number; code?: string; needs?: string[] }>> = {
   "heart-of-luna": {
     dome: { text: "The glass dome is intact, but the base panel was unscrewed and put back crooked. There's a sticky smear of malt syrup on the screws — and a trail of glittering moon dust leading toward the exit." },
@@ -73,6 +84,18 @@ export const CLUES: Record<string, Record<string, { text: string; key?: number; 
     "fog-machine": { text: "Dr. Fenwick's fog log shows one gentle fog show, set for midnight. But last night someone moved it to 11:40, made it extra thick, and signed the change \"Dock Control.\" Dr. Fenwick was at the botanists' banquet in the Sun Room until 1 AM, with forty witnesses." },
     orchids: { text: "A stem is freshly snapped: the petal on the jewel table came from here. Stuck to the damp soil: a scrap of paper, the RIGHT edge of a note, with the digit 8. Wet footprints lead toward the gondola dock." },
     locker: { text: "The padlock clicks open. Inside: a fog-grey cape, a black velvet domino mask, the Star of Venus itself, and a gondola pilot's logbook. Last night's entry reads: \"Fog show moved to 11:40. Quick trip. Back on shift by midnight. - T.V.\"", code: "418", needs: ["case", "keys", "orchids"] },
+  },
+  "neptune-deep": {
+    berth: { text: "The Tomorrow's berth is empty, the water still rocking against her gold nameplate. Her mooring lines weren't cut: they were untied and coiled, neat as a bow, by someone who knew exactly what they were doing. Snagged on a cleat is one shimmering green sequin, shaped like a fish scale." },
+    chamber: { text: "The dock doctor's stamp on the decompression chamber log reads \"R. Mackerel, sealed in 11:00 PM, out 7:00 AM.\" Rusty Mackerel presses his whiskers to the porthole. \"Wasn't me, pal! But I'll tell you for free: a sub as tall as the Tomorrow can't hide in the shallows. She's down in the Deep, the dark water on the harbor chart.\"" },
+    chart: {
+      text: "The diving bell sinks through the dark to square C3, and its lamp catches a gleam of gold: the Tomorrow, parked in the Deep just beyond the Beacon's light. Every chart drawer aboard has been pulled out and rifled. On the captain's chair lies a lady's diving mask trimmed with green sequins, and across the periscope, in lipstick: \"Map's not in the drawers. Back tomorrow night. - C.F.\"",
+      code: "C3",
+      needs: ["chamber", "sonar", "beacon"],
+    },
+    sonar: { text: "Old Ping, the sonar robot, prints last night's tape: \"2:12 AM: large contact leaves the Sterling Pen, running silent. 2:31 AM: contact stops due east of the Coral Arch, on the very same row of the harbor chart. No further echoes.\"" },
+    beacon: { text: "You ring the Beacon keeper on the brass call box. \"Busy night! The Neptune Belle's moonlight tour circled my light from midnight to three, Captain Brine at the wheel and twenty passengers waving at my window. But nothing else came into my light all night. Whoever you're after kept to the dark.\"" },
+    "stage-door": { text: "The Aquacade's stage door log: \"C. Finn out 1:55 AM, midnight swim.\" No time back in. Inside her dressing room a green sequined mermaid tail hangs dripping seawater, a patch of scales missing. On the vanity sits a dog-eared copy of \"Where Did Aurora Sterling Hide Her Fortune?\"" },
   },
   "red-sands": {
     pad: { text: "Where a Rain-Maker stood last night there's only bare concrete. The four bolts were undone neatly with a proper wrench, not ripped out. Narrow paired wheel tracks lead to the dome's freight door: a monorail freight dolly." },
