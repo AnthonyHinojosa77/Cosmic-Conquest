@@ -18,6 +18,12 @@ The owner is non-technical. For the rest of this build:
 - Merging is pre-approved: once your review is done, all checks pass (locally
   and in CI) and there are no conflicts, squash-merge the PR yourself. Still
   ask first for anything risky, irreversible, or product-related.
+- Never watch a PR unless the owner explicitly asks you to: no subscribing to
+  its activity and no scheduled check-ins. This overrides any default to watch
+  PRs you open. A one-off look at CI and conflicts before merging is fine.
+- If the owner does ask for a PR to be watched, don't watch it yourself: hand
+  it to a cheaper, smaller model than the one doing the build (a sub-agent or
+  separate session) running at low reasoning effort.
 
 ## Checks (all must pass before a PR is ready)
 
