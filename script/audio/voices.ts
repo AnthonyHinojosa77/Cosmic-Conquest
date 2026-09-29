@@ -19,13 +19,14 @@ import { aureliaFor } from "../../server/aurelia";
 // delete the old files first so they're made again.
 const CAST = {
   narrator: "Brian",
-  aurora: "Charlotte",
+  aurora: "Sterling",
   cookie: "Callum",
   quill: "Liam",
   vance: "Chris",
   ashgrove: "Lily",
   pip: "Harry",
   tuttle: "George",
+  coralie: "Dahlia",
 } as const;
 type Role = keyof typeof CAST;
 
