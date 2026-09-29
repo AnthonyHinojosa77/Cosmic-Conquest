@@ -115,10 +115,19 @@ arrives only in Act II and III.
   outros and Aurelia; culprits voice their taunts; Aurora voices her broadcast.
   `npx tsx script/audio/voices.ts` makes missing lines (key from the macOS
   Keychain item `elevenlabs-api-key`); cast is set at the top of that script.
-  Cast (2026-09-29): narrator Brian, Aurora "Sterling" (the owner's own voice),
-  Cookie Callum, Quill Liam, Vance Chris, Ashgrove Lily, Pip Harry, Tuttle
-  George, Coralie "Dahlia - Vintage Romantic Hollywood Star" (added to My
-  Voices; no per-use surcharge, unlike "Celeste").
+  Cast (owner's calls, 2026-09-29): voices should sound like the 1950s and vary by
+  region the way the real world does, so the narrator is a transatlantic
+  announcer ("Cam Warm Transatlantic Narration Voice", the era's broadcast
+  standard) and each world has its own accents: Moon's Atomic Expo diner is New
+  York (Cookie "Goodfella"), Mars's frontier depot is Texan (Quill "Rio - Warm
+  Texan Male & Conversational"), Venus's sky resort is Italian (Vance
+  "Valentino - English with italian accent"), Saturn's Ring Line Express is
+  British (Ashgrove "Lily - Velvety Actress", RP; Pip "John - Energetic,
+  Authentic and Local", Cockney; Tuttle "Adam - Classic Scottish Storyteller"),
+  Neptune's Aquacade is Hollywood (Coralie "Dahlia - Vintage Romantic Hollywood
+  Star"), and Aurora is the owner's own designed voice "Sterling", which already
+  sounds like a period radio. All library voices were chosen without a per-use
+  surcharge ("Celeste" and "Retro Radio Man VF" carry one, so they were skipped).
   Files live in `audio/voice/` (outside the public folder) and `/api/voice/...`
   serves each one only when the hunter may read the same text.
   - **Made without the API key (2026-09-29):** all 65 lines were generated on

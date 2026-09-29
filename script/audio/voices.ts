@@ -20,14 +20,14 @@ import { aureliaFor } from "../../server/aurelia";
 // Voice per character, by ElevenLabs voice name (see --list). Change and re-run to recast;
 // delete the old files first so they're made again.
 const CAST = {
-  narrator: "Brian",
+  narrator: "Cam Warm Transatlantic Narration Voice", // 1950s transatlantic announcer (owner's pick, 2026-09-29)
   aurora: "Sterling",
-  cookie: "Callum",
-  quill: "Liam",
-  vance: "Chris",
+  cookie: "Goodfella",
+  quill: "Rio - Warm Texan Male & Conversational",
+  vance: "Valentino - English with italian accent",
   ashgrove: "Lily",
-  pip: "Harry",
-  tuttle: "George",
+  pip: "John - Energetic, Authentic and Local",
+  tuttle: "Adam - Classic Scottish Storyteller",
   coralie: "Dahlia",
 } as const;
 type Role = keyof typeof CAST;
