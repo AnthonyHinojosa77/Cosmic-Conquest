@@ -461,20 +461,7 @@ test("game: Saturn bounty pays 1600 and turns up fragment IV", async () => {
   assert.equal((await paid.json()).credits, 1600);
 });
 
-// Neptune waits on its art, so these tests play it as if it were released.
-async function released(bountyId: string, play: () => Promise<void>) {
-  const { bountyById } = await import("@shared/game");
-  const bounty = bountyById(bountyId)!;
-  const was = bounty.available;
-  bounty.available = true;
-  try {
-    await play();
-  } finally {
-    bounty.available = was;
-  }
-}
-
-test("game: Neptune's diving bell needs all three chart clues, then the right square", () => released("neptune-deep", async () => {
+test("game: Neptune's diving bell needs all three chart clues, then the right square", async () => {
   const cookie = cookieOf(await fetch(base + "/api/player"));
   const dive = (code: string) => post("/api/bounties/neptune-deep/clues/chart/unlock", { code }, cookie);
   const search = (id: string) => post(`/api/bounties/neptune-deep/clues/${id}/search`, {}, cookie);
@@ -495,7 +482,7 @@ test("game: Neptune's diving bell needs all three chart clues, then the right sq
   const progress = await (await fetch(base + "/api/bounties/neptune-deep/progress", { headers: { Cookie: cookie } })).json();
   assert.equal(progress.found.chart, found.text); // the dive survives a refresh
   assert.equal((await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie" }, cookie)).status, 409); // berth and stage door still unsearched
-}));
+});
 
 test("game: the chart clues point to exactly one square", async () => {
   const { bountyById, chartCell } = await import("@shared/game");
@@ -513,7 +500,7 @@ test("game: the chart clues point to exactly one square", async () => {
   }
 });
 
-test("game: Neptune bounty pays 2000 and turns up fragment V", () => released("neptune-deep", async () => {
+test("game: Neptune bounty pays 2000 and turns up fragment V", async () => {
   const cookie = cookieOf(await fetch(base + "/api/player"));
   await investigate("neptune-deep", cookie);
   assert.deepEqual(await (await post("/api/bounties/neptune-deep/accuse", { suspect: "rusty" }, cookie)).json(), { correct: false });
@@ -525,7 +512,7 @@ test("game: Neptune bounty pays 2000 and turns up fragment V", () => released("n
   assert.equal((await paid.json()).credits, 2000);
   const map = await (await fetch(base + "/api/star-map")).json();
   assert.equal(map.fragments.find((f: { id: string; hunters: number }) => f.id === "neptunian-quadrant").hunters, 1);
-}));
+});
 
 test("game: bounties that aren't released yet can't be played", async () => {
   const { BOUNTIES } = await import("@shared/game");
