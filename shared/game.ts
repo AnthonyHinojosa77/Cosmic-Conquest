@@ -501,8 +501,7 @@ export const BOUNTIES: Bounty[] = [
     title: "The Golden Submarine",
     planet: "Neptune",
     reward: 2000,
-    // Waiting on its art (scenes, portraits, showdown); see GAME_PLAN.md
-    available: false,
+    available: true,
     teaser: "Aurora Sterling's own golden submarine vanished from its berth, deep beneath Neptune's sea.",
     briefing:
       "On the floor of Neptune's blue sea sits the Aquadome, a glass city of promenades, coral gardens and the famous Aquacade. Its pride is the Tomorrow, the golden submarine Aurora Sterling piloted herself. Last night it slipped out of the Sterling Submarine Pen and vanished into the deep. The Aquadome is paying 2,000 credits to get it back. Search the Submarine Pen and the Glass Promenade, work out on the harbor chart where the thief hid her, send down the diving bell, then name your culprit.",
@@ -512,8 +511,8 @@ export const BOUNTIES: Bounty[] = [
         name: "Sterling Submarine Pen",
         image: "./scenes/neptune-pen.webp",
         clues: [
-          { id: "berth", label: "The Tomorrow's Empty Berth", top: "50%", left: "30%", width: "36%", height: "30%" },
-          { id: "chamber", label: "Decompression Chamber", top: "25%", left: "76%", width: "22%", height: "50%" },
+          { id: "berth", label: "The Tomorrow's Empty Berth", top: "55%", left: "44%", width: "32%", height: "30%" },
+          { id: "chamber", label: "Decompression Chamber", top: "18%", left: "77%", width: "18%", height: "62%" },
           {
             id: "chart",
             label: "Harbor Master's Sea Chart",
@@ -530,7 +529,7 @@ export const BOUNTIES: Bounty[] = [
                 { cell: "A5", name: "Kelp Forest", icon: "kelp" },
               ],
             },
-            top: "62%", left: "2%", width: "24%", height: "34%",
+            top: "68%", left: "2%", width: "42%", height: "28%",
           },
         ],
       },
@@ -539,9 +538,9 @@ export const BOUNTIES: Bounty[] = [
         name: "The Glass Promenade",
         image: "./scenes/neptune-promenade.webp",
         clues: [
-          { id: "sonar", label: "Sonar Lookout", top: "40%", left: "3%", width: "20%", height: "40%" },
-          { id: "beacon", label: "Call Box to the Beacon", top: "20%", left: "40%", width: "22%", height: "40%" },
-          { id: "stage-door", label: "Aquacade Stage Door", top: "35%", left: "74%", width: "22%", height: "50%" },
+          { id: "sonar", label: "Sonar Lookout", top: "40%", left: "2%", width: "34%", height: "55%" },
+          { id: "beacon", label: "Call Box to the Beacon", top: "22%", left: "44%", width: "16%", height: "52%" },
+          { id: "stage-door", label: "Aquacade Stage Door", top: "10%", left: "79%", width: "19%", height: "64%" },
         ],
       },
     ],

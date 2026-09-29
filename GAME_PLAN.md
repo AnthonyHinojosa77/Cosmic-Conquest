@@ -42,7 +42,7 @@ showdown. Bounties pay credits; credits buy suits, gear and weapon upgrades.
 | 2. Real art | ChatGPT-made hero poses (ready, firing, too slow), suspect portraits, Cookie showdown pose, showdown street and Bounty Office scenes | **Done** — plus a relaxed standing pose (Bounty Office) and every pose in red, teal and gold (2026-09-25) |
 | 3. The Sterling Legacy | The story hook (below), map fragments earned from bounties, a community tracker showing how close everyone is | **Built** — Aurora's broadcast (first Bounty Office visit, replay on the desk radio), a 12-piece star map with fragment I from the Heart of Luna, and the community count |
 | 4. Puzzles & RPG | Puzzles inside investigations (safes, circuits, coded telegrams, star charts), an inventory of found items used elsewhere, hunter rank, gadgets that help with puzzles, and conversations with suspects | **Started** — puzzles: coded telegram + decoder dial (Mars), combination lock from torn-note scraps (Venus), questioning suspects and catching lies with evidence (Saturn), finding a hiding place on a sea chart (Neptune); a satchel of items kept between bounties, and hunter rank (Greenhorn → Legend of the Spaceways) |
-| 5. More worlds | Tomorrowland-style planets: Mars ("Rustlers of the Red Sands"), Venus ("The Venus Fog Phantom"), each with scenes, puzzles, a fragment and a showdown | **Mars, Venus and Saturn built** (800 CR / II, 1,200 CR / III, 1,600 CR / IV); **Neptune written, waiting on art** (2,000 CR / V, "Coming soon" on the Wanted board until then) |
+| 5. More worlds | Tomorrowland-style planets: Mars ("Rustlers of the Red Sands"), Venus ("The Venus Fog Phantom"), each with scenes, puzzles, a fragment and a showdown | **Mars, Venus, Saturn and Neptune built** (800 CR / II, 1,200 CR / III, 1,600 CR / IV, 2,000 CR / V; Neptune's art made and the bounty released 2026-09-29) |
 | 6. Deeper gear | Suits (**live**: red/teal/gold, worn in the office and in showdowns), weapons that change showdowns, gadgets, ship paint | Later |
 | 7. Co-op | Team up with friends on a bounty (shared clues, split reward) | Later, needs live multiplayer |
 
@@ -170,13 +170,41 @@ wearing a **red bandana with a gold star**.
 > pinned to a cork board, a big porthole window showing Saturn, a desk with
 > a vintage radio and a brass star badge.
 
-**How to hand them over:** Claude drives the ChatGPT desktop app on the Mac
-Mini (paste the reference image and prompt, then "Copy image" on the result),
-saves the full-size PNG to the owner's Google Drive folder "Retro Futurism",
-and runs it through `script/art/process.py` into `client/public/`. The ChatGPT
-app exposes no accessibility controls, so this works from screenshots and
-clicks by position; the Terminal running Claude Code needs Accessibility and
-Screen Recording permission. Don't commit full-size PNGs to the repository.
+**How to hand them over:** Claude drives the ChatGPT desktop app (paste the
+reference image and prompt, then "Copy image" on the result), saves the
+full-size PNG to the owner's Google Drive folder "Retro Futurism", and runs it
+through `script/art/process.py` into `client/public/`. The ChatGPT app exposes
+no accessibility controls, so this works from screenshots and clicks by
+position; the Terminal running Claude Code needs Accessibility and Screen
+Recording permission. Don't commit full-size PNGs to the repository.
+
+*On the MacBook* (Neptune, 2026-09-29):
+
+- **Repo:** `~/code/Cosmic-Conquest`. Terminal can't open `~/Documents` or
+  `~/Desktop` there, so don't keep a copy in either.
+- **Drive folder:** `~/Library/CloudStorage/GoogleDrive-anthonymhinojosa@gmail.com/My Drive/Retro Futurism`.
+- **Which app:** the one named **ChatGPT** (the new app), in **Chat** mode, on a
+  "New chat". Not "ChatGPT Classic" (owner's call). Both show "ChatGPT" in the
+  menu bar; Classic is the one with a "Chats" menu, so check before quitting either.
+- **Permissions:** turn on Terminal under Privacy & Security, in both
+  Accessibility and Screen Recording. A Claude session started *before* that still
+  can't see the screen: `/exit`, then `claude --continue` in the same window.
+- **Python:** the python.org Python 3.14 came without scipy
+  (`python3 -m pip install scipy` fixed it).
+- **Attaching the reference:** put it on the clipboard
+  (`osascript -e 'set the clipboard to (read (POSIX file "<path>") as «class PNGf»)'`),
+  click the message box and press Cmd+V.
+- **Prompts:** type them as one line (Enter sends). Each picture takes about a
+  minute. Right-click the finished picture > "Copy image", then save the
+  clipboard as PNG (osascript: `write (the clipboard as «class PNGf»)` to the
+  file). Scenes come back 1536×1024, portraits 1254×1254, full-body poses 1024×1536.
+- **Voices:** the ElevenLabs key isn't in this Mac's Keychain, so
+  `script/audio/voices.ts` can't run here.
+- **Browser check:** the Chrome window couldn't be resized, so the phone check
+  loads the game inside a 390×844 frame on the same page. A second hunter comes
+  free by opening `127.0.0.1` instead of `localhost`. To win the quick-draw, a
+  small page script watches `data-testid="text-showdown-callout"` for "DRAW!".
+  Don't match "DRAW!" anywhere on the page: the hint under the duel contains it.
 
 **Site cover (the hub page):** done 2026-09-25 (title now "COSMIC CONQUEST";
 original in the Drive folder as "hub cover cosmic conquest.png"). Prompt used,
@@ -261,9 +289,12 @@ Mackerel (sealed in the decompression chamber all night). Culprit, square and
 clue text are server-only. The motive ties into the story: the thief wanted
 Aurora's star map, and never found it (it's in the ship's wheel).
 
-**Art still to make** (then Claude sets the hotspots on the scenes and releases
-the bounty). Same style block and style-reference image as the other worlds;
-finished files go in `client/public/` under these names:
+**Art: done 2026-09-29** (one ChatGPT chat, "saturn observatory car.png" attached as
+the style reference; sources in the Drive folder as "neptune pen.png", "neptune
+promenade.png", "captain silas brine.png", "rusty mackerel.png", "coralie finn.png",
+"coralie finn showdown pose.png" and "neptune showdown promenade.png"). Hotspots are set
+on the finished scenes and the bounty is released. The prompts used, and the files they
+became in `client/public/`:
 
 1. `scenes/neptune-pen.webp` (wide, 3:2): *Interior of a grand 1950s atomic-age
    submarine dock on the sea floor, under a huge riveted glass dome with deep blue
