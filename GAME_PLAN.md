@@ -198,6 +198,10 @@ Recording permission. Don't commit full-size PNGs to the repository.
   minute. Right-click the finished picture > "Copy image", then save the
   clipboard as PNG (osascript: `write (the clipboard as «class PNGf»)` to the
   file). Scenes come back 1536×1024, portraits 1254×1254, full-body poses 1024×1536.
+- **Dock clean-up:** every screen-control action leaves a stale ">_" "Terminal"
+  icon in the Dock (only one real Terminal window exists). When done with ChatGPT,
+  run `killall Dock` (it relaunches in a second, nothing closes); the owner wants
+  them cleared, not left to pile up.
 - **Voices:** the ElevenLabs key isn't in this Mac's Keychain, so
   `script/audio/voices.ts` can't run here.
 - **Browser check:** the Chrome window couldn't be resized, so the phone check
