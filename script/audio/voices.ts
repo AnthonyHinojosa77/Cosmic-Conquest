@@ -7,8 +7,9 @@
 //
 // The API key is read from the macOS Keychain (item "elevenlabs-api-key"), never from a
 // file in the repo. Lines already on disk are skipped, so re-running costs nothing extra.
-// Output: audio/voice/<scope>/<a>/<b|line>.mp3, served by server/voice.ts behind the same
-// rules as the text they speak.
+// Output: audio/voice-raw/<scope>/<a>/<b|line>.mp3 (the untouched ElevenLabs audio); then
+// script/audio/vintage.sh renders the "1950s broadcast" versions into audio/voice/, which
+// server/voice.ts serves behind the same rules as the text they speak.
 import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
@@ -31,7 +32,7 @@ const CAST = {
 } as const;
 type Role = keyof typeof CAST;
 
-const OUT = path.resolve(process.cwd(), "audio", "voice");
+const OUT = path.resolve(process.cwd(), "audio", "voice-raw");
 const API = "https://api.elevenlabs.io/v1";
 
 interface Line {
@@ -142,7 +143,7 @@ async function main() {
     fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
     console.log(`made ${l.file}`);
   }
-  execFileSync("python3", ["script/audio/manifest.py"], { stdio: "inherit" });
+  execFileSync("script/audio/vintage.sh", [], { stdio: "inherit" }); // also rewrites audio.json
 }
 
 main().catch((err) => {
