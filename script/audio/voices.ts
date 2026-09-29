@@ -2,6 +2,7 @@
 //
 //   npx tsx script/audio/voices.ts --list      show the account's voices
 //   npx tsx script/audio/voices.ts --dry-run   show what would be made and the character cost
+//   npx tsx script/audio/voices.ts --json      the same list as JSON (file, voice, text), no key needed
 //   npx tsx script/audio/voices.ts             make any lines that don't exist yet
 //
 // The API key is read from the macOS Keychain (item "elevenlabs-api-key"), never from a
@@ -106,6 +107,11 @@ async function main() {
   if (args.includes("--dry-run")) {
     for (const l of todo) console.log(`${l.role.padEnd(8)} ${l.file}  (${l.text.length})`);
     console.log(`\n${todo.length} lines to make, ${chars} characters.`);
+    return;
+  }
+  // For making the lines by hand on the ElevenLabs site (no API key): file, voice, text.
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(todo.map((l) => ({ file: l.file, voice: CAST[l.role], text: l.text })), null, 2));
     return;
   }
 

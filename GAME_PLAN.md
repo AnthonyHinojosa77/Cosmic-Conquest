@@ -111,12 +111,29 @@ arrives only in Act II and III.
   Prompts are in the Drive folder "Retro Futurism/Music"; each `<name>.mp3`
   saved there is imported with `script/audio/music.sh` (AAC 96 kbps,
   loudness-evened) into `client/public/audio/music/`.
-- **Voices (ElevenLabs Starter):** a noir narrator reads briefings, clues,
+- **Voices (ElevenLabs Creator plan):** a noir narrator reads briefings, clues,
   outros and Aurelia; culprits voice their taunts; Aurora voices her broadcast.
   `npx tsx script/audio/voices.ts` makes missing lines (key from the macOS
   Keychain item `elevenlabs-api-key`); cast is set at the top of that script.
+  Cast (2026-09-29): narrator Brian, Aurora "Sterling" (the owner's own voice),
+  Cookie Callum, Quill Liam, Vance Chris, Ashgrove Lily, Pip Harry, Tuttle
+  George, Coralie "Dahlia - Vintage Romantic Hollywood Star" (added to My
+  Voices; no per-use surcharge, unlike "Celeste").
   Files live in `audio/voice/` (outside the public folder) and `/api/voice/...`
   serves each one only when the hunter may read the same text.
+  - **Made without the API key (2026-09-29):** all 65 lines were generated on
+    the ElevenLabs website in the owner's signed-in Chrome (model Eleven
+    Multilingual v2, the same one the script uses) and downloaded from the Text
+    to Speech page's History panel as MP3, then re-encoded to the script's
+    format (`ffmpeg -ar 22050 -ac 1 -b:a 32k`). `npx tsx script/audio/voices.ts
+    --json` prints the exact list (file, voice, text) to work from; the script
+    skips lines that already exist. Gotchas from that run: Chrome allows one
+    script-triggered download per tab (use a fresh tab per file); the page's own
+    Download button is flaky while the audio is still loading; the History panel
+    reliably downloads only the row you locate by its text; and when Chrome's
+    window is in the background, timers and animations stall, so drive the page
+    with scripts rather than clicks. With the key in the Keychain, re-runs are
+    one command: `npx tsx script/audio/voices.ts`.
 - Sound is off until the player turns it on (corner button, hidden until any
   audio exists). Music ducks while someone speaks.
 - The game plays well on phones (owner, 2026-09-26): check new screens at
