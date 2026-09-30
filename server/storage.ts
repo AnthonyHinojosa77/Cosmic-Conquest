@@ -5,8 +5,8 @@ import {
   type Visitor, type InsertVisitor, visitors,
   type Vote, type InsertVote, votes,
 } from "../shared/schema";
-import { createClient } from "@libsql/client";
-import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
+import type { Client } from "@libsql/client";
+import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import { eq, desc, sql, and } from "drizzle-orm";
 
 // Where the data lives. On a hosting platform without a disk (Vercel) it is a
@@ -15,11 +15,41 @@ import { eq, desc, sql, and } from "drizzle-orm";
 // and the tests need no network.
 const remoteUrl = process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL;
 const authToken = process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
-const client = remoteUrl
-  ? createClient({ url: remoteUrl, authToken })
-  : createClient({ url: `file:${process.env.DATABASE_PATH || "data.db"}` });
 
-export const db = drizzle(client);
+// The default client entry loads the native SQLite build (a platform-specific
+// binary) even when only a remote URL is used; serverless bundlers can't trace
+// that binary, so importing it there crashes the function. Hosted databases
+// therefore go through the pure-JS web client over HTTPS, and only a local file
+// loads the native one. Both are loaded on first use (see dbReady), so the choice
+// is made at runtime and neither module is touched at startup. On Vercel with no
+// URL configured, requests fail with a clear error instead of the function failing
+// to start.
+const useRemote = !!remoteUrl || !!process.env.VERCEL;
+let client: Client | undefined;
+let database: LibSQLDatabase | undefined;
+
+async function connect(): Promise<void> {
+  const [{ createClient }, { drizzle }] = useRemote
+    ? await Promise.all([import("@libsql/client/web"), import("drizzle-orm/libsql/web")])
+    : await Promise.all([import("@libsql/client"), import("drizzle-orm/libsql")]);
+  if (useRemote && !remoteUrl) {
+    console.error("No DATABASE_URL or TURSO_DATABASE_URL is set; every database call will fail until one is.");
+  }
+  client = useRemote
+    ? createClient({ url: (remoteUrl ?? "https://database-not-configured.invalid").replace(/^libsql:\/\//, "https://"), authToken })
+    : createClient({ url: `file:${process.env.DATABASE_PATH || "data.db"}` });
+  database = drizzle(client);
+}
+
+// The database handle the rest of the server uses. It stands in for the real one,
+// which exists once dbReady() has resolved (every /api request waits for that).
+export const db: LibSQLDatabase = new Proxy({} as LibSQLDatabase, {
+  get(_target, prop) {
+    if (!database) throw new Error("Database used before dbReady() resolved");
+    const value = Reflect.get(database, prop, database);
+    return typeof value === "function" ? value.bind(database) : value;
+  },
+});
 // A query runner: the database itself, or the transaction a caller is already in.
 export type Db = Pick<LibSQLDatabase, "select" | "insert" | "update" | "delete">;
 
@@ -112,13 +142,14 @@ let ready: Promise<void> | undefined;
 // on serverless hosting); every request waits on it before touching the database.
 export function dbReady(): Promise<void> {
   return (ready ??= (async () => {
-    if (!remoteUrl) await client.execute("PRAGMA journal_mode = WAL");
-    await client.executeMultiple(SCHEMA);
+    await connect();
+    if (!useRemote) await client!.execute("PRAGMA journal_mode = WAL");
+    await client!.executeMultiple(SCHEMA);
     // Enforce one vote per visitor per item at the database level. Kept separate so
     // a database holding duplicate rows from older code logs a warning instead of
     // failing to boot (the application-level check still applies).
     try {
-      await client.execute(
+      await client!.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS `votes_visitor_item_unique` ON `votes` (`visitor_id`,`item_type`,`item_id`)",
       );
     } catch (err) {
@@ -131,7 +162,7 @@ export function dbReady(): Promise<void> {
 export async function pingDb(): Promise<boolean> {
   try {
     await dbReady();
-    await client.execute("SELECT 1");
+    await client!.execute("SELECT 1");
     return true;
   } catch {
     return false;
@@ -140,7 +171,7 @@ export async function pingDb(): Promise<boolean> {
 
 // On shutdown: close cleanly (a local file folds its write-ahead log back in).
 export function closeDb(): void {
-  client.close();
+  client?.close();
 }
 
 export type VoteResult<T> =
