@@ -3,6 +3,10 @@ import { Link } from "wouter";
 import { BackButton } from "@/components/BackButton";
 import { HeroArt, preloadHeroPoses } from "@/components/HeroArt";
 import { StarMap } from "@/components/StarMap";
+import { Scene } from "@/components/Scene";
+import { SceneBackdrop } from "@/components/SceneBackdrop";
+import { ArtImage } from "@/components/ArtImage";
+import { InstallHint } from "@/components/InstallHint";
 import { useMusic } from "@/lib/sound";
 import { SterlingBroadcast, hasHeardBroadcast, markBroadcastHeard } from "@/components/SterlingBroadcast";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
@@ -181,11 +185,11 @@ function AureliaCard() {
     <section data-testid="panel-aurelia">
       <h2 className="pulp-title text-2xl text-[hsl(45,80%,55%)] tracking-wider">Aurelia</h2>
       <div className="comic-panel mt-3 overflow-hidden" style={{ background: "hsl(245,45%,16%)" }}>
-        <img
+        <ArtImage
           src="./game/aurelia-gates.webp"
           alt="The golden Art Deco gates of Aurelia, guarded by robot doormen"
-          className="w-full h-auto block"
-          draggable={false}
+          className="w-full aspect-[3/2]"
+          imgClassName="object-cover"
         />
         <div className="p-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-[hsl(240,20%,85%)] flex-1 min-w-[14rem]">
@@ -283,38 +287,42 @@ export default function BountyOffice() {
     setBroadcast(false);
   }, []);
   return (
-    <div className="min-h-screen bg-[hsl(25,30%,12%)] paper-texture pb-10">
-      <div className="bg-[hsl(0,45%,18%)] border-b-4 border-[hsl(45,80%,48%)] px-4 py-3">
+    <div className="game-page">
+      <SceneBackdrop src="./game/bounty-office-no-hero.webp" />
+      <header className="game-header">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           <BackButton />
-          <h1 className="pulp-title text-xl md:text-2xl text-[hsl(45,80%,55%)] tracking-wider">Bounty Office</h1>
+          <h1 className="pulp-title text-xl md:text-2xl text-[hsl(45,80%,58%)] tracking-wider">Bounty Office</h1>
           <CreditsBadge credits={player?.credits ?? 0} />
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-5xl mx-auto px-4 pt-4">
-        <div className="scene-container" data-testid="scene-bounty-office">
-          <img
+      <section className="max-w-5xl mx-auto px-4 game-main" aria-label="The office">
+        <div className="bleed rise-in">
+          <Scene
             src="./game/bounty-office-no-hero.webp"
             alt="The Bounty Office on a Moon outpost: a cork board of wanted posters, a desk with a radio, and Saturn through the porthole"
-            className="w-full h-auto block"
-            draggable={false}
-          />
-          <button
-            className="hotspot"
-            style={{ top: "57%", left: "70%", width: "16%", height: "17%" }}
-            onClick={() => setBroadcast(true)}
-            aria-label="Play Aurora Sterling's broadcast on the radio"
-            title="Aurora Sterling's broadcast"
-            data-testid="hotspot-radio"
+            testId="scene-bounty-office"
+            focus={0.62}
+            maxHeight={430}
           >
-            <span className="hotspot-indicator" style={{ bottom: "10%", left: "50%", transform: "translateX(-50%)" }} />
-          </button>
+            <button
+              className="hotspot"
+              style={{ top: "57%", left: "70%", width: "16%", height: "17%" }}
+              onClick={() => setBroadcast(true)}
+              aria-label="Play Aurora Sterling's broadcast on the radio"
+              title="Aurora Sterling's broadcast"
+              data-testid="hotspot-radio"
+            >
+              <span className="hotspot-indicator" style={{ top: "55%", left: "50%" }} />
+            </button>
+          </Scene>
         </div>
-        <p className="marker-text text-xs text-center text-[hsl(38,25%,60%)] mt-2">
+        <p className="marker-text text-xs text-center text-[hsl(38,30%,72%)] mt-2">
           📻 Tap the radio to hear Aurora Sterling's last broadcast
         </p>
-      </div>
+        <InstallHint />
+      </section>
 
       <main className="max-w-5xl mx-auto px-4 pt-6 grid md:grid-cols-[280px_1fr] gap-6">
         {/* Jobs first (phones, screen readers); on desktop the hunter's card sits on the left. */}

@@ -8,7 +8,7 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
     outro: "The Heart of Luna is back under the Expo dome, and Cookie is cooling off in the Lunar lock-up.",
     showdown: {
       opponent: "\"Cookie\" Carmichael",
-      image: "./game/cookie-showdown.webp",
+      image: "/api/art/showdown/heart-of-luna",
       taunt: "Cookie backs against the grill, hand hovering over his spatula blaster. \"You'll never take me alive, hunter!\"",
     },
   },
@@ -17,7 +17,7 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
     outro: "The Saturn Gear clicks back onto its spindle and the Sterling Orrery chimes again. Professor Tuttle will be lecturing on Titan after all, from the inside of the Titan lock-up.",
     showdown: {
       opponent: "Professor Orson Tuttle",
-      image: "./game/tuttle-showdown.webp",
+      image: "/api/art/showdown/saturn-orrery",
       scene: "./game/showdown-platform-saturn.webp",
       taunt: "Tuttle snaps his pocket watch shut and reaches for his brass spyglass-pistol. \"Aurora's gears belong to those who understand them, hunter!\"",
     },
@@ -27,7 +27,7 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
     outro: "The Star of Venus is back around its owner's neck, the fog show runs on schedule again, and Captain Vance is taking the long gondola ride down to the Venus lock-up.",
     showdown: {
       opponent: "Captain Teddy Vance",
-      image: "./game/vance-showdown.webp",
+      image: "/api/art/showdown/venus-fog",
       scene: "./game/showdown-deck-venus.webp",
       taunt: "Vance swirls his fog-grey cape and flashes that famous grin. \"Nobody catches the Fog Phantom, hunter. Nobody!\"",
     },
@@ -37,7 +37,7 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
     outro: "The Tomorrow is back in her berth, polished and gleaming, and the Aquacade is holding auditions for a new mermaid. Coralie Finn is practicing her breath-holding in the Triton lock-up.",
     showdown: {
       opponent: "Coralie Finn",
-      image: "./game/coralie-showdown.webp",
+      image: "/api/art/showdown/neptune-deep",
       scene: "./game/showdown-promenade-neptune.webp",
       taunt: "Coralie Finn peels off her flowered swim cap and levels a pearl-handled harpoon pistol. \"Aurora's fortune belongs to whoever dives deepest, hunter!\"",
     },
@@ -47,7 +47,7 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
     outro: "The Rain-Makers are back on their pads, the Ares Valley crops are drinking again, and Rigby Quill is filing his own paperwork in the Phobos lock-up.",
     showdown: {
       opponent: "Rigby Quill",
-      image: "./game/quill-showdown.webp",
+      image: "/api/art/showdown/red-sands",
       scene: "./game/showdown-street-mars.webp",
       taunt: "Quill tucks his clipboard under one arm, fingers twitching over his stamp-blaster. \"Everything was properly filed, hunter!\"",
     },

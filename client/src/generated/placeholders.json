@@ -1,0 +1,187 @@
+{
+ "./game/aurelia-gates.webp": {
+  "src": "data:image/webp;base64,UklGRgIBAABXRUJQVlA4IPYAAACwBgCdASogABUAPu1iqE2ppaOiMAgBMB2JbACdMoSGgLz3g1ZzgAOaYBD23T4VJgRuWRpitX/5hieuvYtjgAD+qrPmhABM2i8ua7PbG3MSN7BQCEOQ0F9wWVBArUX6F5OIUK/JXNVjixc5oVvfj1BYVlXpe0yDZxTO2XMzvNTuP1yHlrZG5SzdnIWI0LCF6J9lwm5HyYczQcCzhw26bDf74ivON25YWQfK7t8Sxj6W65XdPz4WuNAYGepWt03KRyu5jWoopcyG3uEJPlk4Do3vyL4pFVP+5BdFl1Gcra5JDlKACwkuBTJ3ZYUo9evotDmyR+ooAAA=",
+  "color": "#7d603a",
+  "ratio": 1.5
+ },
+ "./game/bounty-office-no-hero.webp": {
+  "src": "data:image/webp;base64,UklGRuAAAABXRUJQVlA4INQAAACQBQCdASogABUAPu1mqk2ppaQiMAgBMB2JbACdMxyBSB43itfM5+huxEAYk05xBlFKN5HVIAD+pPmN+fzNTZuXPgC1vZSLVLhDNhe+i4wHz2Ztmnu43ABJCRN+1UjKvDDUNEPWZ8idb8tgHeFB81/Jz8YTBjcUqlpMBqlYjj4uKWscGDjlVDUP3UbiOiZtMzBXtxEGTazZWAjq+veTxTvggNat5U9M0huNmAJwWfHGRncJC+xfTtGifE5HfHKkutq0kFvKST5wVA4Us2zB4sIJJhAAAA==",
+  "color": "#73523c",
+  "ratio": 1.5
+ },
+ "./game/showdown-deck-venus.webp": {
+  "src": "data:image/webp;base64,UklGRu4AAABXRUJQVlA4IOIAAAAwBQCdASogABUAPu1kqU2ppaQiMAgBMB2JbBejgeagA0zEHWwK9x7aTd600aWBuDU8AAD+GeWCSwj7215HLqPMA4C2XdFonDZaTSAfuAVRGHJpnR9XBIzLsSKRxT/ef4CsW6FS0DN6rbemA09vqHYv1lNFengnzpPFEfuEVfJtEmLzsGdI2C80vS0cLTD71hEd66Q1Ihmubdu7eDGrrHCHtf0YC5BfsuPI6+xnVphFWmDY+aQhczgh0O2jA+w9lVbwdh0q6uNFjjPE7Gq2gkY/draZtcQUjnZi5EdeYKJ/wBgA",
+  "color": "#ad7236",
+  "ratio": 1.5
+ },
+ "./game/showdown-platform-saturn.webp": {
+  "src": "data:image/webp;base64,UklGRvoAAABXRUJQVlA4IO4AAACwBQCdASogABUAPu1gqE2ppaOiMAgBMB2JaACdIBBYABRdfYNtqNvuMxdNkCaVObvq8NQvNoAA/jMeNXIlsgOpQ05fL3a5ljmZG8eD0Dx+58L/3r/tb3M0KHJght7AuiMNY//3HPxKTIoNfGVwYwYTc8mdrl2LPrpQZin+VPos0Q5Nh89cPcnHalaBM0N0uOduCrLOjrSWyJQSPrBW3wwsBfK1IzZGo4IoijPArJwDy66X8r8nrSg4oWCBrIKvKS8AOpxm/BupIBdlT3hXxYzjPDfhG0MhwEe+lZaZjgCdeJkcu4bOABP2gyeFwAAA",
+  "color": "#887851",
+  "ratio": 1.5
+ },
+ "./game/showdown-promenade-neptune.webp": {
+  "src": "data:image/webp;base64,UklGRgwBAABXRUJQVlA4IAABAADQBgCdASogABUAPu1gqE2ppaOiMAgBMB2JbACdMoMYNeBhVWmS7zXLXnsEgAEXYVSYg2pY74RkYi2vDYAGgVYA+i+9Md0Auxxq7EPlzzBM5/dW7kVxU7atDoZ+hq4mSLRAC/tczUCzxC+09xasytQ9GsBKc1DTjqx9j1wd3rQUzcQjq5aQoYW2pUjA589ZoKHdXCBMqCp2lRLMJptR3kD7gWAPJOvblYBRvOFFjqnJigHnG5l/l8U5XHzQ0cHfxe9mjFCNvcYTRT5Zg5z0Nv2WTEl5lDeHSMZmPuo52We7WrvgEnwTtbDsLj2xMyok81rzBrCOFbGWThi5X+BiKAAA",
+  "color": "#625a3e",
+  "ratio": 1.5
+ },
+ "./game/showdown-street-mars.webp": {
+  "src": "data:image/webp;base64,UklGRtQAAABXRUJQVlA4IMgAAACwBQCdASogABUAPu1oq08ppiOiMBgIATAdiWwAnTNQwq3/5dgBas5NxLu1EcrLn3CfgI+hu3gA878+R8RbbyADzaOvEvVVo6DW6Sm9KLX4KozzlE47sl1rdyukt5TSDBvd60q0RitMGBR5/F8RgqG0CiunYV10VL3XhCoFRRzIVb2trGT5hBiZiJiXbL6vFiS1ddzItrBMYthvLQ03k1Ilsq652RzOQ/V71W9ZK++k9U3M4tJjy/mA26kwUm7P856EGVlJCtawAA==",
+  "color": "#af6135",
+  "ratio": 1.5
+ },
+ "./game/showdown-street.webp": {
+  "src": "data:image/webp;base64,UklGRtAAAABXRUJQVlA4IMQAAAAwBQCdASogABUAPu1gqE2ppSOiMAgBMB2JYwC2yywBd967bSccvIYWaLXC0rTyEBfIrAD9Tgm9jh/OVJha7ITFOSz6k/kQ5IiysQyyhTfU/GE0ZHEV67yAgpO3MWFigNyNsEyHOzpM0vTiD5C+JQYFv17ybAFITaf3ZWIJ3s5/K/T+7ENCQxu1fU+h6dGVbBY1WHebF7e8cnUkY68OkBxcj8X7UXcNLOWywfI+pEeUCwuEnVhesbeDHM4xQecIbUBDgAAA",
+  "color": "#7b6753",
+  "ratio": 1.5
+ },
+ "./game/suspect-ashgrove.webp": {
+  "src": "data:image/webp;base64,UklGRmABAABXRUJQVlA4IFQBAACwBwCdASogACAAPtVUok2oJKMiN+gBABqJbACxFLHrgrCjKkpGcsEp1obFZy87VAWZKiqnO25THjX60cx0rmVV5UJ+WG9AAPjKuWEhO7mribD3JsRez1tl1ACkBEGTOGkTGsaL9S0qaoGjByU9qJrEJpyw7x7v6+yW3Nff/8B/6crs+LgvFbKLFThyupUbkN4/+6IDHCiFUIacS0CjbjIvn907mEMRTMlECfm2gXAJXnuHDQHzYcDB8mwqBT8vV82IpfDV1xHe/APT1wv70B85EEKm+TIG/7fOrE5XYvLE5l9oN1H0JYIMjfhCpybFCTT8gDyyL7fPkHbHE49qHBs8kn7D3SayhuTn/xYea5rv3Uo43OMdGv/hCsqGCmmvSPrGPbjq6pIckFLRpPk38oV9wdWa+kD7fLVIMVzQvgvxia+eA/c1Ll9n4Pvuha0DWQ8FAAAA",
+  "color": "#ab7f4d",
+  "ratio": 1.0
+ },
+ "./game/suspect-brine.webp": {
+  "src": "data:image/webp;base64,UklGRl4BAABXRUJQVlA4IFIBAACwBgCdASogACAAA4BaJbACdMuOCvt46VGgVII0BumaY9ncxAlFkmfLSKxP9ILIdqTU+N4ttD0tbO/4tzKcsAD44HaFpx6pMZR8V4HZribxRN/wiT9RB2x0ricIWNXU6vPPMwRAmZYWUiqNFmqpsrIysH/fPxR5cEuWf84xfB7GDmbZb9XNnPhgkGjicT4SxxBI8u5KVPO4WHAFCHMeaF0sLOnZebckC8xt3fQg5e3d0PGLbidrvzF5GVf1pM9IPMIHt4uV7AL+DWsePChED+hB19h9QtWAo1wCPIIRID4SkT1qRmINqvmNlitNa9NLtjQzahnWDDmBf99+BorLtFtCnlZraKmj0TuA9p7N/Ru5B/oFo9iaEwbCRkunvVd4DmRNw/WQxrU6Gdt9jwjLEVwpB08TDyF2l8q7BuCtgT8hl52wHEG9pbOLa7Pzm55pB1AAAA==",
+  "color": "#8c6f44",
+  "ratio": 1.0
+ },
+ "./game/suspect-cookie.webp": {
+  "src": "data:image/webp;base64,UklGRmQBAABXRUJQVlA4IFgBAADwBgCdASogACAAPtVSoU2oJKMiN+gBABqJZgCdIKprBGkIL41lBl7pecoHhoJoiz6ALfXV+JQRy+dUGmdVagAAAOJnmFDjiKc9/2bDHks7zHzBUHKiEQgmrDR+sa50dcY1NKWqIJY8s+oW8TmIHw31tEjKY2MJ61N+OTyKgPSvkuaLLBu6rbjequCvf/wrX2EkZN+9l9y6ubt+rvst33snGVb81N0pOe9wdtDZKLT2JJSoQmYK2ZSgUI0DfYs2AqrncGY1plC9g/k7KyoZe8Q0EX+udTZsWP0Okp+wNs72wgcnRbF0xithYJG059zya22y9sg7MF/GHGkKulUbQeSgyEccxxYG0u4NOicd3nC0atZMk/+C9GJkoqzIGRbVy+lj+TJh99ZBkZuZXbMduo2cYnnuVEVO9p9mMnjoA3t44Wi1fcVDUBrdbvGyz7I4F5RavTYAn8AAAA==",
+  "color": "#a27a4f",
+  "ratio": 1.0
+ },
+ "./game/suspect-coralie.webp": {
+  "src": "data:image/webp;base64,UklGRlABAABXRUJQVlA4IEQBAABwBwCdASogACAAPu1eq02ppSQiMBgMATAdiWwAnS6AXtjMZYAaQJn5XFfFpTwBfoEOOSFbXfDyuF/2ZZOSmaMuIWVFpAD45Bhrr1Qn14ytSI3D+ohJ9oToHfwUMWkBPVlcqfxXzktleijiLs0956wueJZCH8oOYxTLzJCHPTIgpF69sal/1//ME+xr6x7loJfzrir1dluKw4q3yrjZZwoF31rqZEQxGGt2nBTVOP7GqS2Ho0L/U7/7T3q4igq4/bdaPmdK1NFhY/WOFzqngsD/tx/zAjibbJb7/13CB+3NZ+NdP7vePSiO+UpI2n4vhZR1klK4PrW+6xCLM//6z0eSF62JnoOwHIjm7WXJ44guYS0kdgNAhmacHoINuZMrrrWvvGdNkCMnQevRwVYW3mc0bNVBTiJrhf9xyLqMTyWoYGgWIAA=",
+  "color": "#c38d49",
+  "ratio": 1.0
+ },
+ "./game/suspect-dusty.webp": {
+  "src": "data:image/webp;base64,UklGRi4BAABXRUJQVlA4ICIBAADQBgCdASogACAAPtVao02oJSMiN+gBABqJbACdB6grCbAFB3b5Oy1gq15X77GtBesHZO1VWR+nwlGK8luYcAAA/PIPibRDESghfQRRjyb2eVlyjSEIEjilAZCwwYkQQvHdPk+VEOmAHuJr9CPQ2Z2pqhkGGGR+UOuVo4sURW3/4tD8QlP2jWlXwZf87d/Zf3Ey4ShNLrMxaTeNqBNRI5TiHdptvOaH6Izg4ObO7mGJKsoUor9eg0ble71kECTWRMbNCJsVGBaBjxOnG+xyiOvKTP2oM2/k/7m7QEkcavSLMtkZT0JUKGV3i/QwFyINKfqR0tgHCY1gHgEjfeRHNtR/gIgLDaSBBcEs3sa+j2XE/hwXRsJWTsoqiuI9g2p1V4AAAA==",
+  "color": "#966037",
+  "ratio": 1.0
+ },
+ "./game/suspect-fenwick.webp": {
+  "src": "data:image/webp;base64,UklGRlABAABXRUJQVlA4IEQBAADQBgCdASogACAAA4BaJbACdMuIiCdRtneezUyZxRjCMFm3i/bidtqGTspL5JQUvV7Oucz1Q5JbMKVniSS7cgAA/NgabnxeuF9mRC4gy+K5SCNFxSSlEFM0OQvuatUklxw5TMKcrWYU4exHRNCuTTbvr69ygz3VHgfP9CigndwntoepNJpXGLQtTbeD/iyb6MS4MJe6bq2QWgo95VRaophdw9S6agWMwKmYOLD/phN8kJXezpb3HYAb4M7UbgQcVYANEcp4qKUOjRt7LdI73+RmamlezcEiHyZLIwQNMVJvO3xABEedJMk4zD4ywwerx7tbI2zUtqqFdys6ZZHCsSCHiSBotX4fMoH0EiQtNYyjpe4DUM3k+Hq3on1JHy2HJzoWW5GiTEoLi/MAa1axWbDSU0movwtBKSgROhjvC+Rj2ocgYAA=",
+  "color": "#9b7142",
+  "ratio": 1.0
+ },
+ "./game/suspect-gearhart.webp": {
+  "src": "data:image/webp;base64,UklGRiwBAABXRUJQVlA4ICABAADwBACdASogACAAA4BaJZgCdMswvUzQBlwCdXTkENGpbtNBMEpIsnU6U0hMldapfAAA+N8rcK3cEIusEXJJOUVujiOmPL3eYAs4jpv5EjrL3AxWjf8rrw0H93K7DfO58Sb9fVKOmN/I1kjlTwpctiH3IFUpTPSsgpYZf2C4FFzyvqif8K+lukflkvySwewMl+DEC/sMSJY4ecuPlYYHGBUTUxXJ9ynN9OpXrDJfig4oHTv5+RntNC6vrak/Xk1bY5eH6q4QhEOnLPjKqGmuH3Gv/9IDvg6RQ23VwmZm2WwNGd0y53Wlt9HePbfca76zwfFGmzohd9yXSilNjvLKRzqu0BPusFecr7nYaH7F5GL1gzphkUxPKMZs8ADEOgQ8AAA=",
+  "color": "#a17d52",
+  "ratio": 1.0
+ },
+ "./game/suspect-lune.webp": {
+  "src": "data:image/webp;base64,UklGRlwBAABXRUJQVlA4IFABAAAQCACdASogACAAPtFSoU2oJKMiN+gBABoJbACdMzQ1cLCzmQVZ6A3W5U10Alq7pwrhGusas14lhvUTXCI2uDz9Ie6Bxn+4/6jQAPzV8oe+Uo62Uj8jUbOUOwHDm/T4se6HJlrMaA5N9SRe0QcqnIH7ghEip+rwdzi/t5rR7qp0YM7vEGVnEcZQuN3dInN4OWadubHBbpU8nIzfj024wWRweFCjW0Wzn4C0U0QLk4IiISw3f4HewRLTAIbZHjCX+Y5mtF2buGPmArLWKwHFf87JU2mtLD1+rxjrhuBGYgRjh6zjACUMo60slxPrVtBJjqFuT9vki0fT0+kh9b2Y74BVWInarUr0w4AYF2oo8OPS5zm5gm0WmRkK94C7kJrlerB+MgYfLz0ZITkxrKmDdaxhQXX1RPHhfrHJACd8ZfLHyAPjn47DnOrkbFezMBg3wAA=",
+  "color": "#9a7448",
+  "ratio": 1.0
+ },
+ "./game/suspect-pip.webp": {
+  "src": "data:image/webp;base64,UklGRkoBAABXRUJQVlA4ID4BAAAwBwCdASogACAAPtFSoE2oJKMiN+gBABoJbACdMoR9D6oYblTTl8kWs0RadY3aQMBY8fKNQUF6R8f+6qam3bdKKAAA+LkGII4gsT1jVfwK6sACCn6DYmAOoVnkOGv7h2LyxKv7HEgh7Pd49pruNBtqGy/12TnW2y3IzIjKXz1jyoKmApj9XefDXEkXfZmY54rTSTqM8fS2kFK3oFIKjoq5C1MhLANzPMTAtR76vapNrYopsgyiG4ARxlUURYWu01MahxMfu9aD/5wIbiw0og3lbYFg9x/vXf1WZXTlLhZZybJkQuussXpSEA+3A/w8W0v11obcHXRQjZM2sjfDgswdKFEmBTeN1J20YXtZEgbgqkLgZbykrZdhTznHX0Cv4No7U2ig7h86z+IjhIb5y0ienFlR3MmO6GV/juKQAAA=",
+  "color": "#a56b3c",
+  "ratio": 1.0
+ },
+ "./game/suspect-quill.webp": {
+  "src": "data:image/webp;base64,UklGRjIBAABXRUJQVlA4ICYBAACQBgCdASogACAAPtFSoE2oJKMiN+gBABoJaACpI8CrgUHxvM8fLHmtPVN9dxeLkcSmujehBZSRG4bzS+qAAP4Fxc+2c85mFlhuRSHiw/ZbfcgwrDi7kUPhDSwM2jIQPEESsaScC0AZrobnS26llV//+QY9+JqHLXTX4K7GkQwf7gwYW863eo9gyD9cs01DcajnJaPOqSTks1jUDF74PMes2Xpw7hmT4ZAhypSJRz+geCuPwYgWZYKSjWtzOE7o1jlsKnEW9yq/6xEdIIgNQYoImy20jwe2TNMJ2pjqfhU8697BioMqrmTirhjaB31Deq/Qc5+TiUfAlIMEhac/GZv3sLC/TVY3fEqSinw4tIk2OBJEnxxytlKmi6HA90ehyFeJ40YAAAA=",
+  "color": "#ac7c47",
+  "ratio": 1.0
+ },
+ "./game/suspect-rusty.webp": {
+  "src": "data:image/webp;base64,UklGRlgBAABXRUJQVlA4IEwBAABQBgCdASogACAAA4BaJbACdMySqvngUoKoEdyuKVUTdXDbi2x2cYDTrblQ4LA9EXEgbS1GXVFZjfK8AAD81m8e9Kb+6Hh+Fv3UfhqafIXkdwC8Wclt9bPqqDOE6D47z6kd+2ukhEEGhGdSl8R+E3VgixCN00w1JOsAo8f436a2nryrMA6PqU0kxawrtr0QztnWXLRt9MhDJ4JIo+2LquYzmPlakTIiaFxpKjqCln/KzXfdMeX5OiyoL8x7NwdOPhfGEbhRFvZUYQzxeIGHraA38L/kRfYOdDwMHdgyWxduLsWvecE80l03EPkb7l8gPHz/0hpaVJ7Y9O3ggQY4uwKCsJHpGN1drVkGoihWqaDofK7DKQswAcXmGthqZekplpjvuQNnhI81Rj6E6bPhTnofZZJufPTW/WPXhYV/VpxYHZXwCNmdbMI1x/zkAA==",
+  "color": "#916535",
+  "ratio": 1.0
+ },
+ "./game/suspect-tuttle.webp": {
+  "src": "data:image/webp;base64,UklGRjABAABXRUJQVlA4ICQBAADQBgCdASogACAAPulgpU2pJaOiMAwBIB0JaACdMt+pBMgfLDoxbczuRcBEqFY0Sz2Fb8IPAqWmWktys9ABPAAA+MkXxuwrKDChJaL1orPpqnJJfys9M9d1IFxCd39fMDTcjgPUM0epD2W8jv3H0ksJ9TevoR2A6cxg7vryOjm/Qx6J1ZjSK4GRShikokqOtDkTsre7DwxStODtI3hBftRouu9orm2vf7QOD/5vnSaFMMx5LADlpZkwe97zi41lABRhmoHUgcc8ucHg6r3J1XIdt/BePK7adsQ+82Frw1Y556cWVJxfFoiGpHrMiDRmnevmaJRCPcP1V6kLZ41byBhHohqxzDd6KHjgyWI7A3wXOI2VFVy2afuAR4DTJd+OT0gzwAAA",
+  "color": "#976d3f",
+  "ratio": 1.0
+ },
+ "./game/suspect-vance.webp": {
+  "src": "data:image/webp;base64,UklGRlwBAABXRUJQVlA4IFABAADwBgCdASogACAAPuVcpE2pJSOiMAwBIByJaACdIP+rBGkPjPvd37I2Afp2kpu49RGDvCJCw7ZXzYbsfguw734AAP4FZPUuQomPui7dlvxTJslu4HT1UNVe/N4YCFypmdDWK7AV8FF8suKUjq1D4Zh4QssYo7cihhNqNoO6t/MlOPI//IMfzhe3+kmSgTeF/9V+NYfj67LUPPfYE1D6vWOashZ102ViJYXrKErY7qX48OOkgGxxHWamNUQnVgyIYg9grp8K3zjR+PoQ0Yls/HtTGhazuojpyBKnpZtiDv74FqMkN5oFF408cQCKsulTqeYA5hvwotR0rgTekvPet01s4NSsoZdWdiEW3GaNhHXQiYWtLUtpLjIRtT/48DRjpkv7GIJRXaRzJyvjKpM2yr1SiVuhz1c/tex25gPiPG4sDpGHlTCJSL0e3uIDXQUAAAA=",
+  "color": "#b3834c",
+  "ratio": 1.0
+ },
+ "./game/suspect-vela.webp": {
+  "src": "data:image/webp;base64,UklGRk4BAABXRUJQVlA4IEIBAAAwBgCdASogACAAA4BaJagCdOYyugTOgqIcsuJlfjdo4um3vvgCSDb1YB93oVBzXNjhWzYdrMKQ+zRAAOIzrb7SmRTy43dbz4qpiKtIBrhTrhN1nEPd8PNzHKtDsSc+KzJWGmiOIG3Wrl2XWfSYlWA8m9Ur/hmtuOq4REjbdAe4T7/LJ5AIOAJjnBc+42Ir0rrZvTeeHKxo0Cub3e32R8ELQhM8TLmhSptsSJqEGrRLFTPZ7lDlmOQNBXNBMj3Nj8DuQZ5GHir1ldstoug/o3JVYtF6exB4Y3KdUyLXQUQkRzBMUE8Kik6jqv58qdj+4AErf6boEkIw/Afmzu2lcZ7xuDk8dSJiBn2qpdSzFZmnBIt0x6o6ftXE+sTap00XzXlqmFCPe9o6wzYDK8f/YeU89eVxYcvrdZnhS75NalVwPAAA",
+  "color": "#9c6e47",
+  "ratio": 1.0
+ },
+ "./game/suspect-venn.webp": {
+  "src": "data:image/webp;base64,UklGRloBAABXRUJQVlA4IE4BAACwBgCdASogACAAA4BaJbACdL9Y/A1AvwYyW3GWZpqmdzA2zXXsVA82vrH+e2wv/acTm1Nz0AWECh2eYlcdAAD43J8xm6+RQjsURJLL24xeESvef/NL0/3piL0J/S25QfHXZ30budCjGjmfvlhJINt/uiwpDrr8PR7t10joINgtwfAgytwBG9q1J6yBgGhkA+z89ARy189PN3bajYckWWIxwhKo2/RsLW77Hn62phXkK2TYs+ABbfEhxD7hJpQ9dzTdaYH+4eRZyJsBz3AwNbpOxoLGtMj8r3LTIxXRupU7Nmqh44AA738HAZFMaPI5B6tAhVR+ZDMEv1WA4MVGmUUumiKJgCvUnOr7222tqIO91qa0qRKSVCw+uyX6n/0EhtnU2J7OpAjDDkshkGsvzbxOTEfS7plZY23uWLRddEidYFCAWPnFxBVXsk0WtAAA",
+  "color": "#a17849",
+  "ratio": 1.0
+ },
+ "./scenes/aurelia-guild.webp": {
+  "src": "data:image/webp;base64,UklGRgQBAABXRUJQVlA4IPgAAADwBQCdASogABUAPu1iqU2ppaOiMAgBMB2JZgCdMspxpng3Tk36u708zc/5f0KZhq34lBLU9rRDQAD+qq5ya/Bv85zSo3HrvZ/+RO5ds//yD+GmYd3boMXWbxzu3AxeMI0xX0p4JPXXz2OYiTfb47zD+mgOBLEM8O/CTSPZBHTR2O98d1e5udCbwOLH2kS38IcvioQRf1vZbJi0bi5bTwi4Yk21eZjQ7neo6T7xQ0s6CIoLEnP1ieOWauXL8mbtpStbuO1PkGM8IsswImoKcBrXd+fIuieDtHL+BIC+/cXInAK+C6EC0gQaQK9nN00uGyRUA9NIYywAAA==",
+  "color": "#73562f",
+  "ratio": 1.5
+ },
+ "./scenes/aurelia-plaza.webp": {
+  "src": "data:image/webp;base64,UklGRh4BAABXRUJQVlA4IBIBAACwBgCdASogABUAPu1gqE2ppaOiMAgBMB2JZgC7MzLkomqLvw+BpMmhw78nnvMzBt9x1GCHRBYJDzvsFxlDQAD+fWeSiPme1ubsDciXxeyG5gwMVNnCP97LbI9/L2scyLjQF7/OdS+TBdCzjGdeK80c+pnCOGy1h0ekgez8Yy71xazdNgapcWnZV7YYXyTMayUb9g/deWnDmvOOOoDjq/9ZdkD6mFjUDA2p8gUuEa15mIWMmoKEjBDL+qY+QZrroDb/awM6+vLpxaca/fZLPIaRTLcqSE08YihhznTX248jOHmyF5BUL48mV38QjhbLGKRHhO7e8RBw5VG7CB6mtRreS8BCNBhQ2JR/nL1CI3xrkIAA",
+  "color": "#745f48",
+  "ratio": 1.5
+ },
+ "./scenes/aurelia-tower.webp": {
+  "src": "data:image/webp;base64,UklGRvwAAABXRUJQVlA4IPAAAACwBgCdASogABUAPu1gqE2ppaOiMAgBMB2JbACdMoR+CEA+gjDWwAaeflqr3ruiDNeTpz9bvHnvg+5jfWPkAAD+LFyjLq/sxXT3+tIMDvOsq0XCtH29a3P4Qbbuq8waldB7ERgNTXIpyx0I5QyQozRo+GHhCIB/fLANUZlyM6i1ZDtKTeLcLkLe6zE8hfONEHluiKS3lLmjhyHfML1S1ngVmx/rSck9luTg39uZ7cgPcMTfXTmXfiu/pMh95iFPiOdlfjmXCeD0TI9dD3WOoX2oV0GNlfUEKkofvYxKjgexSLbgJmehkNS+hGocorDRQAA=",
+  "color": "#86663a",
+  "ratio": 1.5
+ },
+ "./scenes/diner-scene.webp": {
+  "src": "data:image/webp;base64,UklGRgYBAABXRUJQVlA4IPoAAABwBgCdASogABUAPu1gqE2ppaOiMAgBMB2JbACdMoSA/6thgM0CbAlfVcMMWLF+Gmg3bHtg2zGVFphVAYAA/p/BxYukD5ZVBMlBzR3bUgzuOj0dp8KbMHdfsusUCXhYEPuCHFB5i4Gcro1c5m9ZitzWWpw7TubtyGX4++rbsRlEPNTWQP6LxB2Ynm/2Z2OUoBrGWW/xUX6VQbQaNXeXN9Nuk0+HrxEL5kum63ggrvRdY4syJt/iLhe5hK6qCVS6x+Ca4RARHwCXqjvddnyOVv/yHexhsTV0tsUTm9h4jfYaHenf3zt2S+103LbePR7VMsHBkpbgpiI0AAAA",
+  "color": "#765329",
+  "ratio": 1.5
+ },
+ "./scenes/expo-scene.webp": {
+  "src": "data:image/webp;base64,UklGRuAAAABXRUJQVlA4INQAAAAwBQCdASogABUAPu1kqk2ppaQiMAgBMB2JahwADB+L9lgDaja3xYVLN3sPsgi3g6SkAAD58oic8Cx41Yc/7ThU/SI78Y8lsFlMzCG1SB6wHb6+yDL3mqV+vWAnv+tmfkpjXkYH0l8cDgj3zTCc1xbKMK6yYYzklpTjKIu0c1f6xjeZV3iYM2lL9OZnbcwN0hybtRylt7bXYDslQsTI5Q4bPsr5/OS2bKU14tygYeuMhCXrujruDppBmKpqQrBoU678zkfYsMcz3PygGxj7E5XvqmAAAA==",
+  "color": "#a07839",
+  "ratio": 1.5
+ },
+ "./scenes/hub-cover.webp": {
+  "src": "data:image/webp;base64,UklGRi4BAABXRUJQVlA4ICIBAABwBwCdASoVACAAPu1gqE2ppSOiMAgBMB2JbACdMoR09wQ8Bt2uf/ZoLYCQDF6hA0i63gR35DUZWEOHANUk1/38B3ntAADkAo4XbcS0PYWPb+nEI42HDHbkUpoQ75JGfmScwO/U88dvv+X97PfID8wppY3M64L9dxGvcZ+LYKMVFTI164jDdnlxA7d4LTXNj312gLtya1ItfpBQ1R94a3zYYic+/x9ujAVNW+qyKlReyi1nsrnLgkNiryaZY7QEXYAe0503m5YKqUnOOPavC7Cim1PfJbwSoZHBfb4PSLvhBBH4Waf7ZktzbuuIb5313TS3DSnuRbCIxC1+fKlHPSkV374rLM1baoFxsQ7ZpaRS8W5Ub1WtrhYgznIu6DnAzUAAAA==",
+  "color": "#896744",
+  "ratio": 0.6667
+ },
+ "./scenes/mars-depot.webp": {
+  "src": "data:image/webp;base64,UklGRuwAAABXRUJQVlA4IOAAAADwBQCdASogABUAPu1mqk2ppaQiMAgBMB2JbACdMs8zPn/AYt4YB2/xjdeKKWIabcalanxL4T0UQAD+L8t760pVeUp/BhrmnUbt3BepB4rzv3DPkAKaFrZv1ku0ET629ATVMfPh3XMiKGvmEsw47p/puslsjF/jSv8RYJ4abVubxjd2vrc8AQTYznCBgfI8JJddOIZW2+NRkK20mHNtAyxVm/eIS8gHjXXGKLNHBlh48tnZfBE2Z23fJQC2M00UUviVat/MZf5MHVwNS+R6ziu1cNLQRKwvXQQ9ddkEJIHwAA==",
+  "color": "#946239",
+  "ratio": 1.5
+ },
+ "./scenes/mars-farm.webp": {
+  "src": "data:image/webp;base64,UklGRtYAAABXRUJQVlA4IMoAAACQBQCdASogABUAPu1oq08ppiOiMBgIATAdiWoAnTKDMaZ/y8BTLPECaFfTAcLJeQgE3VarGAD679F4z5cZ88Cgwez3gAocxdHgrYyoQz3FZw2ri3kxHdRy25k4tcqUmGdz8GLx80Bk/NO0mxwuOcIkiJiONGkxL9WJRD4X+2Ow6P2kPihU84pZnHXbIW4ZKgyE0XilelI7aMwtKpgL2PfWM/VGKQ2VTuFO2plOYmlODuZFP5HEbCDbVunRkuQu84T6s7GrAO5EgAAA",
+  "color": "#9a6d3c",
+  "ratio": 1.5
+ },
+ "./scenes/neptune-pen.webp": {
+  "src": "data:image/webp;base64,UklGRvgAAABXRUJQVlA4IOwAAAAwBgCdASogABUAPu1gp02ppSOiMAgBMB2JbACdOUFS3g2EABdBBDd9t1mIKCJ1pO9KQRKgqyDn7nw4AP6qtMs0b2Ics37f80LeD0kdq22fY3epGNteTnMV7xbbFvSLaC/zgZBipLfN8Dm+hxk96RR4h4pU4WKaBlZPG1uhX7S/kW/6DGdUo4Oi8vTbFSpfat0vWStH7XrvQyzRXKUdLheCcDay+9GSzDA7z2NpKxUbATGhmhOOv9f5kq5z+aQ13RQpwWsXEyxbEH0pAK6z4ugi/GiML7JqeARoidNJ4yb5y0E5Qqq0mouW4AAAAA==",
+  "color": "#63593a",
+  "ratio": 1.5
+ },
+ "./scenes/neptune-promenade.webp": {
+  "src": "data:image/webp;base64,UklGRvAAAABXRUJQVlA4IOQAAADQBQCdASogABUAPu1iqE2ppaOiMAgBMB2JbACdMoR7TwGDwwAcz9e0pebu7IIQfLCYPGzNyecAAP59VwHMEX0PT1a3VaRxwAkqso+nyVb8tUUgZ0WjcikXq6Qq0+qUA8SFmoz4eWsaf+Z3GhDreEZfZng2uEnbOBBjuePY5UXPF6MR7yRAWVJxKaj00w6FmNquaA3XRAMeAEM88d7XlJNETDf/vT+5TDaNaTupr5Q3itiCBZ+0C4nXZ2pqfdDIUt+E9EeduRQ4Pi4umibKBqzV8MpZbSC4m9wZ+l59iUBcmhYnAAA=",
+  "color": "#6b5b39",
+  "ratio": 1.5
+ },
+ "./scenes/saturn-dining.webp": {
+  "src": "data:image/webp;base64,UklGRgQBAABXRUJQVlA4IPgAAACQBgCdASogABUAPu1gqE2ppaOiMAgBMB2JagCdMzQ8ftApwBhK1dRL/ZyWmwfF3NDTEc/q8nRctfOjL0gwAP4llrNC/a2EOphESnFZB3vR0Ipy3Ks/zWLLxsiaKgkirWPxogKeET18skM2r+i571uHBwOZ10VM2iIDPQJV9dELiCEyHXkDb55rzfZwLsGQs4kZm/ndfuO3t9/sFsbqDlxTa6igfw4IaM/B9X2JHawdGTu+UxiuAdYs872TdxpqCZrobgj2B0Dv0umJq38c1w952MGMIpt4xiZ4DQW/taDowtv7Zi2PsPCRwR0i0yEDAy9qtsxxf4AAAA==",
+  "color": "#896536",
+  "ratio": 1.5
+ },
+ "./scenes/saturn-observatory.webp": {
+  "src": "data:image/webp;base64,UklGRuwAAABXRUJQVlA4IOAAAADQBQCdASogABUAPu1qr1CppaQiqAqpMB2JagCdMzL6BsSw/bzzuFVHS4sP28XVdZOMtpLrp+xgAP6FgFz2q4pMH26/gGLTySZY49A95lzESrx3KEoO7tswyhHLXAK3qOTYEX4kU268WgQPKqXwI5jo5bP0yS9C8hJGttaFmR16kU92KfyChF2G7AXtPttpVjaNGX/kVdbHFW/F23waupsaz82W41bB+QXzNUDBD6DK2/uxE23ZAjd8xboR3lF6e0n/9bh6u5O1EDk3dXM5ozH7H90UNWg1DOZFCDAFahIAAA==",
+  "color": "#7c5b31",
+  "ratio": 1.5
+ },
+ "./scenes/venus-conservatory.webp": {
+  "src": "data:image/webp;base64,UklGRg4BAABXRUJQVlA4IAIBAADwBgCdASogABUAPu1gqE2ppaOiMAgBMB2JbACxHt6/ZfgM0FsCUBCT61sg9NlrOgsx12OxzyQBecr39yJtGOkAAP2fK24pQLPtjwwvm5cQstnQPidlAdKQZNKS093SrDosJJVqKL9CZz4a6WhHBB9kAY/5W2HgUOD8hw0v+Jtl6Wl/WgqzulMnpo4prmS1dglzQXpb0JsEVMEGi7paFpuKNJ5dnXDGFMeicfOSb96i3liPZTnV9xg8yWew5EDa/dGjILlfuG6TKz5OGx6ozjmG/JdCX4WET+P6hMLGVzREbZ3wLIdU9aRnIwPgnb6sbYLnrL8u/7iDIcbErNzPauGlAAA=",
+  "color": "#8c6c34",
+  "ratio": 1.5
+ },
+ "./scenes/venus-lounge.webp": {
+  "src": "data:image/webp;base64,UklGRvgAAABXRUJQVlA4IOwAAAAQBgCdASogABUAPu1gqE2ppaOiMAgBMB2JbACdMxmvts0AHE0d/xru2N5fJGfqVzC/EkYyf9M4xMAA/aPqSIpEqjX0V69N6P8Q7o9921LdNAR/VMzc8BcAQizNwzFXaWeJWwdJARSxpNeq9Ou7eJ3OnW9Z7v8PeShEGCVdDIbICfYFWOgOt3rI4peAERKn558LoBquvpkE8UnrwVA8jz0IZ4g07gD137D38suHFwMvY2yEGERB+hPf73HDGYIMwH7H9n0pyRrfWgwNfUZdaRy9TBzrMHCEuU8elraPlx663SxXBTx+20e7OwAAAA==",
+  "color": "#845c33",
+  "ratio": 1.5
+ },
+ "./scenes/voyages-scene.webp": {
+  "src": "data:image/webp;base64,UklGRhoBAABXRUJQVlA4IA4BAABwBgCdASogABUAPu1epk2ppKMiMAgBMB2JbACdMxx5cEA+gawA2fUc2IH8OMo87kAzvneizrXh2XqoGQAA+wDfsd8iVKSPsIVS165fj1ferL67qe36W09ibanGrEVkvCiOcG8PUWUdr19ildu7t1PuHJB9yxBKmUbUhrh6NpgdEiKdPvCGFMA0Y8ifxtW1SCXue7GK/Oovqbr/b9IbA77MbaHd4Y7/R5pCBClqYW3MQh3g/9mTDSyXRHCSMFun0b/DQpuWfY8n/WsqqAVa0/gawATwuzdj/531j0/r1g/tum9bgfXwf9v/GXduqOij3d37Q8VIHszTQvWRxaM76bfwez2ARhC2uVFikJ4AAAA=",
+  "color": "#8e6b37",
+  "ratio": 1.5
+ }
+}

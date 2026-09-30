@@ -98,11 +98,24 @@ arrives only in Act II and III.
   keeps the hero consistent across poses when you stay in the same chat.
 - **Characters** are drawn on a plain cream background. They're cut out
   automatically and saved as small `.webp` files in `client/public/game/`.
+  **Except the villain's showdown pose:** it gives the culprit away, so it goes in
+  `art/showdown/<bounty id>.webp` (e.g. `art/showdown/neptune-deep.webp`) and the
+  game serves it only after the right accusation.
 - **Scenes** are wide 3:2 images and are just resized.
 - **Processing:** `script/art/process.py` does the cutout and resizing
   (`character`, `scene` or `portrait` mode; needs Python 3 with pillow, numpy
   and scipy). New art goes into `client/public/` as the finished `.webp`
   only; don't commit the full-size source PNGs.
+- **Then run `python3 script/art/placeholders.py`.** It makes the tiny blurred
+  preview each scene and portrait shows while it downloads (a test fails if one
+  is missing). Replacing an existing picture? Give the new file a new name:
+  phones keep art cached for a week.
+- **How scenes are shown (2026-09-30):** edge to edge, no frame. On an upright
+  phone the 3:2 art is drawn taller than the screen is wide and the player
+  swipes sideways, with arrows at the edges counting unsearched spots, a
+  "Look closer" button, and a slow establishing pan the first time. Keep
+  hotspots away from the outer ~3% of the art (the printed paper border is
+  cropped off) and remember only about half the width is on screen at once.
 
 ## Sound (owner's call, 2026-09-26)
 

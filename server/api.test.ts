@@ -1,6 +1,6 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "fs";
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
 import express from "express";
@@ -579,4 +579,48 @@ test("voice lines are only served when the hunter may read the same text", async
   assert.equal(await hear("breakthrough/saturn-orrery/breakthrough-1"), 404);
   await post("/api/bounties/saturn-orrery/suspects/ashgrove/ask/money/present", { clue: "guestbook" }, cookie);
   assert.equal(await hear("breakthrough/saturn-orrery/breakthrough-1"), 200);
+});
+
+test("every scene and portrait has a loading placeholder, and none gives a culprit away", async () => {
+  const placeholders: Record<string, { src: string; color: string; ratio: number }> = JSON.parse(
+    readFileSync(path.join(import.meta.dirname, "..", "client", "src", "generated", "placeholders.json"), "utf-8"),
+  );
+  const { BOUNTIES } = await import("../shared/game.js");
+  const { aureliaFor } = await import("./aurelia.js");
+  const shown = [
+    ...BOUNTIES.flatMap((b) => [...(b.locations ?? []).map((l) => l.image), ...(b.suspects ?? []).map((s) => s.portrait)]),
+    ...aureliaFor("QA", []).map((l) => l.image),
+    "./game/bounty-office-no-hero.webp",
+    "./game/aurelia-gates.webp",
+    "./scenes/hub-cover.webp",
+  ];
+  for (const src of shown) {
+    assert.ok(existsSync(path.join(import.meta.dirname, "..", "client", "public", src)), `${src} exists`);
+    assert.ok(placeholders[src]?.src.startsWith("data:image/webp;base64,"), `${src} has a placeholder (run script/art/placeholders.py)`);
+  }
+  // The file ships to the browser: villain cutouts are named after the culprit
+  assert.deepEqual(Object.keys(placeholders).filter((k) => k.endsWith("-showdown.webp")), []);
+});
+
+test("a villain's showdown picture is only served after the right accusation, and never as a public file", async () => {
+  const { BOUNTIES } = await import("../shared/game.js");
+  // No public file may be named after a suspect (asking for each would reveal the culprit)
+  for (const b of BOUNTIES) {
+    for (const s of b.suspects ?? []) {
+      assert.equal(existsSync(path.join(import.meta.dirname, "..", "client", "public", "game", `${s.id}-showdown.webp`)), false, `${s.id}-showdown.webp is public`);
+    }
+  }
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const see = async (p: string) => (await fetch(`${base}/api/art/showdown/${p}`, { headers: { Cookie: cookie } })).status;
+  assert.equal(await see("red-sands"), 404); // nobody named yet
+  assert.equal(await see("no-such-case"), 404);
+  await investigate("red-sands", cookie);
+  const wrong = await post("/api/bounties/red-sands/accuse", { suspect: "dusty" }, cookie);
+  assert.equal((await wrong.json()).correct, false);
+  assert.equal(await see("red-sands"), 404); // a wrong guess shows nothing
+  const right = await (await post("/api/bounties/red-sands/accuse", { suspect: "quill" }, cookie)).json();
+  assert.equal(right.showdown.image, "/api/art/showdown/red-sands");
+  const res = await fetch(`${base}/api/art/showdown/red-sands`, { headers: { Cookie: cookie } });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("content-type"), "image/webp");
 });

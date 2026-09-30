@@ -4,6 +4,7 @@ import { insertPostcardSchema, insertPredictionSchema, insertMenuItemSchema, ins
 import { apiLimiter, writeLimiter, visitorIdentity } from "./middleware.js";
 import { registerGameRoutes } from "./gameRoutes.js";
 import { registerVoiceRoutes } from "./voice.js";
+import { registerArtRoutes } from "./art.js";
 
 // visitorId is the visitor's rf_vid cookie value; never expose it publicly.
 function publicVisitor({ visitorId: _visitorId, ...rest }: Visitor): PublicVisitor {
@@ -100,4 +101,5 @@ export function registerRoutes(app: Express): void {
 
   registerGameRoutes(app);
   registerVoiceRoutes(app);
+  registerArtRoutes(app);
 }

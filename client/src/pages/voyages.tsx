@@ -5,6 +5,8 @@ import { BackButton } from "@/components/BackButton";
 import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
 import type { Postcard } from "@shared/schema";
 import { HotspotHint } from "@/components/HotspotHint";
+import { Scene } from "@/components/Scene";
+import { SceneBackdrop } from "@/components/SceneBackdrop";
 import { useMusic } from "@/lib/sound";
 
 const destinations = [
@@ -63,7 +65,6 @@ export default function Voyages() {
   useMusic("hub");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
   const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
-  const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => {
     if (!shouldLogVisit("Cosmic Voyages")) return;
@@ -117,9 +118,10 @@ export default function Voyages() {
   const activeData = hotspots.find(h => h.id === activeHotspot);
 
   return (
-    <div className="min-h-screen bg-[hsl(25,30%,12%)] paper-texture">
+    <div className="game-page">
+      <SceneBackdrop src="./scenes/voyages-scene.webp" />
       {/* Scene header */}
-      <div className="bg-[hsl(220,30%,14%)] border-b-4 border-[hsl(195,65%,38%)] px-4 py-3">
+      <header className="game-header bg-[hsl(220,30%,14%)]/80 border-[hsl(195,65%,38%)]">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <BackButton />
           <h1 className="pulp-title text-xl md:text-2xl text-[hsl(45,80%,55%)] tracking-wider">
@@ -132,20 +134,13 @@ export default function Voyages() {
             </span>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Scene illustration */}
       <div className="max-w-5xl mx-auto px-4 pt-4">
-        <div className="scene-container relative" data-testid="scene-voyages">
-          <img
-            src="./scenes/voyages-scene.webp"
-            alt="Cosmic Voyages travel agency — rocket launch window, travel posters, ticket counter"
-            className="w-full h-auto block"
-            onLoad={() => setImgLoaded(true)}
-            draggable={false}
-          />
-
-          {imgLoaded && hotspots.map((hs) => (
+        <div className="bleed rise-in">
+          <Scene src="./scenes/voyages-scene.webp" alt="Cosmic Voyages travel agency — rocket launch window, travel posters, ticket counter" testId="scene-voyages" reserve={200}>
+            {hotspots.map((hs) => (
             <button
               key={hs.id}
               className={`hotspot ${discoveredItems.has(hs.id) ? "border-[hsl(120,50%,45%)]/40" : ""} ${activeHotspot === hs.id ? "bg-[hsl(45,80%,55%)]/20 border-[hsl(45,80%,55%)]" : ""}`}
@@ -156,6 +151,7 @@ export default function Voyages() {
               onClick={() => handleHotspotClick(hs.id)}
               aria-label={`Explore ${hs.label}`}
               title={hs.label}
+              data-unfound={!discoveredItems.has(hs.id)}
               data-testid={`hotspot-${hs.id}`}
             >
               <div
@@ -164,6 +160,7 @@ export default function Voyages() {
               />
             </button>
           ))}
+          </Scene>
         </div>
 
         {!activeHotspot && (

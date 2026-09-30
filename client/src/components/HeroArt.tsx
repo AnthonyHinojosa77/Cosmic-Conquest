@@ -13,7 +13,8 @@ const POSES: Record<HeroPose, { file: string; alt: string }> = {
 const knownSuit = (suit: string): SuitId => (Object.hasOwn(SUITS, suit) ? (suit as SuitId) : DEFAULT_SUIT);
 
 // Every pose exists in every suit: hero-<pose>.webp (silver) or hero-<pose>-<suit>.webp.
-function heroSrc(pose: HeroPose, suit: SuitId): string {
+export function heroSrc(pose: HeroPose, suit: SuitId): string {
+  suit = knownSuit(suit);
   const file = POSES[pose].file;
   return `./game/${suit === DEFAULT_SUIT ? file : `${file}-${suit}`}.webp`;
 }

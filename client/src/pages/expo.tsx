@@ -5,6 +5,8 @@ import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib
 import { BackButton } from "@/components/BackButton";
 import type { Prediction } from "@shared/schema";
 import { HotspotHint } from "@/components/HotspotHint";
+import { Scene } from "@/components/Scene";
+import { SceneBackdrop } from "@/components/SceneBackdrop";
 import { useMusic } from "@/lib/sound";
 
 const exhibits = [
@@ -64,7 +66,6 @@ export default function Expo() {
   useMusic("hub");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
   const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
-  const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => {
     if (!shouldLogVisit("The Atomic Expo")) return;
@@ -137,9 +138,10 @@ export default function Expo() {
   const activeExhibit = activeData?.exhibitIndex !== undefined ? exhibits[activeData.exhibitIndex] : null;
 
   return (
-    <div className="min-h-screen bg-[hsl(25,30%,12%)] paper-texture">
+    <div className="game-page">
+      <SceneBackdrop src="./scenes/expo-scene.webp" />
       {/* Scene header */}
-      <div className="bg-[hsl(42,35%,16%)] border-b-4 border-[hsl(45,80%,48%)] px-4 py-3">
+      <header className="game-header bg-[hsl(42,35%,16%)]/80 border-[hsl(45,80%,48%)]">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <BackButton />
           <h1 className="pulp-title text-xl md:text-2xl text-[hsl(45,80%,55%)] tracking-wider">
@@ -152,20 +154,13 @@ export default function Expo() {
             </span>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Scene illustration */}
       <div className="max-w-5xl mx-auto px-4 pt-4">
-        <div className="scene-container relative" data-testid="scene-expo">
-          <img
-            src="./scenes/expo-scene.webp"
-            alt="The Atomic Expo — City of Tomorrow with jetpack demo, robot butler, moon colony, videophone"
-            className="w-full h-auto block"
-            onLoad={() => setImgLoaded(true)}
-            draggable={false}
-          />
-
-          {imgLoaded && hotspots.map((hs) => (
+        <div className="bleed rise-in">
+          <Scene src="./scenes/expo-scene.webp" alt="The Atomic Expo — City of Tomorrow with jetpack demo, robot butler, moon colony, videophone" testId="scene-expo" reserve={200}>
+            {hotspots.map((hs) => (
             <button
               key={hs.id}
               className={`hotspot ${discoveredItems.has(hs.id) ? "border-[hsl(120,50%,45%)]/40" : ""} ${activeHotspot === hs.id ? "bg-[hsl(45,80%,55%)]/20 border-[hsl(45,80%,55%)]" : ""}`}
@@ -176,6 +171,7 @@ export default function Expo() {
               onClick={() => handleHotspotClick(hs.id)}
               aria-label={`Explore ${hs.label}`}
               title={hs.label}
+              data-unfound={!discoveredItems.has(hs.id)}
               data-testid={`hotspot-${hs.id}`}
             >
               <div
@@ -184,6 +180,7 @@ export default function Expo() {
               />
             </button>
           ))}
+          </Scene>
         </div>
 
         {!activeHotspot && (

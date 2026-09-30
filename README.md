@@ -113,14 +113,17 @@ plan) instead of `data.db`. Everything else is the same code:
 
 - `api/index.ts` exports the Express app from `server/app.ts` as one Vercel Function.
 - `vercel.json` builds with `npm run build`, serves `dist/public` from the CDN, rewrites
-  `/api/*` and `/health` to the function, and bundles `audio/voice/**` into it so the gated
-  voice route can read the recordings.
+  `/api/*` and `/health` to the function, and bundles `audio/voice/**` and `art/showdown/**` into it so the gated
+  voice and villain-art routes can read them.
 - The database URL comes from the Turso integration in the Vercel Marketplace (database
   `cosmic-conquest-db`, US East, Starter plan). It sets `<prefix>TURSO_DATABASE_URL` and
   `<prefix>TURSO_AUTH_TOKEN` on the project (here `DATABASE_TURSO_DATABASE_URL` and
   `DATABASE_TURSO_AUTH_TOKEN`); the server accepts any prefix, and plain `DATABASE_URL` +
   `DATABASE_AUTH_TOKEN` work too. `TRUST_PROXY` defaults to `1` on Vercel.
 - Every push to `main` deploys production. Tables are created on the first request.
+- Caching (`vercel.json` `headers`): hashed `/assets/*` and `/fonts/*` for a year
+  (immutable); art in `/scenes`, `/game` and `/icons` for 7 days (those names aren't
+  hashed, so replaced art gets a new name). Everything else revalidates each visit.
 
 Server files import `../shared/...` rather than the `@shared` alias because the function
 builder does not read `tsconfig` paths, and relative imports carry an explicit `.js`

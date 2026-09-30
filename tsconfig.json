@@ -39,6 +39,7 @@
       "@shared/*": [
         "./shared/*"
       ]
-    }
+    },
+    "resolveJsonModule": true
   }
 }

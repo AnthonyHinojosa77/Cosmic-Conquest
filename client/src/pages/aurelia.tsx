@@ -1,5 +1,9 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { OfficeLink } from "@/components/OfficeLink";
+import { Scene } from "@/components/Scene";
+import { SceneBackdrop } from "@/components/SceneBackdrop";
+import { Sheet } from "@/components/Sheet";
+import { prefetchArt } from "@/lib/art";
 import { useAurelia, errorMessage, AURELIA_KEY } from "@/lib/game";
 import { useMusic, useVoice } from "@/lib/sound";
 import { queryClient } from "@/lib/queryClient";
@@ -25,13 +29,13 @@ function refusal(err: unknown): { have: number; needed: number } | null {
 // Uninvited hunters only get as far as the gates.
 function Gates({ message }: { message: string }) {
   return (
-    <main className="max-w-4xl mx-auto px-4 pt-6 space-y-4 text-center">
-      <div className="scene-container" data-testid="scene-aurelia-gates">
-        <img
+    <main className="max-w-4xl mx-auto px-4 game-main space-y-4 text-center">
+      <div className="bleed rise-in">
+        <Scene
           src="./game/aurelia-gates.webp"
           alt="The golden Art Deco gates of Aurelia, guarded by robot doormen checking invitations"
-          className="w-full h-auto block"
-          draggable={false}
+          testId="scene-aurelia-gates"
+          maxHeight={460}
         />
       </div>
       <p className="marker-text text-[hsl(240,20%,80%)]" data-testid="text-aurelia-refused">
@@ -47,23 +51,24 @@ export default function Aurelia() {
   const [locationId, setLocationId] = useState<string | null>(null);
   const [open, setOpen] = useState<AureliaSpot | null>(null);
   const [seen, setSeen] = useState<Set<string>>(new Set());
-  const [imgLoaded, setImgLoaded] = useState(false);
 
   const location = locations?.find((l) => l.id === locationId) ?? locations?.[0];
   useMusic("aurelia");
   useVoice(open && location ? `aurelia/${location.id}/${open.id}` : null);
   const refused = !locations && error ? refusal(error) : null;
   const failed = !locations && error && !refused ? errorMessage(error) : null;
+  const closeSpot = useCallback(() => setOpen(null), []);
 
   return (
-    <div className="min-h-screen pb-10 paper-texture" style={{ background: NIGHT }}>
-      <div className="border-b-4 px-4 py-3" style={{ background: "hsl(245,45%,16%)", borderColor: GOLD }}>
+    <div className="game-page" style={{ background: NIGHT }}>
+      <SceneBackdrop src={refused ? "./game/aurelia-gates.webp" : location?.image} tint="hsl(245 45% 6% / 0.5)" />
+      <header className="game-header" style={{ background: "hsl(245 45% 14% / 0.75)", borderColor: GOLD }}>
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           <OfficeLink className="text-[hsl(240,20%,75%)] hover:text-[hsl(45,80%,60%)]" />
           <h1 className="pulp-title text-xl md:text-3xl tracking-[0.2em]" style={{ color: GOLD }}>Aurelia</h1>
           <span className="visitor-ticker text-xs" style={{ background: "hsl(245,40%,22%)" }}>✉ By invitation</span>
         </div>
-      </div>
+      </header>
 
       {isLoading && <p className="text-center marker-text text-[hsl(240,20%,75%)] mt-10">Presenting your invitation…</p>}
 
@@ -83,21 +88,18 @@ export default function Aurelia() {
       )}
 
       {location && (
-        <main className="max-w-5xl mx-auto px-4 pt-6 space-y-4">
-          <p className="text-center marker-text text-sm text-[hsl(240,20%,80%)]">
-            The private planet of the solar system's finest. No contracts may be served inside these walls, so tonight, you're a guest.
-          </p>
-          <div className="flex gap-2 justify-center flex-wrap">
+        <main className="max-w-5xl mx-auto px-4 game-main space-y-4">
+          <div className="bleed relative">
+          <div className="scene-tabs" role="group" aria-label="Places in Aurelia">
             {locations!.map((l) => (
               <button
                 key={l.id}
-                className={`retro-btn text-sm ${l.id === location.id ? "gold" : "teal"}`}
+                className={`scene-tab ${l.id === location.id ? "is-current" : ""}`}
                 aria-pressed={l.id === location.id}
                 onClick={() => {
                   if (l.id === location.id) return;
                   setLocationId(l.id);
                   setOpen(null);
-                  setImgLoaded(false);
                 }}
                 data-testid={`button-aurelia-${l.id}`}
               >
@@ -105,49 +107,49 @@ export default function Aurelia() {
               </button>
             ))}
           </div>
-
-          <div className="scene-container relative" data-testid={`scene-aurelia-${location.id}`}>
-            <img
-              key={location.image}
+            <Scene
               src={location.image}
               alt={location.name}
-              className="w-full h-auto block"
-              onLoad={() => setImgLoaded(true)}
-              draggable={false}
-            />
-            {imgLoaded && location.spots.map((spot) => (
-              <button
-                key={spot.id}
-                className="hotspot"
-                style={{ top: spot.top, left: spot.left, width: spot.width, height: spot.height }}
-                onClick={() => {
-                  setOpen(spot);
-                  setSeen((prev) => new Set(prev).add(`${location.id}/${spot.id}`));
-                }}
-                aria-label={`Look at ${spot.label}`}
-                title={spot.label}
-                data-testid={`hotspot-aurelia-${spot.id}`}
-              >
-                {!seen.has(`${location.id}/${spot.id}`) && (
-                  <div className="hotspot-indicator" style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }} />
-                )}
-              </button>
-            ))}
+              testId={`scene-aurelia-${location.id}`}
+              reserve={180}
+              onReveal={() => prefetchArt(locations!.map((l) => l.image))}
+            >
+              {location.spots.map((spot) => {
+                const unseen = !seen.has(`${location.id}/${spot.id}`);
+                return (
+                  <button
+                    key={spot.id}
+                    className="hotspot"
+                    style={{ top: spot.top, left: spot.left, width: spot.width, height: spot.height }}
+                    onClick={() => {
+                      setOpen(spot);
+                      setSeen((prev) => new Set(prev).add(`${location.id}/${spot.id}`));
+                    }}
+                    aria-label={`Look at ${spot.label}`}
+                    title={spot.label}
+                    data-unfound={unseen}
+                    data-testid={`hotspot-aurelia-${spot.id}`}
+                  >
+                    {unseen && <span className="hotspot-indicator" style={{ top: "50%", left: "50%" }} />}
+                  </button>
+                );
+              })}
+            </Scene>
           </div>
+          <p className="text-center marker-text text-sm text-[hsl(240,20%,80%)]">
+            The private planet of the solar system's finest. No contracts may be served inside these walls, so tonight, you're a guest.
+          </p>
 
           {open && (
-            <div
-              className="discovery-panel animate-slide-up"
-              style={{ position: "relative", maxWidth: 640, margin: "0 auto" }}
-              data-testid="panel-aurelia-spot"
+            <Sheet
+              title={`✦ ${open.label}`}
+              onClose={closeSpot}
+              tone="hsl(245 45% 22%)"
+              titleColor={GOLD}
+              testId="panel-aurelia-spot"
             >
-              <div className="discovery-panel-header" style={{ background: "hsl(245,45%,22%)", color: GOLD }}>
-                <span>✦ {open.label}</span>
-              </div>
-              <div className="discovery-panel-body text-[hsl(25,40%,20%)]">
-                <p className="text-sm leading-relaxed">{open.text}</p>
-              </div>
-            </div>
+              <p className="text-sm leading-relaxed animate-fade-in">{open.text}</p>
+            </Sheet>
           )}
         </main>
       )}

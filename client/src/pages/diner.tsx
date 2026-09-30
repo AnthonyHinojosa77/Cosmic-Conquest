@@ -5,6 +5,8 @@ import { BackButton } from "@/components/BackButton";
 import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
 import type { MenuItem } from "@shared/schema";
 import { HotspotHint } from "@/components/HotspotHint";
+import { Scene } from "@/components/Scene";
+import { SceneBackdrop } from "@/components/SceneBackdrop";
 import { useMusic } from "@/lib/sound";
 
 // Hotspot definitions — positioned over the diner illustration
@@ -63,7 +65,6 @@ export default function Diner() {
   useMusic("hub");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
   const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
-  const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => {
     if (!shouldLogVisit("Astro Diner")) return;
@@ -138,9 +139,10 @@ export default function Diner() {
   const activeData = hotspots.find(h => h.id === activeHotspot);
 
   return (
-    <div className="min-h-screen bg-[hsl(25,30%,12%)] paper-texture">
+    <div className="game-page">
+      <SceneBackdrop src="./scenes/diner-scene.webp" />
       {/* Scene header */}
-      <div className="bg-[hsl(350,30%,14%)] border-b-4 border-[hsl(45,80%,45%)] px-4 py-3">
+      <header className="game-header bg-[hsl(350,30%,14%)]/80 border-[hsl(45,80%,45%)]">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <BackButton />
           <h1 className="pulp-title text-xl md:text-2xl text-[hsl(45,80%,55%)] tracking-wider">
@@ -153,20 +155,13 @@ export default function Diner() {
             </span>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Scene illustration with hotspot overlays */}
       <div className="max-w-5xl mx-auto px-4 pt-4">
-        <div className="scene-container relative" data-testid="scene-diner">
-          <img
-            src="./scenes/diner-scene.webp"
-            alt="Inside the Astro Diner — chrome counter, robot waiter, jukebox, observation window"
-            className="w-full h-auto block"
-            onLoad={() => setImgLoaded(true)}
-            draggable={false}
-          />
-
-          {imgLoaded && hotspots.map((hs) => (
+        <div className="bleed rise-in">
+          <Scene src="./scenes/diner-scene.webp" alt="Inside the Astro Diner — chrome counter, robot waiter, jukebox, observation window" testId="scene-diner" reserve={200}>
+            {hotspots.map((hs) => (
             <button
               key={hs.id}
               className={`hotspot ${discoveredItems.has(hs.id) ? "border-[hsl(120,50%,45%)]/40" : ""} ${activeHotspot === hs.id ? "bg-[hsl(45,80%,55%)]/20 border-[hsl(45,80%,55%)]" : ""}`}
@@ -177,6 +172,7 @@ export default function Diner() {
               onClick={() => handleHotspotClick(hs.id)}
               aria-label={`Explore ${hs.label}`}
               title={hs.label}
+              data-unfound={!discoveredItems.has(hs.id)}
               data-testid={`hotspot-${hs.id}`}
             >
               <div
@@ -185,6 +181,7 @@ export default function Diner() {
               />
             </button>
           ))}
+          </Scene>
         </div>
 
         {/* Hotspot hint text */}

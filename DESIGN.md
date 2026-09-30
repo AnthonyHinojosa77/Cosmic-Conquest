@@ -86,6 +86,31 @@ dependency being present). Keyframes and utility classes live in the
 The signature easing curve is `cubic-bezier(0.16, 1, 0.3, 1)` (a soft "ease-out-expo"),
 used for both entrance slides and hotspot transitions.
 
+## Immersive scenes and loading (2026-09-30)
+
+Scenes are the screen, not framed pictures. Components (all in `client/src/components/`):
+
+| Component | What it does |
+| --------- | ------------ |
+| `Scene` | Edge-to-edge explorable art. Upright phones: drawn at ~1.85x the screen width and swiped sideways (native scrolling), centred on `focus`, with edge arrows (`‹ ›` plus a count of unsearched spots that way), a "Look closer" button that outlines unsearched spots for 2 s (recharges in 8 s), a ripple on taps that hit nothing, a one-time "Swipe to look around" tip and a 1.6 s establishing pan the first time a picture is shown. Wider screens: fits the column. `fit` never zooms (the hub's magazine cover). Hotspots are children positioned in % of the art and marked `data-unfound` while unsearched. |
+| `SceneBackdrop` | The page behind takes the scene's colours: its tiny preview, blurred and darkened, fills the screen; crossfades between scenes. |
+| `Sheet` | Clue text and place descriptions slide up from the bottom over the scene (non-modal, Esc or ✕ closes). Centred card on wide screens. |
+| `ArtImage` | Portraits, cutouts and other pictures: blurred preview (or average colour), fade or slide in once decoded. |
+| `InstallHint` | One-time tip to add the game to the Home Screen (full screen, no browser bars). |
+
+Loading: `index.html` shows a CSS-only "Tuning in" splash until the self-hosted fonts load
+(max 2.5 s, min 0.5 s). Every scene first shows its bundled 32 px preview
+(`client/src/generated/placeholders.json`, made by `script/art/placeholders.py`), then the
+full picture is decoded off-thread and fades in (0.8 s opacity, scale 1.045 → 1). A "Tuning
+in…" pill appears only if loading takes over 350 ms. Pictures already seen this visit appear
+instantly. `lib/art.ts` prefetches the next places, suspects and duel art in idle time
+(skipped on Save-Data or slow connections). Stage changes open with a 0.65 s iris
+(`.iris-in`); the duel waits for its street and both gunslingers, then slides them in.
+
+Ambient motion: a one-way 40 s drift (scale 1.04 → 1.07) on scenes, twinkling glints on
+unsearched spots (not constant pulsing), vignette and a soft fade into the page. All of it is
+listed in the reduced-motion block.
+
 ## Reduced motion
 
 All looping/decorative animations and the transitions above are gated behind a

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
-import { HeroArt, preloadHeroPoses, type HeroPose } from "@/components/HeroArt";
+import { HeroArt, heroSrc, preloadHeroPoses, type HeroPose } from "@/components/HeroArt";
 import { usePlayer, useProgress, accuse, claimBounty, searchClue, decodeClue, unlockClue, askSuspect, presentClue, errorMessage, type ClaimOutcome } from "@/lib/game";
 import {
   bountyById,
@@ -25,6 +25,11 @@ import NotFound from "@/pages/not-found";
 import { useMusic, useVoice } from "@/lib/sound";
 import { useIsTouch, useTapWord } from "@/lib/device";
 import { OfficeLink } from "@/components/OfficeLink";
+import { Scene } from "@/components/Scene";
+import { SceneBackdrop } from "@/components/SceneBackdrop";
+import { Sheet } from "@/components/Sheet";
+import { ArtImage } from "@/components/ArtImage";
+import { loadArt, prefetchArt } from "@/lib/art";
 
 const INK = "hsl(25,40%,15%)";
 type Stage = "briefing" | "investigate" | "accuse" | "showdown" | "done";
@@ -378,7 +383,7 @@ function Interviews({
             aria-pressed={s.id === suspectId}
             data-testid={`button-question-${s.id}`}
           >
-            <img src={s.portrait} alt={`Portrait of ${s.name}`} className="w-full aspect-square object-cover rounded border-2 border-[hsl(25,40%,18%)]" draggable={false} />
+            <ArtImage src={s.portrait} alt={`Portrait of ${s.name}`} className="w-full aspect-square rounded border-2 border-[hsl(25,40%,18%)]" imgClassName="object-cover" />
             <p className="pulp-title text-xs sm:text-sm mt-1 leading-tight" style={{ color: INK }}>{s.name}</p>
           </button>
         ))}
@@ -454,11 +459,14 @@ function Investigation({
   found,
   caughtTopics,
   onReady,
+  onScene,
 }: {
   bounty: Bounty;
   found: Record<string, string>;
   caughtTopics: Record<string, string>;
   onReady: () => void;
+  // The picture on screen, so the page behind can take its colours
+  onScene: (src: string) => void;
 }) {
   const locations = bounty.locations ?? [];
   const [locationId, setLocationId] = useState(locations[0]?.id);
@@ -466,7 +474,6 @@ function Investigation({
   const [searching, setSearching] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [codedText, setCodedText] = useState<Record<string, string>>({});
-  const [imgLoaded, setImgLoaded] = useState(false);
   const location = locations.find((l) => l.id === locationId) ?? locations[0];
   const questioning = locationId === "interviews" && bounty.interviews !== undefined;
   const breakthroughs = (bounty.breakthroughs ?? []).filter((id) => found[id] !== undefined);
@@ -478,6 +485,15 @@ function Investigation({
   const totalCount = allClues.length + (bounty.breakthroughs?.length ?? 0);
   const needed = cluesNeeded(bounty);
   const ready = foundCount >= needed;
+
+  useEffect(() => {
+    if (!questioning && location) onScene(location.image);
+  }, [questioning, location, onScene]);
+
+  // Once this place is on screen, quietly fetch the other locations and the suspects
+  const warmUp = useCallback(() => {
+    prefetchArt([...locations.map((l) => l.image), ...(bounty.suspects ?? []).map((s) => s.portrait)]);
+  }, [locations, bounty.suspects]);
 
   const search = (clue: Clue) => {
     setOpenClue(clue);
@@ -491,71 +507,86 @@ function Investigation({
       .finally(() => setSearching(null));
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex gap-2 justify-center flex-wrap">
-        {locations.map((l) => (
+  const closeClue = useCallback(() => setOpenClue(null), []);
+
+  const tabs = (overlay: boolean) => (
+    <div className={overlay ? "scene-tabs" : "flex gap-2 justify-center flex-wrap"} role="group" aria-label="Places to search">
+      {locations.map((l) => {
+        const current = !questioning && l.id === location.id;
+        return (
           <button
             key={l.id}
-            className={`retro-btn text-sm ${!questioning && l.id === location.id ? "gold" : "teal"}`}
-            aria-pressed={!questioning && l.id === location.id}
+            className={overlay ? `scene-tab ${current ? "is-current" : ""}` : `retro-btn text-sm ${current ? "gold" : "teal"}`}
+            aria-pressed={current}
             onClick={() => {
               setLocationId(l.id);
               setOpenClue(null);
-              setImgLoaded(false);
             }}
             data-testid={`button-location-${l.id}`}
           >
-            {l.name} ({l.clues.filter((c) => found[c.id] !== undefined).length}/{l.clues.length})
+            {l.name} <span className="scene-tab-count">{l.clues.filter((c) => found[c.id] !== undefined).length}/{l.clues.length}</span>
           </button>
-        ))}
-        {bounty.interviews && (
-          <button
-            className={`retro-btn text-sm ${questioning ? "gold" : "teal"}`}
-            aria-pressed={questioning}
-            onClick={() => {
-              setLocationId("interviews");
-              setOpenClue(null);
-            }}
-            data-testid="button-location-interviews"
-          >
-            🗣 Question suspects ({breakthroughs.length}/{bounty.breakthroughs?.length ?? 0})
-          </button>
-        )}
-      </div>
+        );
+      })}
+      {bounty.interviews && (
+        <button
+          className={overlay ? "scene-tab" : `retro-btn text-sm ${questioning ? "gold" : "teal"}`}
+          aria-pressed={questioning}
+          onClick={() => {
+            setLocationId("interviews");
+            setOpenClue(null);
+          }}
+          data-testid="button-location-interviews"
+        >
+          🗣 Question suspects <span className="scene-tab-count">{breakthroughs.length}/{bounty.breakthroughs?.length ?? 0}</span>
+        </button>
+      )}
+    </div>
+  );
 
+  return (
+    <div className="space-y-4">
       {questioning ? (
-        <Interviews bounty={bounty} found={found} caughtTopics={caughtTopics} />
+        <>
+          {tabs(false)}
+          <div className="iris-in" key="interviews">
+            <Interviews bounty={bounty} found={found} caughtTopics={caughtTopics} />
+          </div>
+        </>
       ) : (
-      <div className="scene-container relative" data-testid={`scene-${location.id}`}>
-        <img
-          key={location.image}
-          src={location.image}
-          alt={`${location.name} — search for clues`}
-          className="w-full h-auto block"
-          onLoad={() => setImgLoaded(true)}
-          draggable={false}
-        />
-        {imgLoaded && location.clues.map((clue) => (
-          <button
-            key={clue.id}
-            className={`hotspot ${found[clue.id] !== undefined ? "border-[hsl(120,50%,45%)]/60" : ""}`}
-            style={{ top: clue.top, left: clue.left, width: clue.width, height: clue.height }}
-            onClick={() => search(clue)}
-            aria-label={`Search ${clue.label}`}
-            title={clue.label}
-            data-testid={`hotspot-clue-${clue.id}`}
+        <div className="bleed relative">
+          {tabs(true)}
+          <Scene
+            key={location.image}
+            src={location.image}
+            alt={`${location.name} — search for clues`}
+            testId={`scene-${location.id}`}
+            reserve={210}
+            onReveal={warmUp}
           >
-            {found[clue.id] === undefined && (
-              <div className="hotspot-indicator" style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }} />
-            )}
-          </button>
-        ))}
-      </div>
+            {location.clues.map((clue) => {
+              const done = found[clue.id] !== undefined;
+              return (
+                <button
+                  key={clue.id}
+                  className={`hotspot ${done ? "is-found" : ""}`}
+                  style={{ top: clue.top, left: clue.left, width: clue.width, height: clue.height }}
+                  onClick={() => search(clue)}
+                  aria-label={`Search ${clue.label}`}
+                  title={clue.label}
+                  data-unfound={!done}
+                  data-testid={`hotspot-clue-${clue.id}`}
+                >
+                  {!done && <span className="hotspot-indicator" style={{ top: "50%", left: "50%" }} />}
+                </button>
+              );
+            })}
+          </Scene>
+        </div>
       )}
 
       {openClue && (
-        <Panel title={`🔍 ${openClue.label}`} testId="panel-clue">
+        <Sheet title={`🔍 ${openClue.label}`} onClose={closeClue} testId="panel-clue">
           {openClue.lock ? (
             <Lock key={openClue.id} bountyId={bounty.id} clue={openClue} openedText={found[openClue.id]} />
           ) : openClue.chart ? (
@@ -570,7 +601,7 @@ function Investigation({
               solvedText={found[openClue.id]}
             />
           ) : found[openClue.id] !== undefined ? (
-            <p className="text-sm leading-relaxed">{found[openClue.id]}</p>
+            <p className="text-sm leading-relaxed animate-fade-in">{found[openClue.id]}</p>
           ) : searching === openClue.id ? (
             <p className="text-sm marker-text text-[hsl(25,15%,42%)]">Searching…</p>
           ) : (
@@ -584,10 +615,10 @@ function Investigation({
               🎒 In your satchel: {ITEMS[openClue.grants].name}
             </p>
           )}
-        </Panel>
+        </Sheet>
       )}
 
-      <section className="comic-panel bg-[hsl(38,35%,88%)] p-4 max-w-2xl mx-auto" data-testid="panel-notebook">
+      <section className="notebook max-w-2xl mx-auto" data-testid="panel-notebook">
         <div className="flex justify-between items-baseline">
           <h2 className="pulp-title text-lg" style={{ color: INK }}>Hunter's Notebook</h2>
           <span className="pulp-title text-sm" style={{ color: ready ? "hsl(120,50%,32%)" : INK }}>
@@ -595,19 +626,21 @@ function Investigation({
           </span>
         </div>
         {foundCount === 0 ? (
-          <p className="text-sm text-[hsl(25,15%,42%)] marker-text mt-2">{tap} the glowing spots in each location to search.</p>
+          <p className="text-sm text-[hsl(25,15%,42%)] marker-text mt-2">
+            {tap} the twinkling spots in each place to search. Stuck? 🔍 Look closer.
+          </p>
         ) : (
           <ul className="mt-2 space-y-2 text-sm text-[hsl(25,30%,22%)] list-disc pl-5">
             {allClues.filter((c) => found[c.id] !== undefined).map((c) => (
-              <li key={c.id}><strong>{c.label}:</strong> {found[c.id]}</li>
+              <li key={c.id} className="animate-fade-in"><strong>{c.label}:</strong> {found[c.id]}</li>
             ))}
             {breakthroughs.map((id) => (
-              <li key={id}><strong>★ Breakthrough:</strong> {found[id]}</li>
+              <li key={id} className="animate-fade-in"><strong>★ Breakthrough:</strong> {found[id]}</li>
             ))}
           </ul>
         )}
         <button
-          className="retro-btn mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`retro-btn mt-4 disabled:opacity-50 disabled:cursor-not-allowed ${ready ? "is-ready" : ""}`}
           disabled={!ready}
           onClick={onReady}
           data-testid="button-ready-accuse"
@@ -646,23 +679,26 @@ function Accusation({
   };
 
   return (
-    <div className="space-y-4 max-w-3xl mx-auto">
-      <h2 className="pulp-title text-2xl text-center text-[hsl(45,80%,55%)] tracking-wider">{bounty.accusePrompt ?? "Who did it?"}</h2>
-      <div className="grid sm:grid-cols-3 gap-4">
-        {(bounty.suspects ?? []).map((s) => (
+    <div className="space-y-4 max-w-3xl mx-auto pt-2">
+      <h2 className="pulp-title text-3xl text-center text-[hsl(45,80%,58%)] tracking-wider drop-shadow-lg">{bounty.accusePrompt ?? "Who did it?"}</h2>
+      <p className="text-center marker-text text-xs text-[hsl(38,30%,75%)] sm:hidden">Swipe through the suspects, then tap your culprit</p>
+      <div className="poster-rail">
+        {(bounty.suspects ?? []).map((s, i) => (
           <button
             key={s.id}
-            className="comic-panel bg-[hsl(38,35%,88%)] p-4 text-left flex flex-col justify-start hover:-translate-y-1 transition-transform disabled:opacity-60"
+            className="wanted-poster comic-panel bg-[hsl(38,35%,88%)] p-4 text-left flex flex-col justify-start disabled:opacity-60 rise-in"
+            style={{ animationDelay: `${i * 90}ms` }}
             disabled={pending !== null}
             onClick={() => choose(s.id, s.name)}
             data-testid={`button-suspect-${s.id}`}
           >
             <p className="pulp-title text-center text-[hsl(0,72%,42%)] tracking-widest text-sm">WANTED?</p>
-            <img
+            <ArtImage
               src={s.portrait}
               alt={`Portrait of ${s.name}`}
-              className="w-full aspect-square object-cover my-2 border-2 border-[hsl(25,40%,18%)] rounded"
-              draggable={false}
+              className="w-full aspect-square my-2 border-2 border-[hsl(25,40%,18%)] rounded"
+              imgClassName="object-cover"
+              eager
             />
             <h3 className="pulp-title text-lg text-center" style={{ color: INK }}>{s.name}</h3>
             <p className="text-xs text-center uppercase tracking-wider text-[hsl(25,15%,42%)]">{s.title}</p>
@@ -681,9 +717,6 @@ function Accusation({
 
 // --- Quick-draw showdown ---------------------------------------------------
 
-// Inline so it beats `.scene-container img { width: 100% }` from index.css
-const SPRITE: React.CSSProperties = { height: "78%", width: "auto" };
-
 type DrawState = "idle" | "waiting" | "draw" | "early" | "slow" | "won";
 
 function Showdown({
@@ -700,16 +733,22 @@ function Showdown({
   const isTouch = useIsTouch();
   const [state, setState] = useState<DrawState>("idle");
   const [reaction, setReaction] = useState<number | null>(null);
+  // The duel only opens once the street and both gunslingers are loaded
+  const [set, setSet] = useState(false);
   const drawAt = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  const scene = showdown.scene ?? "./game/showdown-street.webp";
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
   useEffect(() => {
-    preloadHeroPoses(["ready", "firing", "too-slow"], [suit]);
-    new Image().src = showdown.image;
-    if (showdown.scene) new Image().src = showdown.scene;
-  }, [showdown.image, showdown.scene, suit]);
+    let live = true;
+    preloadHeroPoses(["firing", "too-slow"], [suit]);
+    Promise.all([loadArt(scene, "high"), loadArt(showdown.image, "high"), loadArt(heroSrc("ready", suit), "high")]).then(() => live && setSet(true));
+    return () => {
+      live = false;
+    };
+  }, [scene, showdown.image, suit]);
 
   const start = useCallback(() => {
     setState("waiting");
@@ -722,6 +761,7 @@ function Showdown({
   }, []);
 
   const fire = useCallback(() => {
+    if (!set) return;
     if (state === "waiting") {
       clearTimeout(timer.current);
       setState("early");
@@ -737,7 +777,7 @@ function Showdown({
     } else if (state !== "won") {
       start();
     }
-  }, [state, windowMs, onWin, start]);
+  }, [set, state, windowMs, onWin, start]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -757,51 +797,55 @@ function Showdown({
     idle: "Step into the street",
     waiting: "Steady… wait for it…",
     draw: "DRAW!",
-    early: "Too jumpy! You drew early. Try again",
-    slow: `Too slow (${reaction} ms)! ${showdown.opponent} got away. Try again`,
-    won: `Got him! (${reaction} ms)`,
+    early: "Too jumpy! Try again",
+    slow: `Too slow (${reaction} ms)! Try again`,
+    won: `Got 'em! (${reaction} ms)`,
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4 text-center">
-      <p className="text-[hsl(38,40%,80%)] marker-text">{showdown.taunt}</p>
-      <div className="scene-container relative select-none" data-testid="scene-showdown">
-        <img src={showdown.scene ?? "./game/showdown-street.webp"} alt="The main street at high noon, cleared for a showdown" className="w-full h-auto block" draggable={false} />
-        {state === "draw" && <div className="absolute inset-0 bg-[hsl(0,72%,48%)]/35 pointer-events-none" aria-hidden />}
-        <HeroArt pose={heroPose} suit={suit} className="absolute bottom-[3%] left-[4%] drop-shadow-2xl pointer-events-none" style={SPRITE} />
-        {state !== "slow" && (
-          <img
-            src={showdown.image}
-            alt={showdown.opponent}
-            className="absolute bottom-[3%] right-[4%] drop-shadow-2xl pointer-events-none"
-            style={state === "won" ? { ...SPRITE, transform: "rotate(14deg) translateY(6%)", filter: "grayscale(0.6)", transition: "all 0.25s" } : SPRITE}
-            draggable={false}
-          />
+    <div className="bleed">
+      <div className="duel-stage select-none" data-state={state} data-set={set} data-testid="scene-showdown">
+        <ArtImage src={scene} alt="The street, cleared for a showdown" className="duel-bg" imgClassName="object-cover" eager />
+        <div className="duel-flash" aria-hidden />
+        {set && (
+          <>
+            <HeroArt pose={heroPose} suit={suit} className="duel-sprite duel-hero" />
+            {state !== "slow" && (
+              <img
+                src={showdown.image}
+                alt={showdown.opponent}
+                className={`duel-sprite duel-villain ${state === "won" ? "is-down" : ""}`}
+                draggable={false}
+              />
+            )}
+          </>
         )}
-        <span
-          className="absolute top-[5%] left-1/2 -translate-x-1/2 whitespace-nowrap pulp-title text-4xl md:text-7xl tracking-wider drop-shadow-lg"
-          style={{ color: state === "draw" ? "#fff" : "hsl(45,80%,55%)", WebkitTextStroke: "2px hsl(25,40%,12%)" }}
-          aria-live="assertive"
-          data-testid="text-showdown-callout"
-        >
+        <p className="duel-taunt">{showdown.taunt}</p>
+        <span className="duel-callout pulp-title" aria-live="assertive" data-testid="text-showdown-callout">
           {callout}
         </span>
+        {!set && (
+          <div className="scene-tuning" role="status">
+            <span className="scene-tuning-bars" aria-hidden><i /><i /><i /><i /></span>
+            The street clears…
+          </div>
+        )}
+        <button
+          className={`duel-draw retro-btn ${state === "draw" ? "gold" : ""}`}
+          // Fire on press, not release: on phones the finger's time on the glass
+          // would otherwise count against the draw. Keyboard/assistive clicks still work.
+          onPointerDown={(e) => {
+            e.preventDefault();
+            fire();
+          }}
+          onClick={(e) => e.detail === 0 && fire()}
+          disabled={state === "won" || !set}
+          data-testid="button-draw"
+        >
+          {set ? label[state] : "…"}
+        </button>
       </div>
-      <button
-        className={`retro-btn text-xl px-8 py-4 ${state === "draw" ? "gold" : ""}`}
-        // Fire on press, not release: on phones the finger's time on the glass
-        // would otherwise count against the draw. Keyboard/assistive clicks still work.
-        onPointerDown={(e) => {
-          e.preventDefault();
-          fire();
-        }}
-        onClick={(e) => e.detail === 0 && fire()}
-        disabled={state === "won"}
-        data-testid="button-draw"
-      >
-        {label[state]}
-      </button>
-      <p className="text-xs text-[hsl(38,20%,60%)]">
+      <p className="text-xs text-center text-[hsl(38,20%,65%)] mt-3 pl-4 pr-16 sm:px-4">
         {isTouch ? "Tap the button" : "Click (or press Space)"} the instant you see DRAW! You have {windowMs} ms
         {windowMs > DRAW_WINDOW_MS ? " thanks to your Lucky Ray-Gun." : ". A better blaster from the Outfitters buys you more time."}
       </p>
@@ -822,6 +866,7 @@ export default function BountyPage() {
   const [solution, setSolution] = useState<CaseSolution | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [sceneSrc, setSceneSrc] = useState<string | undefined>(bounty?.locations?.[0]?.image);
   const doneTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => () => clearTimeout(doneTimer.current), []);
@@ -853,19 +898,37 @@ export default function BountyPage() {
   if (!bounty?.available) return <NotFound />;
 
   const windowMs = player?.owned.includes("raygun") ? DRAW_WINDOW_RAYGUN_MS : DRAW_WINDOW_MS;
+  const firstPlace = bounty.locations?.[0];
+  const backdrop = stage === "showdown" || stage === "done" ? solution?.showdown.scene ?? sceneSrc : sceneSrc;
 
   return (
-    <div className="min-h-screen bg-[hsl(25,30%,12%)] paper-texture pb-10">
-      <div className="bg-[hsl(0,45%,18%)] border-b-4 border-[hsl(45,80%,48%)] px-4 py-3">
+    <div className="game-page">
+      <SceneBackdrop src={backdrop} />
+      <header className="game-header">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           <OfficeLink />
-          <h1 className="pulp-title text-base sm:text-lg md:text-2xl text-[hsl(45,80%,55%)] tracking-wider text-center leading-tight">{bounty.title}</h1>
+          <h1 className="pulp-title text-base sm:text-lg md:text-2xl text-[hsl(45,80%,58%)] tracking-wider text-center leading-tight">{bounty.title}</h1>
           <div className="visitor-ticker text-xs sm:text-sm whitespace-nowrap shrink-0">💰 {bounty.reward} CR</div>
         </div>
-      </div>
+      </header>
 
-      <main className="max-w-5xl mx-auto px-4 pt-6">
+      <main className="game-main max-w-5xl mx-auto px-4">
+       <div key={stage} className={stage === "briefing" ? "rise-in" : "iris-in"}>
         {stage === "briefing" && (
+          <>
+          {firstPlace && (
+            // Establishing shot of the first place to search, while the case is read
+            <div className="bleed mb-4">
+              <Scene
+                src={firstPlace.image}
+                alt={firstPlace.name}
+                testId="scene-briefing"
+                reserve={260}
+                maxHeight={360}
+                onReveal={() => prefetchArt((bounty.locations ?? []).map((l) => l.image))}
+              />
+            </div>
+          )}
           <Panel title={`Case File — ${bounty.planet}`} testId="panel-briefing">
             <p className="text-sm leading-relaxed">{bounty.briefing}</p>
             <div className="flex flex-wrap gap-3 mt-4">
@@ -889,10 +952,17 @@ export default function BountyPage() {
               )}
             </div>
           </Panel>
+          </>
         )}
 
         {stage === "investigate" && (
-          <Investigation bounty={bounty} found={progress?.found ?? {}} caughtTopics={progress?.caught ?? {}} onReady={() => setStage("accuse")} />
+          <Investigation
+            bounty={bounty}
+            found={progress?.found ?? {}}
+            caughtTopics={progress?.caught ?? {}}
+            onReady={() => setStage("accuse")}
+            onScene={setSceneSrc}
+          />
         )}
 
         {stage === "accuse" && (
@@ -953,6 +1023,7 @@ export default function BountyPage() {
             </Link>
           </Panel>
         )}
+       </div>
       </main>
     </div>
   );

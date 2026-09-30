@@ -56,6 +56,15 @@ npm run build
   server-only too, served by `/api/bounties/:id/suspects/:suspect/ask/:topic`.
   Voice recordings count too: they live in `audio/voice/` and are served only
   through `/api/voice/...` with the same gates (never put them in `client/public`).
+  So do villains' showdown cutouts: they live in `art/showdown/<bounty id>.webp` and are
+  served by `/api/art/showdown/:bounty` only after a correct accusation (a public file
+  named after a suspect would reveal the culprit by existing; a test checks this).
+- Scenes and pictures: use `Scene` (explorable, edge to edge, swipeable on phones),
+  `ArtImage`, `Sheet` and `SceneBackdrop` rather than plain `<img>` in framed boxes (see
+  DESIGN.md "Immersive scenes and loading"). After adding art run
+  `python3 script/art/placeholders.py` (villain cutouts are never in that file or in
+  `client/public`). Art in `/scenes` and `/game` is cached for 7 days, so
+  replaced art needs a new file name.
 - Env vars: `PORT`, `DATABASE_PATH`, `TRUST_PROXY` (loaded from `.env` by
   `server/env.ts`). `SHOWDOWN_MIN_MS` is a test-only knob (default 1500);
   `AUDIO_DIR` overrides where voice lines are read from (default `./audio/voice`).

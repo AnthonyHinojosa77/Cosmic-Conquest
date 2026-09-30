@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { PublicVisitor as Visitor } from "@shared/schema";
 import { useMusic } from "@/lib/sound";
 import { useTapWord } from "@/lib/device";
+import { Scene } from "@/components/Scene";
+import { SceneBackdrop } from "@/components/SceneBackdrop";
 
 function VisitorTicker({ visitors }: { visitors: Visitor[] }) {
   const recent = useMemo(() => visitors.slice(0, 5), [visitors]);
@@ -52,8 +54,6 @@ export default function Hub() {
   useMusic("hub");
   const tap = useTapWord();
   const [hoveredWorld, setHoveredWorld] = useState<string | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const [imgLoaded, setImgLoaded] = useState(false);
 
   const { data: recentVisitors } = useQuery<Visitor[]>({
     queryKey: ["/api/visitors"],
@@ -89,9 +89,10 @@ export default function Hub() {
   ];
 
   return (
-    <div className="min-h-screen bg-[hsl(25,30%,12%)] flex flex-col items-center paper-texture">
+    <div className="game-page flex flex-col items-center">
+      <SceneBackdrop src="./scenes/hub-cover.webp" />
       {/* Magazine masthead */}
-      <header className="w-full text-center pt-6 pb-2 px-4 relative z-10">
+      <header className="w-full text-center pb-2 px-4 relative z-10" style={{ paddingTop: "calc(1.5rem + env(safe-area-inset-top, 0px))" }}>
         <div className="starburst-badge mx-auto mb-2" style={{ width: 48, height: 48, fontSize: "0.55rem" }}>
           EXPLORE<br/>3 WORLDS
         </div>
@@ -106,18 +107,11 @@ export default function Hub() {
 
       {/* Magazine cover illustration with clickable panels */}
       <main className="w-full max-w-4xl mx-auto px-4 pb-8 relative z-10">
-        <div className="scene-container relative" data-testid="scene-hub-cover">
-          <img
-            ref={imgRef}
-            src="./scenes/hub-cover.webp"
-            alt="A pulp science fiction magazine cover with three illustrated panels"
-            className="w-full h-auto block"
-            onLoad={() => setImgLoaded(true)}
-            draggable={false}
-          />
+        <div className="bleed rise-in relative">
+          <Scene src="./scenes/hub-cover.webp" alt="A pulp science fiction magazine cover with three illustrated panels" testId="scene-hub-cover" fit maxHeight={Math.max(560, window.innerHeight - 170)}>
 
           {/* Clickable world panels overlay */}
-          {imgLoaded && worlds.map((world) => (
+          {worlds.map((world) => (
             <Link key={world.id} href={world.path}>
               <div
                 className="hotspot"
@@ -137,11 +131,12 @@ export default function Hub() {
                 {/* Pulsing indicator dot */}
                 <div
                   className="hotspot-indicator"
-                  style={{ bottom: "10%", left: "50%", transform: "translateX(-50%)" }}
+                  style={{ top: "82%", left: "50%" }}
                 />
               </div>
             </Link>
           ))}
+          </Scene>
 
           {/* Hover tooltip */}
           {hoveredWorld && (
