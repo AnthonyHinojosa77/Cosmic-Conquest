@@ -4,18 +4,29 @@ import {
   type MenuItem, type InsertMenuItem, menuItems,
   type Visitor, type InsertVisitor, visitors,
   type Vote, type InsertVote, votes,
-} from "@shared/schema";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
+} from "../shared/schema";
+import { createClient } from "@libsql/client";
+import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 import { eq, desc, sql, and } from "drizzle-orm";
 
-const sqlite = new Database(process.env.DATABASE_PATH || "data.db");
-sqlite.pragma("journal_mode = WAL");
+// Where the data lives. On a hosting platform without a disk (Vercel) it is a
+// hosted libSQL/Turso database, named by DATABASE_URL (or the Vercel Turso
+// integration's TURSO_DATABASE_URL); otherwise a local SQLite file, so `npm start`
+// and the tests need no network.
+const remoteUrl = process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL;
+const authToken = process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
+const client = remoteUrl
+  ? createClient({ url: remoteUrl, authToken })
+  : createClient({ url: `file:${process.env.DATABASE_PATH || "data.db"}` });
 
-// Create any missing tables on boot so databases created before a schema
+export const db = drizzle(client);
+// A query runner: the database itself, or the transaction a caller is already in.
+export type Db = Pick<LibSQLDatabase, "select" | "insert" | "update" | "delete">;
+
+// Create any missing tables on first use so databases created before a schema
 // addition (e.g. `votes`) keep working without a manual `npm run db:push`.
 // Keep in sync with shared/schema.ts (DDL matches what drizzle-kit push emits).
-sqlite.exec(`
+const SCHEMA = `
   CREATE TABLE IF NOT EXISTS \`postcards\` (
     \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     \`visitor_name\` text NOT NULL,
@@ -93,41 +104,43 @@ sqlite.exec(`
     \`started_at\` text NOT NULL
   );
   CREATE UNIQUE INDEX IF NOT EXISTS \`showdowns_visitor_bounty_unique\` ON \`showdowns\` (\`visitor_id\`,\`bounty_id\`);
-`);
+`;
 
-// Enforce one vote per visitor per item at the database level. Kept separate so
-// a database holding duplicate rows from older code logs a warning instead of
-// failing to boot (the application-level check still applies).
-try {
-  sqlite.exec(
-    "CREATE UNIQUE INDEX IF NOT EXISTS `votes_visitor_item_unique` ON `votes` (`visitor_id`,`item_type`,`item_id`)",
-  );
-} catch (err) {
-  console.warn("Could not create votes unique index (existing duplicate votes?):", err);
+let ready: Promise<void> | undefined;
+
+// Resolves once the schema exists. Runs once per process (once per warm instance
+// on serverless hosting); every request waits on it before touching the database.
+export function dbReady(): Promise<void> {
+  return (ready ??= (async () => {
+    if (!remoteUrl) await client.execute("PRAGMA journal_mode = WAL");
+    await client.executeMultiple(SCHEMA);
+    // Enforce one vote per visitor per item at the database level. Kept separate so
+    // a database holding duplicate rows from older code logs a warning instead of
+    // failing to boot (the application-level check still applies).
+    try {
+      await client.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS `votes_visitor_item_unique` ON `votes` (`visitor_id`,`item_type`,`item_id`)",
+      );
+    } catch (err) {
+      console.warn("Could not create votes unique index (existing duplicate votes?):", err);
+    }
+  })());
 }
 
-export const db = drizzle(sqlite);
-
 // For the /health check: is the database answering?
-const ping = sqlite.prepare("SELECT 1");
-export function pingDb(): boolean {
+export async function pingDb(): Promise<boolean> {
   try {
-    ping.get();
+    await dbReady();
+    await client.execute("SELECT 1");
     return true;
   } catch {
     return false;
   }
 }
 
-// On shutdown: fold the write-ahead log into the main file and close cleanly.
+// On shutdown: close cleanly (a local file folds its write-ahead log back in).
 export function closeDb(): void {
-  try {
-    sqlite.pragma("wal_checkpoint(TRUNCATE)");
-  } catch (err) {
-    console.error("Couldn't checkpoint the database on shutdown:", err);
-  } finally {
-    sqlite.close();
-  }
+  client.close();
 }
 
 export type VoteResult<T> =
@@ -137,65 +150,65 @@ export type VoteResult<T> =
 
 export interface IStorage {
   // Postcards
-  getPostcards(): Postcard[];
-  createPostcard(postcard: InsertPostcard): Postcard;
+  getPostcards(): Promise<Postcard[]>;
+  createPostcard(postcard: InsertPostcard): Promise<Postcard>;
 
   // Predictions
-  getPredictions(): Prediction[];
-  createPrediction(prediction: InsertPrediction): Prediction;
-  votePrediction(id: number, visitorId: string): VoteResult<Prediction>;
+  getPredictions(): Promise<Prediction[]>;
+  createPrediction(prediction: InsertPrediction): Promise<Prediction>;
+  votePrediction(id: number, visitorId: string): Promise<VoteResult<Prediction>>;
 
   // Menu items
-  getMenuItems(): MenuItem[];
-  createMenuItem(item: InsertMenuItem): MenuItem;
-  voteMenuItem(id: number, visitorId: string): VoteResult<MenuItem>;
+  getMenuItems(): Promise<MenuItem[]>;
+  createMenuItem(item: InsertMenuItem): Promise<MenuItem>;
+  voteMenuItem(id: number, visitorId: string): Promise<VoteResult<MenuItem>>;
 
   // Visitors
-  getRecentVisitors(world?: string): Visitor[];
-  logVisitor(visitor: InsertVisitor, visitorId: string): Visitor;
+  getRecentVisitors(world?: string): Promise<Visitor[]>;
+  logVisitor(visitor: InsertVisitor, visitorId: string): Promise<Visitor>;
 
   // Votes
-  hasVoted(visitorId: string, itemType: string, itemId: number): boolean;
-  recordVote(vote: InsertVote): Vote;
+  hasVoted(visitorId: string, itemType: string, itemId: number): Promise<boolean>;
+  recordVote(vote: InsertVote): Promise<Vote>;
 }
 
 export class DatabaseStorage implements IStorage {
-  getPostcards(): Postcard[] {
+  getPostcards(): Promise<Postcard[]> {
     return db.select().from(postcards).orderBy(desc(postcards.id)).all();
   }
 
-  createPostcard(postcard: InsertPostcard): Postcard {
+  createPostcard(postcard: InsertPostcard): Promise<Postcard> {
     return db.insert(postcards).values({ ...postcard, createdAt: new Date().toISOString() }).returning().get();
   }
 
-  getPredictions(): Prediction[] {
+  getPredictions(): Promise<Prediction[]> {
     return db.select().from(predictions).orderBy(desc(predictions.votes)).all();
   }
 
-  createPrediction(prediction: InsertPrediction): Prediction {
+  createPrediction(prediction: InsertPrediction): Promise<Prediction> {
     return db.insert(predictions).values({ ...prediction, createdAt: new Date().toISOString() }).returning().get();
   }
 
-  votePrediction(id: number, visitorId: string): VoteResult<Prediction> {
-    return this.vote("prediction", id, visitorId, () =>
-      db.update(predictions)
+  votePrediction(id: number, visitorId: string): Promise<VoteResult<Prediction>> {
+    return this.vote("prediction", id, visitorId, (tx) =>
+      tx.update(predictions)
         .set({ votes: sql`${predictions.votes} + 1` })
         .where(eq(predictions.id, id))
         .returning()
         .get());
   }
 
-  getMenuItems(): MenuItem[] {
+  getMenuItems(): Promise<MenuItem[]> {
     return db.select().from(menuItems).orderBy(desc(menuItems.votes)).all();
   }
 
-  createMenuItem(item: InsertMenuItem): MenuItem {
+  createMenuItem(item: InsertMenuItem): Promise<MenuItem> {
     return db.insert(menuItems).values({ ...item, createdAt: new Date().toISOString() }).returning().get();
   }
 
-  voteMenuItem(id: number, visitorId: string): VoteResult<MenuItem> {
-    return this.vote("menuItem", id, visitorId, () =>
-      db.update(menuItems)
+  voteMenuItem(id: number, visitorId: string): Promise<VoteResult<MenuItem>> {
+    return this.vote("menuItem", id, visitorId, (tx) =>
+      tx.update(menuItems)
         .set({ votes: sql`${menuItems.votes} + 1` })
         .where(eq(menuItems.id, id))
         .returning()
@@ -209,18 +222,18 @@ export class DatabaseStorage implements IStorage {
     itemType: InsertVote["itemType"],
     itemId: number,
     visitorId: string,
-    increment: () => T | undefined,
-  ): VoteResult<T> {
-    return db.transaction(() => {
-      if (this.hasVoted(visitorId, itemType, itemId)) return { status: "duplicate" as const };
-      const item = increment();
+    increment: (tx: Db) => Promise<T | undefined>,
+  ): Promise<VoteResult<T>> {
+    return db.transaction(async (tx) => {
+      if (await this.hasVoted(visitorId, itemType, itemId, tx)) return { status: "duplicate" as const };
+      const item = await increment(tx);
       if (!item) return { status: "not_found" as const };
-      this.recordVote({ visitorId, itemType, itemId, createdAt: new Date().toISOString() });
+      await this.recordVote({ visitorId, itemType, itemId, createdAt: new Date().toISOString() }, tx);
       return { status: "ok" as const, item };
     });
   }
 
-  getRecentVisitors(world?: string): Visitor[] {
+  getRecentVisitors(world?: string): Promise<Visitor[]> {
     if (world) {
       return db.select().from(visitors)
         .where(eq(visitors.world, world))
@@ -234,19 +247,19 @@ export class DatabaseStorage implements IStorage {
       .all();
   }
 
-  logVisitor(visitor: InsertVisitor, visitorId: string): Visitor {
+  logVisitor(visitor: InsertVisitor, visitorId: string): Promise<Visitor> {
     return db.insert(visitors).values({ ...visitor, visitorId, createdAt: new Date().toISOString() }).returning().get();
   }
 
-  hasVoted(visitorId: string, itemType: string, itemId: number): boolean {
-    const result = db.select().from(votes)
+  async hasVoted(visitorId: string, itemType: string, itemId: number, q: Db = db): Promise<boolean> {
+    const result = await q.select().from(votes)
       .where(and(eq(votes.visitorId, visitorId), eq(votes.itemType, itemType), eq(votes.itemId, itemId)))
       .get();
     return !!result;
   }
 
-  recordVote(vote: InsertVote): Vote {
-    return db.insert(votes).values(vote).returning().get();
+  recordVote(vote: InsertVote, q: Db = db): Promise<Vote> {
+    return q.insert(votes).values(vote).returning().get();
   }
 }
 

@@ -1,75 +1,10 @@
-import "./env";
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { createApp, log } from "./app";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { pingDb, closeDb } from "./storage";
+import { closeDb } from "./storage";
 
-const app = express();
-
-// Behind a reverse proxy / PaaS load balancer, set TRUST_PROXY (e.g. "1" for one hop)
-// so req.ip — and therefore per-IP rate limiting — uses the real client address.
-// Left unset, X-Forwarded-For is ignored, which is correct when exposed directly.
-const trustProxy = process.env.TRUST_PROXY;
-if (trustProxy) {
-  app.set(
-    "trust proxy",
-    /^\d+$/.test(trustProxy) ? Number(trustProxy)
-      : trustProxy === "true" ? true
-      : trustProxy === "false" ? false
-      : trustProxy,
-  );
-}
+const app = createApp();
 const httpServer = createServer(app);
-
-declare module "http" {
-  interface IncomingMessage {
-    rawBody: unknown;
-  }
-}
-
-app.use(
-  express.json({
-    limit: "50kb",
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
-app.use(express.urlencoded({ extended: false }));
-
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
-
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-
-  // Response bodies are deliberately not logged: polled GETs return whole
-  // tables every few seconds, and bodies contain user-submitted content.
-  res.on("finish", () => {
-    if (path.startsWith("/api")) {
-      log(`${req.method} ${path} ${res.statusCode} in ${Date.now() - start}ms`);
-    }
-  });
-
-  next();
-});
-
-// Liveness check for hosting platforms (outside /api, so no rate limits or cookies)
-app.get("/health", (_req, res) => {
-  const ok = pingDb();
-  res.status(ok ? 200 : 503).json({ ok });
-});
 
 // Stop cleanly on SIGINT/SIGTERM: finish open requests, then save the database
 // properly. Registered before startup so a signal mid-startup is handled too.
@@ -103,21 +38,6 @@ process.on("SIGINT", () => stop("SIGINT"));
 process.on("SIGTERM", () => stop("SIGTERM"));
 
 (async () => {
-  await registerRoutes(httpServer, app);
-
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    console.error("Internal Server Error:", err);
-
-    if (res.headersSent) {
-      return next(err);
-    }
-
-    return res.status(status).json({ message });
-  });
-
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes

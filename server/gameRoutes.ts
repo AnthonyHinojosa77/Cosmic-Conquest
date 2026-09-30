@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { z } from "zod";
-import { updatePlayerSchema } from "@shared/schema";
+import { updatePlayerSchema } from "../shared/schema";
 import {
   bountyById,
   cluesNeeded,
@@ -12,7 +12,7 @@ import {
   type Bounty,
   type BountyProgress,
   type ClueSearch,
-} from "@shared/game";
+} from "../shared/game";
 import { aureliaFor } from "./aurelia";
 import { gameLimiter, clueLimiter } from "./middleware";
 import { BOUNTY_SOLUTIONS, CLUES, TESTIMONY } from "./bounties";
@@ -72,9 +72,9 @@ function textOf(bountyId: string, id: string): string | undefined {
   return undefined;
 }
 
-function progressOf(visitorId: string, bounty: Bounty): BountyProgress {
+async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProgress> {
   const found: Record<string, string> = {};
-  const ids = foundClues(visitorId, bounty.id);
+  const ids = await foundClues(visitorId, bounty.id);
   for (const id of ids) {
     const text = textOf(bounty.id, id);
     if (text) found[id] = text;
@@ -87,7 +87,7 @@ function progressOf(visitorId: string, bounty: Bounty): BountyProgress {
     }
   }
   const solution = BOUNTY_SOLUTIONS[bounty.id];
-  const accused = showdownStartedAt(visitorId, bounty.id) !== null;
+  const accused = (await showdownStartedAt(visitorId, bounty.id)) !== null;
   return {
     found,
     ...(Object.keys(caught).length ? { caught } : {}),
@@ -98,32 +98,32 @@ function progressOf(visitorId: string, bounty: Bounty): BountyProgress {
 }
 
 export function registerGameRoutes(app: Express) {
-  app.get("/api/player", (req, res) => {
-    res.json(getProfile(req.visitorId!));
+  app.get("/api/player", async (req, res) => {
+    res.json(await getProfile(req.visitorId!));
   });
 
-  app.patch("/api/player", gameLimiter, (req, res) => {
+  app.patch("/api/player", gameLimiter, async (req, res) => {
     const parsed = updatePlayerSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const result = updateProfile(req.visitorId!, parsed.data);
+    const result = await updateProfile(req.visitorId!, parsed.data);
     if (result.status === "suit_not_owned") return res.status(403).json({ error: "You don't own that suit yet" });
     res.json(result.profile);
   });
 
   // What this hunter has found so far (survives a page refresh).
-  app.get("/api/bounties/:id/progress", (req, res) => {
+  app.get("/api/bounties/:id/progress", async (req, res) => {
     const bounty = liveBounty(req.params.id);
     if (!bounty) return res.status(404).json({ error: "No such bounty" });
-    res.json(progressOf(req.visitorId!, bounty));
+    res.json(await progressOf(req.visitorId!, bounty));
   });
 
   // Search a spot: the server records the find and hands over the clue (and any item).
-  app.post("/api/bounties/:id/clues/:clueId/search", clueLimiter, (req, res) => {
+  app.post("/api/bounties/:id/clues/:clueId/search", clueLimiter, async (req, res) => {
     const bounty = liveBounty(req.params.id);
     const found = bounty && clueOf(bounty, String(req.params.clueId));
     if (!bounty || !found) return res.status(404).json({ error: "Nothing to find there" });
     const { clue, secret } = found;
-    if (clue.grants) grantItem(req.visitorId!, clue.grants);
+    if (clue.grants) await grantItem(req.visitorId!, clue.grants);
     if (clue.lock || secret.code !== undefined) {
       // Locked: it counts as found once opened.
       const result: ClueSearch = { locked: true };
@@ -134,13 +134,13 @@ export function registerGameRoutes(app: Express) {
       const result: ClueSearch = { coded: shiftLetters(secret.text, secret.key) };
       return res.json(result);
     }
-    recordClue(req.visitorId!, bounty.id, clue.id);
+    await recordClue(req.visitorId!, bounty.id, clue.id);
     const result: ClueSearch = { text: secret.text };
     res.json(result);
   });
 
   // Decode a coded clue: needs the right tool in the satchel and the right key.
-  app.post("/api/bounties/:id/clues/:clueId/decode", clueLimiter, (req, res) => {
+  app.post("/api/bounties/:id/clues/:clueId/decode", clueLimiter, async (req, res) => {
     const bounty = liveBounty(req.params.id);
     const found = bounty && clueOf(bounty, String(req.params.clueId));
     if (!bounty || !found || found.secret.key === undefined || !found.clue.cipher) {
@@ -148,17 +148,17 @@ export function registerGameRoutes(app: Express) {
     }
     const parsed = decodeSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    if (!hasItem(req.visitorId!, found.clue.cipher.requires)) {
+    if (!(await hasItem(req.visitorId!, found.clue.cipher.requires))) {
       return res.status(403).json({ error: "You need something to decode it with" });
     }
     if (parsed.data.key !== found.secret.key) return res.json({ correct: false });
-    recordClue(req.visitorId!, bounty.id, found.clue.id);
+    await recordClue(req.visitorId!, bounty.id, found.clue.id);
     res.json({ correct: true, text: found.secret.text });
   });
 
   // Open a combination lock, or dive to a square on a sea chart: needs the clues that
   // reveal the answer, then the right code (a lock's digits, or the square).
-  app.post("/api/bounties/:id/clues/:clueId/unlock", clueLimiter, (req, res) => {
+  app.post("/api/bounties/:id/clues/:clueId/unlock", clueLimiter, async (req, res) => {
     const bounty = liveBounty(req.params.id);
     const found = bounty && clueOf(bounty, String(req.params.clueId));
     const { lock, chart } = found ? found.clue : {};
@@ -172,22 +172,22 @@ export function registerGameRoutes(app: Express) {
     if (chart ? !onChart(chart, code) : !/^[0-9]+$/.test(code)) {
       return res.status(400).json({ error: chart ? "That square isn't on the chart" : "A lock takes numbers" });
     }
-    const have = foundClues(req.visitorId!, bounty.id);
+    const have = await foundClues(req.visitorId!, bounty.id);
     if (!(found.secret.needs ?? []).every((id) => have.includes(id))) {
       return res.status(409).json({
         error: chart ? "You don't know where to dive yet. Keep searching." : "You don't know the combination yet. Keep searching.",
       });
     }
     if (code !== found.secret.code) return res.json({ correct: false });
-    recordClue(req.visitorId!, bounty.id, found.clue.id);
+    await recordClue(req.visitorId!, bounty.id, found.clue.id);
     res.json({ correct: true, text: found.secret.text });
   });
 
   // Question a suspect about a topic.
-  app.post("/api/bounties/:id/suspects/:suspect/ask/:topic", clueLimiter, (req, res) => {
+  app.post("/api/bounties/:id/suspects/:suspect/ask/:topic", clueLimiter, async (req, res) => {
     const bounty = liveBounty(req.params.id);
     if (!bounty) return res.status(404).json({ error: "No such bounty" });
-    const found = foundClues(req.visitorId!, bounty.id);
+    const found = await foundClues(req.visitorId!, bounty.id);
     const t = topicOf(found, bounty, String(req.params.suspect), String(req.params.topic));
     if (t.status === "missing") return res.status(404).json({ error: "They have nothing to say about that" });
     if (t.status === "locked") return res.status(409).json({ error: "Find more clues before you ask about that" });
@@ -196,12 +196,12 @@ export function registerGameRoutes(app: Express) {
 
   // Present a found clue against what a suspect said. The right clue against a lie
   // is a breakthrough, recorded like a clue.
-  app.post("/api/bounties/:id/suspects/:suspect/ask/:topic/present", clueLimiter, (req, res) => {
+  app.post("/api/bounties/:id/suspects/:suspect/ask/:topic/present", clueLimiter, async (req, res) => {
     const bounty = liveBounty(req.params.id);
     if (!bounty) return res.status(404).json({ error: "No such bounty" });
     const parsed = presentSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const found = foundClues(req.visitorId!, bounty.id);
+    const found = await foundClues(req.visitorId!, bounty.id);
     const t = topicOf(found, bounty, String(req.params.suspect), String(req.params.topic));
     if (t.status === "missing") return res.status(404).json({ error: "They have nothing to say about that" });
     if (t.status === "locked") return res.status(409).json({ error: "Find more clues before you ask about that" });
@@ -210,27 +210,27 @@ export function registerGameRoutes(app: Express) {
     }
     const { breakthrough, caughtBy } = t.said;
     if (!breakthrough || !caughtBy?.includes(parsed.data.clue)) return res.json({ correct: false });
-    recordClue(req.visitorId!, bounty.id, breakthrough.id);
+    await recordClue(req.visitorId!, bounty.id, breakthrough.id);
     res.json({ correct: true, id: breakthrough.id, text: breakthrough.text });
   });
 
   // Name a suspect. Needs enough clues on record; a correct guess starts the showdown clock.
-  app.post("/api/bounties/:id/accuse", gameLimiter, (req, res) => {
+  app.post("/api/bounties/:id/accuse", gameLimiter, async (req, res) => {
     const bounty = liveBounty(req.params.id);
     if (!bounty) return res.status(404).json({ error: "No such bounty" });
     const parsed = accusationSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    if (foundClues(req.visitorId!, bounty.id).length < cluesNeeded(bounty)) {
+    if ((await foundClues(req.visitorId!, bounty.id)).length < cluesNeeded(bounty)) {
       return res.status(409).json({ error: "Find more clues before you name anyone" });
     }
     const solution = BOUNTY_SOLUTIONS[bounty.id];
     if (solution?.suspect !== parsed.data.suspect) return res.json({ correct: false });
-    startShowdown(req.visitorId!, bounty.id);
+    await startShowdown(req.visitorId!, bounty.id);
     res.json({ correct: true, showdown: solution.showdown, outro: solution.outro });
   });
 
   // Pay out once per hunter, only after a correct accusation and a real showdown.
-  app.post("/api/bounties/:id/claim", gameLimiter, (req, res) => {
+  app.post("/api/bounties/:id/claim", gameLimiter, async (req, res) => {
     const bounty = liveBounty(req.params.id);
     if (!bounty) return res.status(404).json({ error: "No such bounty" });
     const parsed = accusationSchema.safeParse(req.body);
@@ -238,29 +238,29 @@ export function registerGameRoutes(app: Express) {
     if (BOUNTY_SOLUTIONS[bounty.id]?.suspect !== parsed.data.suspect) {
       return res.status(422).json({ error: "Wrong suspect" });
     }
-    const started = showdownStartedAt(req.visitorId!, bounty.id);
+    const started = await showdownStartedAt(req.visitorId!, bounty.id);
     if (started === null) return res.status(409).json({ error: "Name the culprit before you collect" });
     if (Date.now() - started < SHOWDOWN_MIN_MS) return res.status(409).json({ error: "Win the showdown first" });
-    const result = claimBounty(req.visitorId!, bounty.id, bounty.reward);
+    const result = await claimBounty(req.visitorId!, bounty.id, bounty.reward);
     if (result.status === "already_claimed") return res.status(409).json({ error: "Bounty already collected" });
     res.json(result.profile);
   });
 
-  app.post("/api/shop/:itemId/buy", gameLimiter, (req, res) => {
-    const result = buyItem(req.visitorId!, String(req.params.itemId));
+  app.post("/api/shop/:itemId/buy", gameLimiter, async (req, res) => {
+    const result = await buyItem(req.visitorId!, String(req.params.itemId));
     if (result.status === "not_found") return res.status(404).json({ error: "No such item" });
     if (result.status === "already_owned") return res.status(409).json({ error: "You already own that" });
     if (result.status === "insufficient_credits") return res.status(402).json({ error: "Not enough credits" });
     res.json(result.profile);
   });
 
-  app.get("/api/leaderboard", (_req, res) => {
-    res.json(getLeaderboard());
+  app.get("/api/leaderboard", async (_req, res) => {
+    res.json(await getLeaderboard());
   });
 
   // Aurelia is invitation-only: the doormen check the hunter's record.
-  app.get("/api/aurelia", (req, res) => {
-    const profile = getProfile(req.visitorId!);
+  app.get("/api/aurelia", async (req, res) => {
+    const profile = await getProfile(req.visitorId!);
     if (!invitedToAurelia(profile.completedBounties)) {
       return res.status(403).json({
         error: "Your name isn't on the list",
@@ -271,7 +271,7 @@ export function registerGameRoutes(app: Express) {
     res.json(aureliaFor(profile.callsign, profile.completedBounties));
   });
 
-  app.get("/api/star-map", (_req, res) => {
-    res.json(getStarMap());
+  app.get("/api/star-map", async (_req, res) => {
+    res.json(await getStarMap());
   });
 }

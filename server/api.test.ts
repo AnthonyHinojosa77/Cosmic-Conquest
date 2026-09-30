@@ -25,7 +25,7 @@ before(async () => {
   const app = express();
   app.use(express.json());
   server = createServer(app);
-  await registerRoutes(server, app);
+  registerRoutes(app);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
@@ -248,7 +248,7 @@ test("game: a buying spree never spends more than the balance", async () => {
 });
 
 test("game: the culprit is not in the shared (browser) bounty data", async () => {
-  const { BOUNTIES } = await import("@shared/game");
+  const { BOUNTIES } = await import("../shared/game");
   const shipped = JSON.stringify(BOUNTIES);
   assert.equal(/spatula blaster|lock-up|never take me alive|stamp-blaster|properly filed|Nobody catches|Venus lock-up|understand them|Titan lock-up|dives deepest|harpoon|coralie-showdown/.test(shipped), false);
 });
@@ -270,7 +270,7 @@ test("game: star map counts hunters per fragment, once each", async () => {
 });
 
 test("game: star map fragments have unique ids and numbers within the map", async () => {
-  const { MAP_FRAGMENTS, STAR_MAP_SIZE } = await import("@shared/game");
+  const { MAP_FRAGMENTS, STAR_MAP_SIZE } = await import("../shared/game");
   const numbers = MAP_FRAGMENTS.map((f) => f.number);
   assert.equal(new Set(numbers).size, numbers.length);
   assert.equal(new Set(MAP_FRAGMENTS.map((f) => f.id)).size, MAP_FRAGMENTS.length);
@@ -294,7 +294,7 @@ test("game: Mars bounty pays 800 to the right suspect and turns up fragment II",
 });
 
 test("game: clues come from the server; the ring comes from searching; the telegram needs the right key", async () => {
-  const { shiftLetters } = await import("@shared/game");
+  const { shiftLetters } = await import("../shared/game");
   const start = await fetch(base + "/api/player");
   const cookie = cookieOf(start);
   assert.deepEqual((await start.json()).items, []);
@@ -329,7 +329,7 @@ test("game: clues come from the server; the ring comes from searching; the teleg
 });
 
 test("game: no clue text or puzzle answer ships to the browser", async () => {
-  const { BOUNTIES } = await import("@shared/game");
+  const { BOUNTIES } = await import("../shared/game");
   const { CLUES } = await import("./bounties");
   const shipped = JSON.stringify(BOUNTIES);
   for (const clues of Object.values(CLUES)) {
@@ -346,13 +346,13 @@ test("game: no clue text or puzzle answer ships to the browser", async () => {
   }
   assert.equal(/caughtBy/.test(shipped), false);
   assert.equal(/"key"|"code"|"needs"/.test(shipped), false);
-  const { shiftLetters } = await import("@shared/game");
+  const { shiftLetters } = await import("../shared/game");
   const tele = CLUES["red-sands"].telegram;
   assert.equal(shipped.includes(shiftLetters(tele.text, tele.key!).slice(0, 20)), false, "coded text ships");
 });
 
 test("game: every hotspot has server clue text, and coded clues have a key", async () => {
-  const { BOUNTIES, onChart } = await import("@shared/game");
+  const { BOUNTIES, onChart } = await import("../shared/game");
   const { CLUES, TESTIMONY } = await import("./bounties");
   for (const b of BOUNTIES.filter((b) => b.interviews)) {
     const clueIds = b.locations!.flatMap((l) => l.clues.map((c) => c.id));
@@ -387,7 +387,7 @@ test("game: every hotspot has server clue text, and coded clues have a key", asy
 });
 
 test("game: hunter rank and the telegram cipher", async () => {
-  const { hunterRank, shiftLetters, bountyById } = await import("@shared/game");
+  const { hunterRank, shiftLetters, bountyById } = await import("../shared/game");
   assert.equal(hunterRank(0).title, "Greenhorn");
   assert.deepEqual(hunterRank(1), { title: "Deputy", next: { title: "Marshal", needed: 1 } });
   assert.equal(hunterRank(99).next, undefined);
@@ -485,7 +485,7 @@ test("game: Neptune's diving bell needs all three chart clues, then the right sq
 });
 
 test("game: the chart clues point to exactly one square", async () => {
-  const { bountyById, chartCell } = await import("@shared/game");
+  const { bountyById, chartCell } = await import("../shared/game");
   const chart = bountyById("neptune-deep")!.locations!.flatMap((l) => l.clues).find((c) => c.chart)!.chart!;
   const arch = chart.marks.find((m) => m.icon === "arch")!.cell;
   const squares: string[] = [];
@@ -515,7 +515,7 @@ test("game: Neptune bounty pays 2000 and turns up fragment V", async () => {
 });
 
 test("game: bounties that aren't released yet can't be played", async () => {
-  const { BOUNTIES } = await import("@shared/game");
+  const { BOUNTIES } = await import("../shared/game");
   const venus = BOUNTIES.find((b) => b.id === "venus-fog")!;
   const cookie = cookieOf(await fetch(base + "/api/player"));
   venus.available = false;

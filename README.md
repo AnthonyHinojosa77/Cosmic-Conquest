@@ -101,6 +101,24 @@ EXPOSE 5000
 CMD ["npm", "start"]
 ```
 
-> Schema changes: the server creates missing tables on boot (`server/storage.ts`), but it
-> does not alter existing ones. When you add a table, add it there too; when you change a
+> Schema changes: the server creates missing tables on first use (`server/storage.ts`), but
+> it does not alter existing ones. When you add a table, add it there too; when you change a
 > column, run `npm run db:push` against the database.
+
+### Vercel (the public game)
+
+Vercel has no persistent disk, so the production game keeps its data in a hosted
+[Turso](https://turso.tech) database (libSQL, the same SQL dialect as the local file; free
+plan) instead of `data.db`. Everything else is the same code:
+
+- `api/index.ts` exports the Express app from `server/app.ts` as one Vercel Function.
+- `vercel.json` builds with `npm run build`, serves `dist/public` from the CDN, rewrites
+  `/api/*` and `/health` to the function, and bundles `audio/voice/**` into it so the gated
+  voice route can read the recordings.
+- The database URL comes from the Turso integration in the Vercel Marketplace, which sets
+  `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` on the project (`DATABASE_URL` and
+  `DATABASE_AUTH_TOKEN` work too). `TRUST_PROXY` defaults to `1` on Vercel.
+- Every push to `main` deploys production. Tables are created on the first request.
+
+Server files import `../shared/...` rather than the `@shared` alias because the function
+builder does not read `tsconfig` paths.

@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { and, eq, desc, sql, inArray } from "drizzle-orm";
-import { players, bountyClaims, playerItems, clueFinds, showdowns, type Player } from "@shared/schema";
+import { players, bountyClaims, playerItems, clueFinds, showdowns, type Player } from "../shared/schema";
 import {
   DEFAULT_SUIT,
   ownsSuit,
@@ -14,8 +14,8 @@ import {
   type ItemId,
   type ShopItemId,
   type SuitId,
-} from "@shared/game";
-import { db } from "./storage";
+} from "../shared/game";
+import { db, type Db } from "./storage";
 
 // Stable per visitor, so the name shown before their first action is the one that gets saved.
 function defaultCallsign(visitorId: string): string {
@@ -32,40 +32,42 @@ function parseOwned(raw: string): ShopItemId[] {
   }
 }
 
-function completedBounties(visitorId: string): string[] {
-  return db.select({ bountyId: bountyClaims.bountyId })
+// Helpers take the transaction they are called from (`q`), so reads inside a
+// transaction see its own writes and never open a second connection.
+async function completedBounties(visitorId: string, q: Db = db): Promise<string[]> {
+  const rows = await q.select({ bountyId: bountyClaims.bountyId })
     .from(bountyClaims)
     .where(eq(bountyClaims.visitorId, visitorId))
-    .all()
-    .map((r) => r.bountyId);
+    .all();
+  return rows.map((r) => r.bountyId);
 }
 
-function itemsOf(visitorId: string): ItemId[] {
-  return db.select({ itemId: playerItems.itemId })
+async function itemsOf(visitorId: string, q: Db = db): Promise<ItemId[]> {
+  const rows = await q.select({ itemId: playerItems.itemId })
     .from(playerItems)
     .where(eq(playerItems.visitorId, visitorId))
-    .all()
-    .map((r) => r.itemId as ItemId);
+    .all();
+  return rows.map((r) => r.itemId as ItemId);
 }
 
-function toProfile(player: Player): PlayerProfile {
+async function toProfile(player: Player, q: Db = db): Promise<PlayerProfile> {
   return {
     callsign: player.callsign,
     credits: player.credits,
     suit: player.suit as SuitId,
     owned: parseOwned(player.owned),
-    completedBounties: completedBounties(player.visitorId),
-    items: itemsOf(player.visitorId),
+    completedBounties: await completedBounties(player.visitorId, q),
+    items: await itemsOf(player.visitorId, q),
   };
 }
 
-function findPlayer(visitorId: string): Player | undefined {
-  return db.select().from(players).where(eq(players.visitorId, visitorId)).get();
+function findPlayer(visitorId: string, q: Db = db): Promise<Player | undefined> {
+  return q.select().from(players).where(eq(players.visitorId, visitorId)).get();
 }
 
 // Players are created lazily on their first write, so browsing never adds rows.
-function ensurePlayer(visitorId: string): Player {
-  return findPlayer(visitorId) ?? db.insert(players).values({
+async function ensurePlayer(visitorId: string, q: Db = db): Promise<Player> {
+  return (await findPlayer(visitorId, q)) ?? q.insert(players).values({
     visitorId,
     callsign: defaultCallsign(visitorId),
     credits: 0,
@@ -75,22 +77,22 @@ function ensurePlayer(visitorId: string): Player {
   }).returning().get();
 }
 
-export function getProfile(visitorId: string): PlayerProfile {
-  const player = findPlayer(visitorId);
+export async function getProfile(visitorId: string): Promise<PlayerProfile> {
+  const player = await findPlayer(visitorId);
   if (player) return toProfile(player);
-  return { callsign: defaultCallsign(visitorId), credits: 0, suit: DEFAULT_SUIT, owned: [], completedBounties: [], items: itemsOf(visitorId) };
+  return { callsign: defaultCallsign(visitorId), credits: 0, suit: DEFAULT_SUIT, owned: [], completedBounties: [], items: await itemsOf(visitorId) };
 }
 
 export type UpdateResult = { status: "ok"; profile: PlayerProfile } | { status: "suit_not_owned" };
 
-export function updateProfile(visitorId: string, changes: { callsign?: string; suit?: SuitId }): UpdateResult {
-  return db.transaction(() => {
-    const player = ensurePlayer(visitorId);
+export function updateProfile(visitorId: string, changes: { callsign?: string; suit?: SuitId }): Promise<UpdateResult> {
+  return db.transaction(async (tx) => {
+    const player = await ensurePlayer(visitorId, tx);
     const owned = parseOwned(player.owned);
     if (changes.suit && !ownsSuit(owned, changes.suit)) {
       return { status: "suit_not_owned" as const };
     }
-    const updated = db.update(players)
+    const updated = await tx.update(players)
       .set({
         ...(changes.callsign !== undefined ? { callsign: changes.callsign } : {}),
         ...(changes.suit !== undefined ? { suit: changes.suit } : {}),
@@ -98,23 +100,23 @@ export function updateProfile(visitorId: string, changes: { callsign?: string; s
       .where(eq(players.id, player.id))
       .returning()
       .get();
-    return { status: "ok" as const, profile: toProfile(updated) };
+    return { status: "ok" as const, profile: await toProfile(updated, tx) };
   });
 }
 
 export type ClaimResult = { status: "ok"; profile: PlayerProfile } | { status: "already_claimed" };
 
-export function claimBounty(visitorId: string, bountyId: string, reward: number): ClaimResult {
-  return db.transaction(() => {
-    const player = ensurePlayer(visitorId);
-    if (completedBounties(visitorId).includes(bountyId)) return { status: "already_claimed" as const };
-    db.insert(bountyClaims).values({ visitorId, bountyId, reward, createdAt: new Date().toISOString() }).run();
-    const updated = db.update(players)
+export function claimBounty(visitorId: string, bountyId: string, reward: number): Promise<ClaimResult> {
+  return db.transaction(async (tx) => {
+    const player = await ensurePlayer(visitorId, tx);
+    if ((await completedBounties(visitorId, tx)).includes(bountyId)) return { status: "already_claimed" as const };
+    await tx.insert(bountyClaims).values({ visitorId, bountyId, reward, createdAt: new Date().toISOString() }).run();
+    const updated = await tx.update(players)
       .set({ credits: sql`${players.credits} + ${reward}` })
       .where(eq(players.id, player.id))
       .returning()
       .get();
-    return { status: "ok" as const, profile: toProfile(updated) };
+    return { status: "ok" as const, profile: await toProfile(updated, tx) };
   });
 }
 
@@ -124,16 +126,16 @@ export type BuyResult =
   | { status: "already_owned" }
   | { status: "insufficient_credits" };
 
-export function buyItem(visitorId: string, itemId: string): BuyResult {
+export async function buyItem(visitorId: string, itemId: string): Promise<BuyResult> {
   const item = shopItem(itemId);
   if (!item) return { status: "not_found" };
-  return db.transaction(() => {
-    const player = ensurePlayer(visitorId);
+  return db.transaction(async (tx) => {
+    const player = await ensurePlayer(visitorId, tx);
     const owned = parseOwned(player.owned);
     if (owned.includes(item.id)) return { status: "already_owned" as const };
     if (player.credits < item.price) return { status: "insufficient_credits" as const };
     const suit = suitForItem(item.id);
-    const updated = db.update(players)
+    const updated = await tx.update(players)
       .set({
         credits: player.credits - item.price,
         owned: JSON.stringify([...owned, item.id]),
@@ -143,12 +145,12 @@ export function buyItem(visitorId: string, itemId: string): BuyResult {
       .where(eq(players.id, player.id))
       .returning()
       .get();
-    return { status: "ok" as const, profile: toProfile(updated) };
+    return { status: "ok" as const, profile: await toProfile(updated, tx) };
   });
 }
 
-export function getLeaderboard(limit = 10): LeaderboardEntry[] {
-  return db.select({
+export async function getLeaderboard(limit = 10): Promise<LeaderboardEntry[]> {
+  const rows = await db.select({
     callsign: players.callsign,
     earned: sql<number>`sum(${bountyClaims.reward})`,
     bounties: sql<number>`count(${bountyClaims.id})`,
@@ -159,77 +161,75 @@ export function getLeaderboard(limit = 10): LeaderboardEntry[] {
     .groupBy(players.id)
     .orderBy(desc(sql`sum(${bountyClaims.reward})`), sql`min(${bountyClaims.createdAt})`)
     .limit(limit)
-    .all()
-    .map(({ callsign, earned, bounties }) => ({ callsign, earned, bounties }));
+    .all();
+  return rows.map(({ callsign, earned, bounties }) => ({ callsign, earned, bounties }));
 }
 
-export function getStarMap(): StarMapStatus {
+export async function getStarMap(): Promise<StarMapStatus> {
   const withFragment = BOUNTIES.filter((b) => b.fragment);
   const ids = withFragment.map((b) => b.id);
   if (ids.length === 0) return { total: STAR_MAP_SIZE, fragments: [], searchers: 0 };
   // One read transaction so the per-fragment counts and the searcher total agree.
-  return db.transaction(() => {
+  return db.transaction(async (tx) => {
     // One claim per hunter per bounty (unique index), so count(*) is distinct hunters.
-    const counts = new Map(
-      db.select({ bountyId: bountyClaims.bountyId, hunters: sql<number>`count(*)` })
-        .from(bountyClaims)
-        .where(inArray(bountyClaims.bountyId, ids))
-        .groupBy(bountyClaims.bountyId)
-        .all()
-        .map((r) => [r.bountyId, r.hunters]),
-    );
-    const searchers = db.select({ n: sql<number>`count(distinct ${bountyClaims.visitorId})` })
+    const perBounty = await tx.select({ bountyId: bountyClaims.bountyId, hunters: sql<number>`count(*)` })
       .from(bountyClaims)
       .where(inArray(bountyClaims.bountyId, ids))
-      .get()?.n ?? 0;
+      .groupBy(bountyClaims.bountyId)
+      .all();
+    const counts = new Map(perBounty.map((r) => [r.bountyId, r.hunters]));
+    const total = await tx.select({ n: sql<number>`count(distinct ${bountyClaims.visitorId})` })
+      .from(bountyClaims)
+      .where(inArray(bountyClaims.bountyId, ids))
+      .get();
     return {
       total: STAR_MAP_SIZE,
       fragments: withFragment.map((b) => ({ id: b.fragment!.id, hunters: counts.get(b.id) ?? 0 })),
-      searchers,
+      searchers: total?.n ?? 0,
     };
   });
 }
 
 // Put an item in the hunter's satchel (idempotent). Doesn't create a player row.
-export function grantItem(visitorId: string, itemId: ItemId) {
-  db.insert(playerItems)
+export async function grantItem(visitorId: string, itemId: ItemId): Promise<void> {
+  await db.insert(playerItems)
     .values({ visitorId, itemId, createdAt: new Date().toISOString() })
     .onConflictDoNothing()
     .run();
 }
 
-export function hasItem(visitorId: string, itemId: ItemId): boolean {
-  return itemsOf(visitorId).includes(itemId);
+export async function hasItem(visitorId: string, itemId: ItemId): Promise<boolean> {
+  return (await itemsOf(visitorId)).includes(itemId);
 }
 
 // --- Bounty progress (the server is the referee) ---------------------------
 
-export function recordClue(visitorId: string, bountyId: string, clueId: string) {
-  db.insert(clueFinds)
+export async function recordClue(visitorId: string, bountyId: string, clueId: string): Promise<void> {
+  await db.insert(clueFinds)
     .values({ visitorId, bountyId, clueId, createdAt: new Date().toISOString() })
     .onConflictDoNothing()
     .run();
 }
 
-export function foundClues(visitorId: string, bountyId: string): string[] {
-  return db.select({ clueId: clueFinds.clueId })
+export async function foundClues(visitorId: string, bountyId: string): Promise<string[]> {
+  const rows = await db.select({ clueId: clueFinds.clueId })
     .from(clueFinds)
     .where(and(eq(clueFinds.visitorId, visitorId), eq(clueFinds.bountyId, bountyId)))
-    .all()
-    .map((r) => r.clueId);
+    .all();
+  return rows.map((r) => r.clueId);
 }
 
 // (Re)start the showdown clock after a correct accusation.
-export function startShowdown(visitorId: string, bountyId: string) {
+export async function startShowdown(visitorId: string, bountyId: string): Promise<void> {
   const startedAt = new Date().toISOString();
-  db.insert(showdowns)
+  await db.insert(showdowns)
     .values({ visitorId, bountyId, startedAt })
     .onConflictDoUpdate({ target: [showdowns.visitorId, showdowns.bountyId], set: { startedAt } })
     .run();
 }
 
-export function showdownStartedAt(visitorId: string, bountyId: string): number | null {
-  const row = db.select({ startedAt: showdowns.startedAt })
+export async function showdownStartedAt(visitorId: string, bountyId: string): Promise<number | null> {
+  const row = await db.select({ startedAt: showdowns.startedAt })
     .from(showdowns)
     .where(and(eq(showdowns.visitorId, visitorId), eq(showdowns.bountyId, bountyId)))
     .get();

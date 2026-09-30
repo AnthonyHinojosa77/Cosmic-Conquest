@@ -59,3 +59,13 @@ npm run build
 - Env vars: `PORT`, `DATABASE_PATH`, `TRUST_PROXY` (loaded from `.env` by
   `server/env.ts`). `SHOWDOWN_MIN_MS` is a test-only knob (default 1500);
   `AUDIO_DIR` overrides where voice lines are read from (default `./audio/voice`).
+- Database: `@libsql/client` + Drizzle (`server/storage.ts`). With no URL set it is
+  a local SQLite file (`DATABASE_PATH`, default `./data.db`): `npm start`, the Desktop
+  launcher and the tests all run that way. With `DATABASE_URL` (+ `DATABASE_AUTH_TOKEN`)
+  or the Vercel Turso integration's `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` set, it is a
+  hosted Turso database. Storage calls are async; tables are created on first use
+  (`dbReady()`), gated in `registerRoutes`.
+- Vercel: `api/index.ts` exports the Express app (`server/app.ts`); `vercel.json`
+  rewrites `/api/*` and `/health` to it, serves `dist/public` statically and bundles
+  `audio/voice/**` into the function. Server files import `../shared/...` (no `@shared`
+  alias) so the function builder can resolve them.
