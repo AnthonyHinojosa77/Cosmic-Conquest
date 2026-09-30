@@ -380,6 +380,20 @@ style reference; sources in the Drive folder.
   from it (ray-gun 300 + gold suit 250 = 550). The better gear is a reason to
   keep exploring and take on new bounties as they arrive. Purchases are final.
 
+## Hosting (2026-09-29)
+
+- **Public game:** https://cosmic-conquest-ten.vercel.app (Vercel project `cosmic-conquest`,
+  team "anthonyhinojosa77's projects", Hobby plan). Every push to GitHub `main` builds and
+  goes live in about a minute; the GitHub commit gets a Vercel status you can click.
+- **Data:** Turso database `cosmic-conquest-db` (US East, Starter/free plan) installed from
+  the Vercel Marketplace and connected to the project as `DATABASE_TURSO_DATABASE_URL` /
+  `DATABASE_TURSO_AUTH_TOKEN`. Hunters, credits, claims, clue finds and the leaderboard live
+  there. The Vercel dashboard's Storage tab opens it ("Open in Turso Cloud" has a SQL shell).
+- **How it runs:** the client is static files on Vercel's CDN; the API is one function
+  (`api/index.ts`) with the voice MP3s bundled in. See README "Vercel (the public game)".
+- **Offline copy:** the Desktop launcher "Play Cosmic Conquest" still runs the latest `main`
+  on the MacBook at http://localhost:5055 with its own local database; its saves are separate.
+
 ## Known limits
 
 - **Anonymous players:** anyone who clears their browser cookies starts
