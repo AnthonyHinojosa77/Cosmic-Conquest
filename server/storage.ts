@@ -4,7 +4,7 @@ import {
   type MenuItem, type InsertMenuItem, menuItems,
   type Visitor, type InsertVisitor, visitors,
   type Vote, type InsertVote, votes,
-} from "../shared/schema";
+} from "../shared/schema.js";
 import type { Client } from "@libsql/client";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import { eq, desc, sql, and } from "drizzle-orm";

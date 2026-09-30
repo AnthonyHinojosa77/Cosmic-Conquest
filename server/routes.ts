@@ -1,9 +1,9 @@
 import type { Express } from "express";
-import { storage, dbReady } from "./storage";
-import { insertPostcardSchema, insertPredictionSchema, insertMenuItemSchema, insertVisitorSchema, type Visitor, type PublicVisitor } from "../shared/schema";
-import { apiLimiter, writeLimiter, visitorIdentity } from "./middleware";
-import { registerGameRoutes } from "./gameRoutes";
-import { registerVoiceRoutes } from "./voice";
+import { storage, dbReady } from "./storage.js";
+import { insertPostcardSchema, insertPredictionSchema, insertMenuItemSchema, insertVisitorSchema, type Visitor, type PublicVisitor } from "../shared/schema.js";
+import { apiLimiter, writeLimiter, visitorIdentity } from "./middleware.js";
+import { registerGameRoutes } from "./gameRoutes.js";
+import { registerVoiceRoutes } from "./voice.js";
 
 // visitorId is the visitor's rf_vid cookie value; never expose it publicly.
 function publicVisitor({ visitorId: _visitorId, ...rest }: Visitor): PublicVisitor {

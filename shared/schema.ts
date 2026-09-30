@@ -1,7 +1,7 @@
 import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { SUIT_IDS } from "./game";
+import { SUIT_IDS } from "./game.js";
 
 // Postcards from Space Tourism world
 export const postcards = sqliteTable("postcards", {

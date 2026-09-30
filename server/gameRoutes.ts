@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { z } from "zod";
-import { updatePlayerSchema } from "../shared/schema";
+import { updatePlayerSchema } from "../shared/schema.js";
 import {
   bountyById,
   cluesNeeded,
@@ -12,10 +12,10 @@ import {
   type Bounty,
   type BountyProgress,
   type ClueSearch,
-} from "../shared/game";
-import { aureliaFor } from "./aurelia";
-import { gameLimiter, clueLimiter } from "./middleware";
-import { BOUNTY_SOLUTIONS, CLUES, TESTIMONY } from "./bounties";
+} from "../shared/game.js";
+import { aureliaFor } from "./aurelia.js";
+import { gameLimiter, clueLimiter } from "./middleware.js";
+import { BOUNTY_SOLUTIONS, CLUES, TESTIMONY } from "./bounties.js";
 import {
   getProfile,
   updateProfile,
@@ -29,7 +29,7 @@ import {
   foundClues,
   startShowdown,
   showdownStartedAt,
-} from "./gameStorage";
+} from "./gameStorage.js";
 
 const accusationSchema = z.object({ suspect: z.string().min(1).max(50) });
 const decodeSchema = z.object({ key: z.number().int().min(0).max(25) });

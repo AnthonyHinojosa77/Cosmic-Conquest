@@ -1,7 +1,7 @@
-import { createApp, log } from "./app";
-import { serveStatic } from "./static";
+import { createApp, log } from "./app.js";
+import { serveStatic } from "./static.js";
 import { createServer } from "http";
-import { closeDb } from "./storage";
+import { closeDb } from "./storage.js";
 
 const app = createApp();
 const httpServer = createServer(app);
@@ -44,7 +44,7 @@ process.on("SIGTERM", () => stop("SIGTERM"));
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
-    const { setupVite } = await import("./vite");
+    const { setupVite } = await import("./vite.js");
     await setupVite(httpServer, app);
   }
 

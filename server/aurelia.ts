@@ -1,5 +1,5 @@
-import { hunterRank } from "../shared/game";
-import type { AureliaLocation } from "../shared/game";
+import { hunterRank } from "../shared/game.js";
+import type { AureliaLocation } from "../shared/game.js";
 
 // What each solved case leaves in the Guild's trophy case.
 const TROPHIES: Record<string, string> = {

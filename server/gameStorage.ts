@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { and, eq, desc, sql, inArray } from "drizzle-orm";
-import { players, bountyClaims, playerItems, clueFinds, showdowns, type Player } from "../shared/schema";
+import { players, bountyClaims, playerItems, clueFinds, showdowns, type Player } from "../shared/schema.js";
 import {
   DEFAULT_SUIT,
   ownsSuit,
@@ -14,8 +14,8 @@ import {
   type ItemId,
   type ShopItemId,
   type SuitId,
-} from "../shared/game";
-import { db, type Db } from "./storage";
+} from "../shared/game.js";
+import { db, type Db } from "./storage.js";
 
 // Stable per visitor, so the name shown before their first action is the one that gets saved.
 function defaultCallsign(visitorId: string): string {

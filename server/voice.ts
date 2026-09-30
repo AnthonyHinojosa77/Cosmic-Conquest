@@ -1,10 +1,10 @@
 import type { Express } from "express";
 import path from "path";
 import fs from "fs";
-import { invitedToAurelia } from "../shared/game";
-import { liveBounty, clueOf } from "./gameRoutes";
-import { foundClues, showdownStartedAt, getProfile } from "./gameStorage";
-import { TESTIMONY } from "./bounties";
+import { invitedToAurelia } from "../shared/game.js";
+import { liveBounty, clueOf } from "./gameRoutes.js";
+import { foundClues, showdownStartedAt, getProfile } from "./gameStorage.js";
+import { TESTIMONY } from "./bounties.js";
 
 // Voice lines are recordings of clue text, taunts and so on, so they give away as much
 // as the words do. They live outside the public folder and are only served when the

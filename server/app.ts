@@ -1,7 +1,7 @@
-import "./env";
+import "./env.js";
 import express, { type Express, type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { pingDb } from "./storage";
+import { registerRoutes } from "./routes.js";
+import { pingDb } from "./storage.js";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
