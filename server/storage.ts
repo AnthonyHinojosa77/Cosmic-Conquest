@@ -13,8 +13,16 @@ import { eq, desc, sql, and } from "drizzle-orm";
 // hosted libSQL/Turso database, named by DATABASE_URL (or the Vercel Turso
 // integration's TURSO_DATABASE_URL); otherwise a local SQLite file, so `npm start`
 // and the tests need no network.
-const remoteUrl = process.env.DATABASE_URL || process.env.TURSO_DATABASE_URL;
-const authToken = process.env.DATABASE_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN;
+// The Vercel Turso integration names its variables TURSO_DATABASE_URL and
+// TURSO_AUTH_TOKEN behind whatever prefix was chosen when it was connected
+// (this project: DATABASE_TURSO_DATABASE_URL), so any prefix is accepted.
+function fromEnv(exact: string, suffix: string): string | undefined {
+  if (process.env[exact]) return process.env[exact];
+  const key = Object.keys(process.env).find((k) => k.endsWith(suffix));
+  return key ? process.env[key] : undefined;
+}
+const remoteUrl = fromEnv("DATABASE_URL", "TURSO_DATABASE_URL");
+const authToken = fromEnv("DATABASE_AUTH_TOKEN", "TURSO_AUTH_TOKEN");
 
 // The default client entry loads the native SQLite build (a platform-specific
 // binary) even when only a remote URL is used; serverless bundlers can't trace

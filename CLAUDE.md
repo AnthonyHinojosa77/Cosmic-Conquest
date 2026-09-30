@@ -62,10 +62,12 @@ npm run build
 - Database: `@libsql/client` + Drizzle (`server/storage.ts`). With no URL set it is
   a local SQLite file (`DATABASE_PATH`, default `./data.db`): `npm start`, the Desktop
   launcher and the tests all run that way. With `DATABASE_URL` (+ `DATABASE_AUTH_TOKEN`)
-  or the Vercel Turso integration's `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` set, it is a
-  hosted Turso database. Storage calls are async; tables are created on first use
+  or the Vercel Turso integration's `*TURSO_DATABASE_URL`/`*TURSO_AUTH_TOKEN` set (any
+  prefix; on Vercel it is `DATABASE_TURSO_...`), it is a hosted Turso database. Storage calls are async; tables are created on first use
   (`dbReady()`), gated in `registerRoutes`.
 - Vercel: `api/index.ts` exports the Express app (`server/app.ts`); `vercel.json`
   rewrites `/api/*` and `/health` to it, serves `dist/public` statically and bundles
   `audio/voice/**` into the function. Server files import `../shared/...` (no `@shared`
-  alias) so the function builder can resolve them.
+  alias) with explicit `.js` extensions, because the function is compiled as an ES
+  module that neither reads `tsconfig` paths nor guesses extensions. Keep new server
+  imports in that form.

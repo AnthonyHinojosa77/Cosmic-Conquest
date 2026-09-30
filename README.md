@@ -115,10 +115,13 @@ plan) instead of `data.db`. Everything else is the same code:
 - `vercel.json` builds with `npm run build`, serves `dist/public` from the CDN, rewrites
   `/api/*` and `/health` to the function, and bundles `audio/voice/**` into it so the gated
   voice route can read the recordings.
-- The database URL comes from the Turso integration in the Vercel Marketplace, which sets
-  `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` on the project (`DATABASE_URL` and
-  `DATABASE_AUTH_TOKEN` work too). `TRUST_PROXY` defaults to `1` on Vercel.
+- The database URL comes from the Turso integration in the Vercel Marketplace (database
+  `cosmic-conquest-db`, US East, Starter plan). It sets `<prefix>TURSO_DATABASE_URL` and
+  `<prefix>TURSO_AUTH_TOKEN` on the project (here `DATABASE_TURSO_DATABASE_URL` and
+  `DATABASE_TURSO_AUTH_TOKEN`); the server accepts any prefix, and plain `DATABASE_URL` +
+  `DATABASE_AUTH_TOKEN` work too. `TRUST_PROXY` defaults to `1` on Vercel.
 - Every push to `main` deploys production. Tables are created on the first request.
 
 Server files import `../shared/...` rather than the `@shared` alias because the function
-builder does not read `tsconfig` paths.
+builder does not read `tsconfig` paths, and relative imports carry an explicit `.js`
+extension because the function runs as an ES module (which does not guess extensions).
