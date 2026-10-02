@@ -80,3 +80,9 @@ npm run build
   alias) with explicit `.js` extensions, because the function is compiled as an ES
   module that neither reads `tsconfig` paths nor guesses extensions. Keep new server
   imports in that form.
+
+<!-- ai-agent-system:begin -->
+@AGENTS.md
+
+Use the repository's actual commands, architecture, and more specific instructions when performing work.
+<!-- ai-agent-system:end -->
