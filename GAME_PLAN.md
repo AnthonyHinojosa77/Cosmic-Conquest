@@ -122,8 +122,8 @@ arrives only in Act II and III.
 - **Music (Suno Pro):** noir jazz for the Bounty Office and investigations, big
   band for Aurelia and the Venus resort, synthwave for showdowns and the hub.
   Prompts are in the Drive folder "Retro Futurism/Music"; each `<name>.mp3`
-  saved there is imported with `script/audio/music.sh` (AAC 96 kbps,
-  loudness-evened) into `client/public/audio/music/`.
+  saved there is imported with `script/audio/music.sh` (silence trimmed, faded for
+  looping, loudness-evened, AAC 128 kbps) into `client/public/audio/music/`.
 - **Voices (ElevenLabs Creator plan):** a noir narrator reads briefings, clues,
   outros and Aurelia; culprits voice their taunts; Aurora voices her broadcast.
   `npx tsx script/audio/voices.ts` makes missing lines (key from the macOS

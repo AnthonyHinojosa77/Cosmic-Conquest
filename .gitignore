@@ -32,3 +32,9 @@ __pycache__/
 
 # Vercel CLI link
 .vercel/
+
+# QA script output
+script/qa/shots/
+script/qa/chrome-profile*/
+script/qa/node_modules/
+script/qa/package*.json
