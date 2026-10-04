@@ -9,5 +9,9 @@ Keep changes focused. Preserve unrelated files and user work. Do not print or co
 
 Run the project's relevant checks and inspect the end-user result when appropriate. Distinguish a saved file, installed capability, successful invocation, and verified outcome. Use current primary sources for changing technical contracts.
 
+Delegate and review: work inside one AI lab at a time. For deliverables that will be released or sent, research the owner will act on, multi-file changes, or anything touching money, data, security, or accounts, cheaper same-tier models from that lab do the work and the lab's designated top model reviews it before the owner sees it. Current examples, not a fixed list: Claude Opus 5.5 and Sonnet 5.5 as workers with Claude Fable 5.1 reviewing; GPT-6.1 Sol and GPT-6 Luna as workers with GPT-6 Astra reviewing. Confirm a newly released cheaper model's tier on Artificial Analysis, Vals, and Arena before adopting it. Workers cross-reference current primary sources and return the sources they opened. The reviewer re-opens those sources, runs the checks, and returns pass or fail with evidence per item; failed work goes back for at most two rounds, then the remaining failures are reported. Quick answers, lookups, and single-file edits skip this.
+
+Do not pad a response to appear rigorous. No contrarian side points that do not change the result, no caveats the owner already stated, no options outside the constraint they set, and no reports of tooling friction unless it changed the result.
+
 Report the result, changed files, validation, real limitations, and the next useful action. Project-specific instructions outside this managed section remain authoritative for the project's architecture and business rules.
 <!-- ai-agent-system:end -->
