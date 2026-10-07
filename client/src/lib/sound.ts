@@ -16,7 +16,7 @@ const DUCKED_VOLUME = 0.15; // music dips while someone is talking
 const FADE_S = 0.7;
 
 let enabled = readEnabled();
-let available: Set<Track> | null = null; // tracks that actually exist (audio.json)
+let available: Set<string> | null = null; // music files that exist (audio.json): "hub", "hub-2"…
 let hasVoices = false;
 let wanted: Track | null = null;
 let current: { track: Track; el: HTMLAudioElement; gain: GainNode | null } | null = null;
@@ -50,12 +50,30 @@ function audioContext(): AudioContext | null {
 const manifest: Promise<void> = fetch("./audio/audio.json")
   .then((r) => (r.ok ? r.json() : {}))
   .catch(() => ({}))
-  .then((m: { music?: Track[]; voices?: boolean }) => {
+  .then((m: { music?: string[]; voices?: boolean }) => {
     available = new Set(m.music ?? []);
     hasVoices = m.voices === true;
     notify();
     sync();
   });
+
+// A track's takes that exist: "hub", plus a second take "hub-2" and so on.
+function takesOf(track: Track): string[] {
+  return Array.from(available ?? []).filter((name) => name === track || new RegExp(`^${track}-\\d+$`).test(name));
+}
+
+// Which take to play next: a different one from last time, chosen at random at first so
+// not every visit opens with the same take.
+const lastTake = new Map<Track, string>();
+function nextTake(track: Track): string {
+  const takes = takesOf(track);
+  const fresh = takes.length > 1 ? takes.filter((t) => t !== lastTake.get(track)) : takes;
+  const take = fresh[Math.floor(Math.random() * fresh.length)];
+  lastTake.set(track, take);
+  return take;
+}
+
+const musicUrl = (take: string) => `./audio/music/${take}.m4a`;
 
 // Ramp music to a level (falls back to the element's own volume without Web Audio).
 function level(to: number, m = current) {
@@ -72,7 +90,7 @@ function level(to: number, m = current) {
 
 // Bring the playing music in line with what the current screen wants.
 function sync() {
-  const target = enabled && wanted && available?.has(wanted) ? wanted : null;
+  const target = enabled && wanted && takesOf(wanted).length > 0 ? wanted : null;
   if (target === (current?.track ?? null)) return;
   const old = current;
   if (old) {
@@ -82,8 +100,9 @@ function sync() {
   current = null;
   if (!target) return;
 
-  const el = new Audio(`./audio/music/${target}.m4a`);
-  el.loop = true;
+  const el = new Audio(musicUrl(nextTake(target)));
+  // A single take loops; with two or more, each plays through and hands over to the next
+  el.loop = takesOf(target).length === 1;
   const ac = audioContext();
   let gain: GainNode | null = null;
   if (ac) {
@@ -95,6 +114,14 @@ function sync() {
   }
   const m = { track: target, el, gain };
   current = m;
+  el.addEventListener("ended", () => {
+    if (current !== m) return;
+    // Same element, so it stays connected and allowed to play
+    el.src = musicUrl(nextTake(target));
+    el.play().catch(() => {
+      if (current === m) current = null; // retried on the next click
+    });
+  });
   el.play()
     .then(() => level(voice ? DUCKED_VOLUME : MUSIC_VOLUME, m))
     .catch(() => {
