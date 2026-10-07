@@ -119,11 +119,43 @@ arrives only in Act II and III.
 
 ## Sound (owner's call, 2026-09-26)
 
-- **Music (Suno Pro):** noir jazz for the Bounty Office and investigations, big
-  band for Aurelia and the Venus resort, synthwave for showdowns and the hub.
-  Prompts are in the Drive folder "Retro Futurism/Music"; each `<name>.mp3`
-  saved there is imported with `script/audio/music.sh` (silence trimmed, faded for
-  looping, loudness-evened, AAC 128 kbps) into `client/public/audio/music/`.
+- **Music (Suno Pro):** only sounds the late 1950s had (owner's call, 2026-10-07).
+  The "future" comes from the era's own science fiction: theremin, vibraphone,
+  early electronic tones, Twilight Zone-era scoring. Synthwave, the first plan for
+  the hub and showdowns, was dropped: it is the 1980s' idea of the future, not the
+  1950s'.
+  - Hub: "Wonder and Possibility", space-age pop. Two takes.
+  - Showdowns: "Showdown at Midnight", Twilight Zone-era western tension. Two takes.
+  - Bounty Office: a brisk late-1950s TV detective theme. Still noir, but it should
+    push the player to take a job, not settle in. One take.
+  - Investigations: "Clues in the Fog", ominous 1950s noir jazz. Two takes.
+  - Aurelia: "Welcome to Aurelia", big band. Two takes.
+  - Venus resort: "Fog Show at the Aphrodite", big band (the 2:58 take).
+
+  Each track goes in the Drive folder "Retro Futurism/Music" named after where it
+  plays: `hub`, `office`, `investigate`, `showdown`, `aurelia` or `venus` (`.mp3`),
+  and a second take as `<name>-2.mp3`. `script/audio/music.sh` imports them
+  (silence trimmed, faded for looping, loudness-evened, AAC 128 kbps) into
+  `client/public/audio/music/`. A track with one take loops; with two, the game
+  plays them in turn, starting with a random one. The game's music mirrors the
+  folder, so a take deleted there leaves the game on the next import. Phones keep
+  music for a week, so a replaced track can take that long to reach returning
+  players.
+
+  Suno style prompts for the remade tracks (Instrumental on; exclude "synthwave,
+  synth bass, EDM, 808, modern drums"):
+  - Hub: *1958 space-age pop instrumental, World's Fair optimism, theremin lead
+    melody, vibraphone and celesta, lush string section, wordless "ooh" choir,
+    bongos, upright bass, brushed drums, warm vintage mono recording, wonder and
+    possibility, medium tempo, seamless loop*
+  - Showdown: *1950s western TV showdown meets sci-fi B-movie, twangy tremolo
+    electric guitar, snare drum roll, ticking clock rhythm, timpani hits, theremin
+    glissando stings, sparse plucked bass, rising tension, vintage recording, short
+    and tight, seamless loop*
+  - Office: *late-1950s TV detective theme, driving walking bass ostinato on bass and
+    piano, punchy big band brass stabs, muted trumpet lead, finger snaps, crisp ride
+    cymbal, upbeat swing around 150 BPM, confident and purposeful, touch of
+    vibraphone and theremin for space-age color, vintage recording, seamless loop*
 - **Voices (ElevenLabs Creator plan):** a noir narrator reads briefings, clues,
   outros and Aurelia; culprits voice their taunts; Aurora voices her broadcast.
   `npx tsx script/audio/voices.ts` makes missing lines (key from the macOS

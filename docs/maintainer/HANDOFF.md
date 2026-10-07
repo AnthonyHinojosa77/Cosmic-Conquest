@@ -42,13 +42,19 @@ under voice lines, each loop comes round without a hard cut, and the owner appro
   | hub | Tomorrow's Past | 2:39 (3187e6bb) | 2:58 (a0995c83) |
 
   (The code in brackets is the start of each song's id in Suno.)
+
+  **Superseded 2026-10-07:** the owner remade the hub ("Wonder and Possibility"),
+  showdown ("Showdown at Midnight") and office tracks in a 1950s style and chose his
+  takes; four slots use two takes, which the game now alternates. He downloads and names
+  the files himself. `GAME_PLAN.md` "Sound" has the current list.
 - **Owner's play-through QA is outstanding (last checked 2026-10-01).** His checklist is a Google Doc in his Drive
   folder "Retro Futurism", titled "Cosmic Conquest QA Checklist — 30 Sept 2026 build". He has
   not reported results.
 
 ## Decisions made, and why
 
-- **Download only the chosen take of each track.** The Suno plan allows 24 downloads a
+- **Download only the chosen take of each track** (superseded 2026-10-07: the owner keeps
+  two takes for four slots). The Suno plan allows 24 downloads a
   month (24 left on 2026-10-01, refreshing 2026-10-29). If the owner expresses no preference,
   use the longer take: more music before the loop repeats.
 - **Music is prepared for looping by `script/audio/music.sh`:** silence trimmed at both ends,
@@ -111,11 +117,13 @@ under voice lines, each loop comes round without a hard cut, and the owner appro
 ## Open questions
 
 1. **Owner:** which take of each of the six tracks, after listening to the playlist.
+   Decided 2026-10-07 (see `GAME_PLAN.md` "Sound").
 2. **Owner:** apply a lighter old-time-radio treatment (narrower range, tape warmth, faint
    crackle) to all music at import? Recommended yes. He asked whether the songs kept "the same
    old time radio sound"; they do not, only the voices are treated.
 3. **Owner:** regenerate the showdown and hub tracks in a 1950s style? They are 1980s
-   synthwave, from the original plan. Recommended yes.
+   synthwave, from the original plan. Recommended yes. Decided 2026-10-07: yes, remade
+   along with the office track.
 4. **Owner:** allow the terminal app to read Downloads (System Settings → Privacy & Security
    → Files & Folders → Terminal → Downloads Folder), or the downloaded tracks cannot be
    picked up automatically.
