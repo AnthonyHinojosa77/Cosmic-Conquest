@@ -123,7 +123,7 @@ function sync() {
     });
   });
   el.play()
-    .then(() => level(voice ? DUCKED_VOLUME : MUSIC_VOLUME, m))
+    .then(() => current === m && level(voice ? DUCKED_VOLUME : MUSIC_VOLUME, m))
     .catch(() => {
       // Blocked until the player clicks (e.g. after a reload); retried then.
       if (current === m) current = null;

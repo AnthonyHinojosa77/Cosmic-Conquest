@@ -137,7 +137,10 @@ arrives only in Act II and III.
   and a second take as `<name>-2.mp3`. `script/audio/music.sh` imports them
   (silence trimmed, faded for looping, loudness-evened, AAC 128 kbps) into
   `client/public/audio/music/`. A track with one take loops; with two, the game
-  plays them in turn, starting with a random one.
+  plays them in turn, starting with a random one. The game's music mirrors the
+  folder, so a take deleted there leaves the game on the next import. Phones keep
+  music for a week, so a replaced track can take that long to reach returning
+  players.
 
   Suno style prompts for the remade tracks (Instrumental on; exclude "synthwave,
   synth bass, EDM, 808, modern drums"):
