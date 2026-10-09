@@ -1,6 +1,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "fs";
+import { rm } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
 import express from "express";
@@ -30,9 +31,11 @@ before(async () => {
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 
-after(() => {
+after(async () => {
   server.close();
-  rmSync(dbDir, { recursive: true, force: true });
+  // Windows will not delete a database file that is still open.
+  (await import("./storage.js")).closeDb();
+  await rm(dbDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
 function post(url: string, body: unknown, cookie?: string) {

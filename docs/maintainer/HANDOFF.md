@@ -21,8 +21,16 @@ under voice lines, each loop comes round without a hard cut, and the owner appro
   lines with the 1950s broadcast treatment; hosting on Vercel with a Turso database;
   full-screen swipeable scenes on phones with animated loading; villain showdown art served
   only after a correct accusation; the music import script and cache rule.
-- **Music, in progress:** the game plays no music yet (`client/public/audio/audio.json` lists
-  none). The player and its six slots already exist in `client/src/lib/sound.ts`: `hub`,
+- **Music, imported 2026-10-08:** the owner's ten chosen takes were downloaded from Suno
+  (14 of 24 downloads left, refreshing 2026-10-29), saved in the Drive folder
+  "Retro Futurism/Music" and imported from his Windows laptop
+  (`MUSIC_SRC="/g/My Drive/Retro Futurism/Music" bash script/audio/music.sh` in Git Bash).
+  `client/public/audio/audio.json` lists all ten. Checked in a local browser at phone size
+  by the player's state, not by ear: each screen starts its track and the two-take tracks
+  alternate. The owner's approval by ear on the live site is outstanding. The office remake
+  is titled "Detective's March" in Suno. The lines below this bullet about takes and
+  downloads describe the state before the import.
+  The player and its six slots are in `client/src/lib/sound.ts`: `hub`,
   `office`, `investigate`, `showdown`, `aurelia`, `venus`, each read from
   `client/public/audio/music/<name>.m4a`. Screens: `hub` on the hub, voyages, expo and
   diner; `office` in the Bounty Office; `investigate` during a case (`venus` instead for the
