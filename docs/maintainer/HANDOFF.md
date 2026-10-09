@@ -134,7 +134,7 @@ under voice lines, each loop comes round without a hard cut, and the owner appro
    along with the office track.
 4. **Owner:** allow the terminal app to read Downloads (System Settings → Privacy & Security
    → Files & Folders → Terminal → Downloads Folder), or the downloaded tracks cannot be
-   picked up automatically.
+   picked up automatically. No longer needed (2026-10-08): the tracks are in Drive.
 5. **Owner:** results of his QA play-through, including whether the zoomed art looks sharp
    enough on his real phone.
 6. **Owner:** the live leaderboard still shows a test hunter named "Vercel Tester". Clearing
@@ -160,12 +160,12 @@ under voice lines, each loop comes round without a hard cut, and the owner appro
 
 ## Next action
 
-Ask the owner questions 1 to 4 in one short message. Then, for each chosen take: download
-it from Suno as MP3 (song menu → Download → MP3 → Unlock & Download, one download each),
-save it as `<slot>.mp3` in the Drive folder "Retro Futurism/Music", run
-`script/audio/music.sh` (adding the radio treatment there if he approved it), confirm
-`client/public/audio/audio.json` lists six tracks, run the three checks, push to `main`,
-and confirm on the live site at phone size with sound on.
+The ten takes are downloaded, in Drive and in the game (2026-10-08). Do not download them
+again: the files in the Drive folder "Retro Futurism/Music" are the source, and each
+download spends one of the month's allowance. What remains: the owner listens on the live
+site at phone size with sound on and approves by ear, and answers open question 2 (the
+old-time-radio treatment for music, which was not applied at import). If he approves the
+treatment, add it to `script/audio/music.sh`, re-run the import from the Drive folder, run
+the three checks and push to `main`.
 
-Stop rule: do not download more than one take per track without asking, and stop if Suno
-shows an error or a permission prompt appears that the owner would have to answer.
+Stop rule: do not download anything more from Suno without asking.
