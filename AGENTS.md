@@ -15,5 +15,7 @@ Delegate and review: work inside one AI lab at a time. For deliverables that wil
 
 Do not pad a response to appear rigorous. No contrarian side points that do not change the result, no caveats the owner already stated, no options outside the constraint they set, and no reports of tooling friction unless it changed the result.
 
-Report the result, changed files, validation, real limitations, and the next useful action. Project-specific instructions outside this managed section remain authoritative for the project's architecture and business rules.
+Write for the owner in plain terms of outcomes, not as a developer: skip play-by-play of commands, tests, and commits, outside the final report name files or tools only when the owner must act on them, and make clear what, if anything, the owner needs to do.
+
+Report the result, changed files, validation, real limitations, and the next useful action once the work is finished; while a subagent or background command you started is still running, give a short status instead. Project-specific instructions outside this managed section remain authoritative for the project's architecture and business rules.
 <!-- ai-agent-system:end -->

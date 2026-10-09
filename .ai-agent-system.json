@@ -1,5 +1,5 @@
 {
-  "content_sha256": "06ac254bc7b82689cc0ced03043b977b5a96f84b9398e64dfda873dc06f1eb74",
+  "content_sha256": "d5114cdad93507346e404bf2cfc0b43b4e2d947a0d8013f38dcdbaecc6b6dfef",
   "files": {
     ".agents/skills/babysit-pr/SKILL.md": "c5f47e8313368cf787a2150807481971c85cd43c8be8cca0d45443c3d1990364",
     ".agents/skills/babysit-pr/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
@@ -18,7 +18,7 @@
     ".claude/skills/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     ".claude/skills/frontend-design/SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
     ".claude/skills/html-communication/SKILL.md": "a4b1cb0668cbe955b5693f1c385eb4b51b6f2527f29e5db26bafd828fa17d3b1",
-    "AGENTS.md": "ea0caf5d4a0715e99f6404f58aec9c42668d83d963fb8a7a355fd0b346e22f52",
+    "AGENTS.md": "d3d571340f5c87274a1e7886d9363c35d5b7c0292d7194b5e9054f51e5caab5b",
     "CLAUDE.md": "b865ebd47dede1b2df54abd8affa9e0e7e8dacf43008ba9aef1fe276415afc74"
   },
   "profile": "public-safe",
@@ -36,5 +36,5 @@
   ],
   "source_commit": null,
   "source_repository": "https://github.com/AnthonyHinojosa77/my-skills",
-  "toolkit_version": "1.4.6"
+  "toolkit_version": "1.4.7"
 }
