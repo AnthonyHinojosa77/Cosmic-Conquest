@@ -1,5 +1,5 @@
 {
-  "content_sha256": "8c3f641c8f1cd002eb3de96d1c9587d472a3948798a48c6e18c56ca46c3f753d",
+  "content_sha256": "7041046c1b8f6072d8a93cc169197e74d9191e102ae6f17c47d5110a6abad35f",
   "files": {
     ".agents/skills/babysit-pr/SKILL.md": "c5f47e8313368cf787a2150807481971c85cd43c8be8cca0d45443c3d1990364",
     ".agents/skills/babysit-pr/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
@@ -7,11 +7,16 @@
     ".agents/skills/capability-check/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
     ".agents/skills/file-pr/SKILL.md": "34e9132d175e92ac7ff120fdd8f4572ceff39bca5d81241c2dc51a5bfb5fe89c",
     ".agents/skills/file-pr/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
+    ".agents/skills/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    ".agents/skills/frontend-design/SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
+    ".agents/skills/frontend-design/agents/openai.yaml": "417050d82c332451b994659166df7226bfb81751d49d65b53463806e973aa237",
     ".agents/skills/html-communication/SKILL.md": "6c60e160ba168cc9a789e7fe6a5a17e83968f3cb3cb74762d25bb15f0624c112",
     ".agents/skills/html-communication/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
     ".claude/skills/babysit-pr/SKILL.md": "9f22393ce9f10ce38f3e38683896600b72c458ed4e137c33cc7b6f496d021e98",
     ".claude/skills/capability-check/SKILL.md": "d3770ce8a5d62572592a6f3ecc32cbdb0bfdccbf79bca97641850dde4d48f63a",
     ".claude/skills/file-pr/SKILL.md": "78c2884b858598506e304fd8d24d8af2b828c55c34cd0c95f0d6af6026f2f810",
+    ".claude/skills/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    ".claude/skills/frontend-design/SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
     ".claude/skills/html-communication/SKILL.md": "a4b1cb0668cbe955b5693f1c385eb4b51b6f2527f29e5db26bafd828fa17d3b1",
     "AGENTS.md": "86c68b2137ae12a8bfa1ee9594974d59dc2872533679271646e9ca67fb199f3a",
     "CLAUDE.md": "b865ebd47dede1b2df54abd8affa9e0e7e8dacf43008ba9aef1fe276415afc74"
@@ -26,9 +31,10 @@
     "babysit-pr",
     "capability-check",
     "file-pr",
+    "frontend-design",
     "html-communication"
   ],
   "source_commit": null,
   "source_repository": "https://github.com/AnthonyHinojosa77/my-skills",
-  "toolkit_version": "1.4.4"
+  "toolkit_version": "1.4.5"
 }

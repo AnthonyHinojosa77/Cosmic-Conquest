@@ -1,0 +1,6 @@
+interface:
+  display_name: "Frontend Design"
+  short_description: "Distinctive, intentional visual design for new or reshaped UI"
+  default_prompt: "Use $frontend-design to give this interface a distinctive, intentional visual direction."
+policy:
+  allow_implicit_invocation: true
