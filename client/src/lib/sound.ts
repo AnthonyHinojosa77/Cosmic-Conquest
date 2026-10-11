@@ -20,7 +20,10 @@ let available: Set<string> | null = null; // music files that exist (audio.json)
 let hasVoices = false;
 let wanted: Track | null = null;
 let current: { track: Track; el: HTMLAudioElement; gain: GainNode | null } | null = null;
-let voice: HTMLAudioElement | null = null;
+// Every line plays through one element: iPhones let an element play only after a tap,
+// and once allowed it stays allowed, so later lines can start on a timer.
+let voiceEl: HTMLAudioElement | null = null;
+let voice: { stop: () => void } | null = null; // the line playing now
 let ctx: AudioContext | null = null;
 const listeners = new Set<() => void>();
 
@@ -146,8 +149,10 @@ export function setSoundOn(on: boolean) {
   } catch {
     // ignore
   }
-  if (on) audioContext(); // created during the click, so browsers allow it
-  else stopVoice();
+  if (on) {
+    audioContext(); // created during the click, so browsers allow it
+    unlockVoice();
+  } else stopVoice();
   sync();
   notify();
 }
@@ -179,30 +184,57 @@ export function useMusic(track: Track | null) {
   }, [track]);
 }
 
+// A moment of silence, played during the tap that turns sound on
+const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+
+function voiceElement(): HTMLAudioElement {
+  if (!voiceEl) voiceEl = new Audio();
+  return voiceEl;
+}
+
+// Allow the voice element to play later; must run during a click or key press.
+function unlockVoice() {
+  if (voice) return; // already speaking, so already allowed
+  const el = voiceElement();
+  el.src = SILENCE;
+  el.play().catch(() => {});
+}
+
 export function stopVoice() {
   if (voice) {
-    voice.pause();
+    const v = voice;
     voice = null;
+    v.stop();
     level(MUSIC_VOLUME);
   }
 }
 
 // Speak a line (the server decides whether this hunter may hear it yet).
-// Missing lines are simply silent. `onEnd` runs when the line finishes on its own
-// (or can't play), not when another line or a screen change cuts it off.
+// Missing lines are simply silent. `onEnd` runs when the line finishes on its own or
+// fails to load, not when another line or a screen change cuts it off, and not at all
+// while sound is off.
 export function playVoice(path: string, onEnd?: () => void) {
   if (!enabled) return;
   stopVoice();
-  const el = new Audio(`${API_BASE}/api/voice/${path}`);
-  voice = el;
+  const el = voiceElement();
+  const listening = new AbortController();
+  const me = {
+    stop: () => {
+      listening.abort();
+      el.pause();
+    },
+  };
+  voice = me;
   const done = () => {
-    if (voice !== el) return;
+    if (voice !== me) return;
     stopVoice();
     onEnd?.();
   };
-  el.addEventListener("playing", () => voice === el && level(DUCKED_VOLUME)); // dip only once it really plays
-  el.addEventListener("ended", done);
-  el.addEventListener("error", done);
+  const opts = { signal: listening.signal };
+  el.addEventListener("playing", () => voice === me && level(DUCKED_VOLUME), opts); // dip only once it really plays
+  el.addEventListener("ended", done, opts);
+  el.addEventListener("error", done, opts);
+  el.src = `${API_BASE}/api/voice/${path}`;
   el.play().catch(done);
 }
 

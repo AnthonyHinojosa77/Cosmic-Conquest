@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HOST_LINES, STAR_MAP_SIZE, numeral, type HostLine } from "@shared/game";
 import { useVoice } from "@/lib/sound";
 import { ArtImage } from "@/components/ArtImage";
@@ -42,7 +42,7 @@ const PANELS: Panel[] = [
     art: (
       <div className="howto-suspects">
         {["gearhart", "vela", "cookie"].map((s, i) => (
-          <ArtImage key={s} src={`./game/suspect-${s}.webp`} alt="A suspect's wanted poster" className="howto-suspect" delay={i * 0.12} eager />
+          <ArtImage key={s} src={`./game/suspect-${s}.webp`} alt="A suspect's wanted poster" className="howto-suspect" delay={i * 120} eager />
         ))}
       </div>
     ),
@@ -99,18 +99,25 @@ export function HowToPlay({
   onLeave: () => void;
 }) {
   const [step, setStep] = useState(0);
+  const heading = useRef<HTMLHeadingElement>(null);
   const panel = PANELS[step];
   const last = step === PANELS.length - 1;
   useVoice(`host/${panel.id}`);
+
+  // Each step starts reading from its title (keyboards and screen readers included)
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true });
+  }, [step]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" && !last) setStep((s) => s + 1);
       if (e.key === "ArrowLeft" && step > 0) setStep((s) => s - 1);
+      if (e.key === "Escape") onLeave();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, last]);
+  }, [step, last, onLeave]);
 
   return (
     <>
@@ -125,12 +132,17 @@ export function HowToPlay({
           {panel.art}
         </div>
         <div className="howto-card paper-texture">
-          <div className="howto-steps" aria-label={`Step ${step + 1} of ${PANELS.length}`}>
+          <div className="howto-steps" aria-hidden>
             {PANELS.map((p, i) => (
               <span key={p.id} className={i === step ? "is-current" : i < step ? "is-done" : ""} />
             ))}
           </div>
-          <h2 className="pulp-title howto-title">{panel.title}</h2>
+          <h2 ref={heading} tabIndex={-1} className="pulp-title howto-title">
+            <span className="sr-only">
+              Step {step + 1} of {PANELS.length}:{" "}
+            </span>
+            {panel.title}
+          </h2>
           <p className="howto-line" aria-live="polite" data-testid="text-howto-line">
             {HOST_LINES[panel.id]}
           </p>

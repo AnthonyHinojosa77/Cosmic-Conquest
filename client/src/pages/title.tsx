@@ -17,20 +17,36 @@ import { SceneBackdrop } from "@/components/SceneBackdrop";
 //   returning hunters: start menu > Continue > Bounty Office
 type Stage = "gate" | "intro" | "menu" | "license" | "story" | "howto" | "guide";
 
+// Screens opened from the menu share one extra history entry, so the phone's back
+// button (or back gesture) returns to the menu instead of leaving the game.
+const OPENED = "ccTitleOpened";
+const openedEntry = () => (history.state as Record<string, unknown> | null)?.[OPENED] === true;
+
 export default function Title() {
   const [stage, setStage] = useState<Stage>(() => (introSeen() ? "menu" : "gate"));
-  const [titleUp, setTitleUp] = useState(false);
   const [, navigate] = useLocation();
-  // Music comes in with the title card, not over the radio tuning in
-  useMusic(stage === "gate" || (stage === "intro" && !titleUp) ? null : "hub");
+  // The theme starts with the radio: the "Turn on the radio" tap is what lets phones play it
+  useMusic(stage === "gate" ? null : "hub");
 
+  useEffect(() => {
+    const onBack = () => setStage((s) => (s === "gate" || s === "intro" ? s : "menu"));
+    window.addEventListener("popstate", onBack);
+    return () => window.removeEventListener("popstate", onBack);
+  }, []);
+
+  const open = (next: Stage) => {
+    if (!openedEntry()) history.pushState({ [OPENED]: true }, "");
+    setStage(next);
+  };
+  const toMenu = () => (openedEntry() ? history.back() : setStage("menu"));
   const endIntro = useCallback(() => {
     markIntroSeen();
     setStage("menu");
   }, []);
   const toOffice = () => {
     markOnboarded();
-    navigate("/bounties");
+    // In place of the opening's history entry, so back from the office lands on the menu
+    navigate("/bounties", { replace: openedEntry() });
   };
 
   switch (stage) {
@@ -44,16 +60,17 @@ export default function Title() {
         />
       );
     case "intro":
-      return <RadioIntro onTitle={() => setTitleUp(true)} onDone={endIntro} />;
+      return <RadioIntro onDone={endIntro} />;
     case "license":
       return (
         <div className="title-screen">
           <SceneBackdrop src="./game/bounty-office-no-hero.webp" />
+          <BackToMenu onClick={toMenu} />
           <HunterLicense onDone={() => setStage("story")} />
         </div>
       );
     case "story":
-      return <Story onDone={() => setStage("howto")} />;
+      return <Story onBack={toMenu} onDone={() => setStage("howto")} />;
     case "howto":
       return (
         <div className="title-screen">
@@ -63,18 +80,26 @@ export default function Title() {
     case "guide":
       return (
         <div className="title-screen">
-          <HowToPlay finishLabel="Back to the menu" onFinish={() => setStage("menu")} onLeave={() => setStage("menu")} leaveLabel="Close" />
+          <HowToPlay finishLabel="Back to the menu" onFinish={toMenu} onLeave={toMenu} leaveLabel="Close" />
         </div>
       );
     default:
       return (
         <StartMenu
-          onStart={() => setStage("license")}
+          onStart={() => open("license")}
           onContinue={() => navigate("/bounties")}
-          onGuide={() => setStage("guide")}
+          onGuide={() => open("guide")}
         />
       );
   }
+}
+
+function BackToMenu({ onClick }: { onClick: () => void }) {
+  return (
+    <button className="title-skip" onClick={onClick} data-testid="button-back-to-menu">
+      Back
+    </button>
+  );
 }
 
 // --- The radio -----------------------------------------------------------------
@@ -116,6 +141,8 @@ function RadioGate({ onTune }: { onTune: (withSound: boolean) => void }) {
 
 // How long a line stays up when there's no voice to wait for: time to read it.
 const readMs = (text: string) => Math.max(2600, 1200 + text.length * 45);
+// The longest a line waits for its voice (a stalled download mustn't hold the show)
+const capMs = (text: string) => readMs(text) + 6000;
 
 // One beat of the intro: show the line, play the host's voice, and move on once both
 // the reading time has passed and the voice has finished (or never came).
@@ -143,11 +170,10 @@ function useHostBeat(id: HostLine, onDone: () => void) {
         finish();
       });
     }
-    // A voice that never reports back (a stalled download) mustn't hold the show
     const cap = setTimeout(() => {
       voiceOver = timeOver = true;
       finish();
-    }, 12000);
+    }, capMs(HOST_LINES[id]));
     return () => {
       clearTimeout(timer);
       clearTimeout(cap);
@@ -163,14 +189,23 @@ function Beat({ id, onDone }: { id: HostLine; onDone: () => void }) {
   return null;
 }
 
-function RadioIntro({ onTitle, onDone }: { onTitle: () => void; onDone: () => void }) {
+// What the announcer says, for screen readers: one region that stays put while its
+// words change (a brand-new region each line wouldn't be read out).
+function Spoken({ text }: { text: string }) {
+  return (
+    <p className="sr-only" aria-live="polite">
+      {text}
+    </p>
+  );
+}
+
+function RadioIntro({ onDone }: { onDone: () => void }) {
   const [beat, setBeat] = useState(0);
   const next = useCallback(() => setBeat((b) => b + 1), []);
 
   useEffect(() => {
-    if (beat >= 1) onTitle();
     if (beat >= INTRO.length) onDone();
-  }, [beat, onTitle, onDone]);
+  }, [beat, onDone]);
 
   const id = INTRO[Math.min(beat, INTRO.length - 1)];
   return (
@@ -179,10 +214,11 @@ function RadioIntro({ onTitle, onDone }: { onTitle: () => void; onDone: () => vo
         Skip intro
       </button>
       {beat < INTRO.length && <Beat key={id} id={id} onDone={next} />}
+      <Spoken text={HOST_LINES[id]} />
       {beat === 0 ? (
         <>
           <RadioSet on />
-          <p key={id} className="host-caption rise-in" aria-live="polite">“{HOST_LINES[id]}”</p>
+          <p key={id} className="host-caption rise-in" aria-hidden>“{HOST_LINES[id]}”</p>
         </>
       ) : (
         <div className="title-card">
@@ -190,7 +226,7 @@ function RadioIntro({ onTitle, onDone }: { onTitle: () => void; onDone: () => vo
           <h1 className="title-logo">
             <span>Cosmic</span> <span>Conquest</span>
           </h1>
-          <p className={`host-caption${beat >= 2 ? " rise-in" : " is-hidden"}`} aria-live="polite">
+          <p className={`host-caption${beat >= 2 ? " rise-in" : " is-hidden"}`} aria-hidden>
             {beat >= 2 ? `“${HOST_LINES["intro-tagline"]}”` : ""}
           </p>
         </div>
@@ -267,14 +303,22 @@ function TopHunters() {
 
 // --- The story: Aurora Sterling's broadcast, introduced by the host ------------------
 
-function Story({ onDone }: { onDone: () => void }) {
+function Story({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
   const [phase, setPhase] = useState<"before" | "broadcast" | "after">("before");
   useVoice(phase === "before" ? "host/story-before" : phase === "after" ? "host/story-after" : null);
+  // Stable, so the broadcast doesn't pull focus back to itself when it re-renders
+  const heard = useCallback(() => {
+    markBroadcastHeard();
+    setPhase("after");
+  }, []);
+  const line = phase === "after" ? HOST_LINES["story-after"] : HOST_LINES["story-before"];
   return (
     <section className="radio-night" aria-label="The story" data-testid="screen-story">
+      {phase !== "broadcast" && <BackToMenu onClick={onBack} />}
       <RadioSet on={phase !== "before"} />
-      <p key={phase === "after" ? "after" : "before"} className="host-caption rise-in" aria-live="polite">
-        “{phase === "after" ? HOST_LINES["story-after"] : HOST_LINES["story-before"]}”
+      <Spoken text={line} />
+      <p key={phase === "after" ? "after" : "before"} className="host-caption rise-in" aria-hidden>
+        “{line}”
       </p>
       {phase === "before" && (
         <button className="retro-btn gold" onClick={() => setPhase("broadcast")} data-testid="button-tune-in">
@@ -286,14 +330,7 @@ function Story({ onDone }: { onDone: () => void }) {
           Continue
         </button>
       )}
-      {phase === "broadcast" && (
-        <SterlingBroadcast
-          onClose={() => {
-            markBroadcastHeard();
-            setPhase("after");
-          }}
-        />
-      )}
+      {phase === "broadcast" && <SterlingBroadcast onClose={heard} />}
     </section>
   );
 }

@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HOST_LINES } from "@shared/game";
 import { usePlayer, useUpdatePlayer, errorMessage } from "@/lib/game";
 import { useVoice } from "@/lib/sound";
-import { isDefaultCallsign } from "@/lib/onboarding";
+import { isDefaultCallsign, markSigned } from "@/lib/onboarding";
 import { HeroArt } from "@/components/HeroArt";
 
 // Meeting your hunter: the host asks for a name, and the new hunter signs the Bounty
@@ -12,9 +12,10 @@ export function HunterLicense({ onDone }: { onDone: () => void }) {
   const update = useUpdatePlayer();
   const [name, setName] = useState("");
   const [signed, setSigned] = useState<string | null>(null);
+  const sending = useRef(false); // a double tap mustn't sign twice
   useVoice(signed ? null : "host/license");
 
-  // Keep a name they already chose (a returning hunter replaying the opening)
+  // Keep a name they already chose (signed earlier, then left before the office)
   useEffect(() => {
     if (player && !isDefaultCallsign(player.callsign)) setName((n) => n || player.callsign);
   }, [player?.callsign]);
@@ -22,8 +23,21 @@ export function HunterLicense({ onDone }: { onDone: () => void }) {
   const trimmed = name.trim();
   const sign = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!trimmed || update.isPending) return;
-    update.mutate({ callsign: trimmed }, { onSuccess: (p) => setSigned(p.callsign) });
+    if (signed) return onDone(); // Enter after signing moves on
+    if (!trimmed || sending.current) return;
+    sending.current = true;
+    update.mutate(
+      { callsign: trimmed },
+      {
+        onSuccess: (p) => {
+          markSigned();
+          setSigned(p.callsign);
+        },
+        onSettled: () => {
+          sending.current = false;
+        },
+      },
+    );
   };
 
   return (
@@ -65,12 +79,14 @@ export function HunterLicense({ onDone }: { onDone: () => void }) {
         <p className="license-error" role="alert">{errorMessage(update.error)}</p>
       )}
 
+      {/* Keyed, so Continue is a new button and takes the focus */}
       {signed ? (
-        <button className="retro-btn gold license-action" onClick={onDone} autoFocus data-testid="button-license-continue">
+        <button key="continue" className="retro-btn gold license-action" onClick={onDone} autoFocus data-testid="button-license-continue">
           Continue
         </button>
       ) : (
         <button
+          key="sign"
           className="retro-btn gold license-action"
           onClick={sign}
           disabled={!trimmed || update.isPending}

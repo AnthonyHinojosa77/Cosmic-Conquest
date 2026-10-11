@@ -185,7 +185,7 @@ async function pages(browser) {
       await page.screenshot({ path: path.join(OUT, `${name}-p-${label}.png`) });
       report[`${name}-${label}`] = await metrics(page);
     };
-    for (const [label, hash, wait] of [["hub", "/", 1500], ["voyages", "/voyages", 1500], ["expo", "/expo", 1500], ["diner", "/diner", 1500], ["office", "/bounties", 1500], ["aurelia", "/aurelia", 2500]]) {
+    for (const [label, hash, wait] of [["title", "/", 1500], ["voyages", "/voyages", 1500], ["expo", "/expo", 1500], ["diner", "/diner", 1500], ["office", "/bounties", 1500], ["aurelia", "/aurelia", 2500]]) {
       await page.goto(`${BASE}/#${hash}`, { waitUntil: "networkidle0" });
       await sleep(wait);
       await snap(label);

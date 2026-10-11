@@ -43,14 +43,16 @@ and acts as the player's helper. Aurora Sterling's broadcast stays the *story*
 intro; the announcer does the *game* intro.
 
 1. **Turn on the radio:** a one-tap screen ("Turn on the radio" or "Play without
-   sound"). The tap is what lets the phone play sound.
+   sound"). The tap is what lets the phone play sound, so the theme starts with it.
 2. **The announcer's intro** (first launch only, skippable): the radio tunes in,
    then the "Sterling Atomic presents... Cosmic Conquest!" title card and the
-   tagline. Music comes in with the title card.
+   tagline.
 3. **Start menu:** the magazine cover, **Start** (or **Continue** with "Welcome
    back" for a returning hunter), **How to play** and **Top hunters**.
 4. **Meet your hunter:** Start opens a Bounty Hunter's License. The player signs
    their name (their name on the leaderboard) and it gets stamped "Licensed".
+   "Back" (or the phone's back button) returns to the menu from here on; a player
+   who signed but left before the office gets Start again, with their name filled in.
 5. **The story:** the announcer introduces Aurora's broadcast, the player tunes
    in, and the announcer sends them off ("Starting today, so are you").
 6. **How to play:** seven picture panels the announcer reads (take a job, search,
