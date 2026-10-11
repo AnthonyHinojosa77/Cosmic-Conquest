@@ -87,7 +87,7 @@ export default function Title() {
       return (
         <StartMenu
           onStart={() => open("license")}
-          onContinue={() => navigate("/bounties")}
+          onContinue={() => navigate("/bounties", { replace: openedEntry() })}
           onGuide={() => open("guide")}
         />
       );
@@ -150,7 +150,13 @@ function useHostBeat(id: HostLine, onDone: () => void) {
   const { on } = useSound();
   const done = useRef(onDone);
   done.current = onDone;
+  // When the line went up, so turning sound on or off mid-line doesn't restart its clock
+  const shownAt = useRef(0);
   useEffect(() => {
+    shownAt.current = Date.now();
+  }, [id]);
+  useEffect(() => {
+    const elapsed = Date.now() - shownAt.current;
     let voiceOver = !on;
     let timeOver = false;
     let finished = false;
@@ -163,7 +169,7 @@ function useHostBeat(id: HostLine, onDone: () => void) {
     const timer = setTimeout(() => {
       timeOver = true;
       finish();
-    }, readMs(HOST_LINES[id]));
+    }, readMs(HOST_LINES[id]) - elapsed);
     if (on) {
       playVoice(`host/${id}`, () => {
         voiceOver = true;
@@ -173,7 +179,7 @@ function useHostBeat(id: HostLine, onDone: () => void) {
     const cap = setTimeout(() => {
       voiceOver = timeOver = true;
       finish();
-    }, capMs(HOST_LINES[id]));
+    }, capMs(HOST_LINES[id]) - elapsed);
     return () => {
       clearTimeout(timer);
       clearTimeout(cap);
@@ -238,7 +244,7 @@ function RadioIntro({ onDone }: { onDone: () => void }) {
 // --- Start menu -------------------------------------------------------------------
 
 function StartMenu({ onStart, onContinue, onGuide }: { onStart: () => void; onContinue: () => void; onGuide: () => void }) {
-  const { data: player, isLoading } = usePlayer();
+  const { data: player, isLoading, isError, refetch, isFetching } = usePlayer();
   const [board, setBoard] = useState(false);
   const returning = hasHunter(player);
 
@@ -256,14 +262,30 @@ function StartMenu({ onStart, onContinue, onGuide }: { onStart: () => void; onCo
       </div>
       <nav className="menu-actions" aria-label="Menu">
         {returning && player && <p className="menu-welcome marker-text">Welcome back, {player.callsign}.</p>}
-        <button
-          className="retro-btn gold menu-primary"
-          onClick={returning ? onContinue : onStart}
-          disabled={isLoading}
-          data-testid={returning ? "button-continue" : "button-start"}
-        >
-          {isLoading ? "Tuning in…" : returning ? "Continue" : "Start"}
-        </button>
+        {isError && !player ? (
+          // Without the profile we can't tell a new hunter from a returning one, and
+          // signing up now could rename someone who has played before
+          <>
+            <p className="menu-welcome marker-text" role="alert">The signal's down. Check your connection.</p>
+            <button
+              className="retro-btn gold menu-primary"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              data-testid="button-retry"
+            >
+              {isFetching ? "Tuning in…" : "Try again"}
+            </button>
+          </>
+        ) : (
+          <button
+            className="retro-btn gold menu-primary"
+            onClick={returning ? onContinue : onStart}
+            disabled={isLoading || !player}
+            data-testid={returning ? "button-continue" : "button-start"}
+          >
+            {isLoading || !player ? "Tuning in…" : returning ? "Continue" : "Start"}
+          </button>
+        )}
         <div className="menu-secondary">
           <button className="retro-btn teal" onClick={onGuide} data-testid="button-how-to-play">
             How to play

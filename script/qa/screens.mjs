@@ -44,9 +44,13 @@ async function openPage(browser, device, cookie) {
   const page = await ctx.newPage();
   await page.setViewport(device.viewport);
   if (device.ua) await page.setUserAgent(device.ua);
-  // Skip the first-visit broadcast so scenes are visible
+  // Skip the first-visit broadcast so scenes are visible, and the radio intro so "/"
+  // shows the start menu
   await page.evaluateOnNewDocument(() => {
-    try { localStorage.setItem("cc_sterling_broadcast_heard", "1"); } catch {}
+    try {
+      localStorage.setItem("cc_sterling_broadcast_heard", "1");
+      localStorage.setItem("cc_intro_seen", "1");
+    } catch {}
   });
   if (cookie) {
     const [name, value] = cookie.split("=");

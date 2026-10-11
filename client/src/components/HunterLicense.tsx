@@ -24,7 +24,7 @@ export function HunterLicense({ onDone }: { onDone: () => void }) {
   const sign = (e: React.FormEvent) => {
     e.preventDefault();
     if (signed) return onDone(); // Enter after signing moves on
-    if (!trimmed || sending.current) return;
+    if (!trimmed || !player || sending.current) return;
     sending.current = true;
     update.mutate(
       { callsign: trimmed },
@@ -89,7 +89,7 @@ export function HunterLicense({ onDone }: { onDone: () => void }) {
           key="sign"
           className="retro-btn gold license-action"
           onClick={sign}
-          disabled={!trimmed || update.isPending}
+          disabled={!trimmed || !player || update.isPending}
           data-testid="button-sign-license"
         >
           {update.isPending ? "Signing…" : "Sign the license"}
