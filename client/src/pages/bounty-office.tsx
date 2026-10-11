@@ -137,6 +137,8 @@ function RankBadge({ bounties }: { bounties: number }) {
 
 function BountyBoard() {
   const { data: player } = usePlayer();
+  // A hunter with no cases closed yet is pointed at the first one
+  const firstJob = player && player.completedBounties.length === 0 ? BOUNTIES.find((b) => b.available)?.id : undefined;
   return (
     <section className="space-y-3" data-testid="panel-bounty-board">
       <h2 className="pulp-title text-2xl text-[hsl(45,80%,55%)] tracking-wider">Wanted</h2>
@@ -145,10 +147,11 @@ function BountyBoard() {
         return (
           <div
             key={b.id}
-            className="comic-panel bg-[hsl(38,35%,88%)] p-4 flex gap-4 items-start"
+            className={`comic-panel bg-[hsl(38,35%,88%)] p-4 flex gap-4 items-start${b.id === firstJob ? " is-first-job" : ""}`}
             style={{ opacity: b.available ? 1 : 0.6 }}
             data-testid={`card-bounty-${b.id}`}
           >
+            {b.id === firstJob && <span className="first-job-tag pulp-title" data-testid="tag-start-here">Start here</span>}
             <div className="starburst-badge shrink-0" style={{ width: 64, height: 64, fontSize: "0.7rem" }}>
               {b.reward}<br />CR
             </div>
@@ -171,6 +174,33 @@ function BountyBoard() {
           </div>
         );
       })}
+    </section>
+  );
+}
+
+// The places from the old front page, now somewhere to wander between jobs.
+const AROUND_TOWN = [
+  { path: "/voyages", name: "Cosmic Voyages", art: "./scenes/voyages-scene.webp", line: "The travel bureau: posters, brochures and postcards home." },
+  { path: "/expo", name: "The Atomic Expo", art: "./scenes/expo-scene.webp", line: "The World's Fair of Tomorrow, open late." },
+  { path: "/diner", name: "Astro Diner", art: "./scenes/diner-scene.webp", line: "Rocket burgers and moon malts, served by robots." },
+];
+
+function AroundTown() {
+  return (
+    <section data-testid="panel-around-town">
+      <h2 className="pulp-title text-2xl text-[hsl(45,80%,55%)] tracking-wider">Around town</h2>
+      <p className="marker-text text-xs text-[hsl(38,30%,70%)] mt-1">Off duty? Have a look around between jobs.</p>
+      <div className="grid gap-3 mt-3 sm:grid-cols-3">
+        {AROUND_TOWN.map((p) => (
+          <Link key={p.path} href={p.path} className="town-card comic-panel" data-testid={`link-town-${p.path.slice(1)}`}>
+            <ArtImage src={p.art} alt="" className="town-card-art" imgClassName="town-card-img" />
+            <span className="town-card-text">
+              <span className="pulp-title town-card-name">{p.name}</span>
+              <span className="town-card-line">{p.line}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }
@@ -331,6 +361,7 @@ export default function BountyOffice() {
           <StarMap />
           <AureliaCard />
           <Shop />
+          <AroundTown />
         </div>
         <div className="space-y-6 md:order-1">
           <HeroCard />

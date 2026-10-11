@@ -4,7 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Hub from "@/pages/hub";
+import Title from "@/pages/title";
 import Voyages from "@/pages/voyages";
 import Expo from "@/pages/expo";
 import Diner from "@/pages/diner";
@@ -18,7 +18,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 function AppRouter() {
   return (
     <Switch>
-      <Route path="/" component={Hub} />
+      <Route path="/" component={Title} />
       <Route path="/voyages" component={Voyages} />
       <Route path="/expo" component={Expo} />
       <Route path="/diner" component={Diner} />

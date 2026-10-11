@@ -188,14 +188,17 @@ export function stopVoice() {
 }
 
 // Speak a line (the server decides whether this hunter may hear it yet).
-// Missing lines are simply silent.
-export function playVoice(path: string) {
+// Missing lines are simply silent. `onEnd` runs when the line finishes on its own
+// (or can't play), not when another line or a screen change cuts it off.
+export function playVoice(path: string, onEnd?: () => void) {
   if (!enabled) return;
   stopVoice();
   const el = new Audio(`${API_BASE}/api/voice/${path}`);
   voice = el;
   const done = () => {
-    if (voice === el) stopVoice();
+    if (voice !== el) return;
+    stopVoice();
+    onEnd?.();
   };
   el.addEventListener("playing", () => voice === el && level(DUCKED_VOLUME)); // dip only once it really plays
   el.addEventListener("ended", done);

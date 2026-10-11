@@ -34,6 +34,40 @@ showdown. Bounties pay credits; credits buy suits, gear and weapon upgrades.
 5. **Get paid:** each bounty pays once per hunter. Spend it at the
    Outfitters, then climb the Top Hunters board.
 
+## Opening and onboarding (owner's call, 2026-10-11)
+
+The old front page (the "Retro Universe" magazine hub linking Cosmic Voyages, the
+Atomic Expo and the Astro Diner) left new players unsure where to start. The game
+now opens like a game, hosted by the **radio announcer**, who explains how to play
+and acts as the player's helper. Aurora Sterling's broadcast stays the *story*
+intro; the announcer does the *game* intro.
+
+1. **Turn on the radio:** a one-tap screen ("Turn on the radio" or "Play without
+   sound"). The tap is what lets the phone play sound.
+2. **The announcer's intro** (first launch only, skippable): the radio tunes in,
+   then the "Sterling Atomic presents... Cosmic Conquest!" title card and the
+   tagline. Music comes in with the title card.
+3. **Start menu:** the magazine cover, **Start** (or **Continue** with "Welcome
+   back" for a returning hunter), **How to play** and **Top hunters**.
+4. **Meet your hunter:** Start opens a Bounty Hunter's License. The player signs
+   their name (their name on the leaderboard) and it gets stamped "Licensed".
+5. **The story:** the announcer introduces Aurora's broadcast, the player tunes
+   in, and the announcer sends them off ("Starting today, so are you").
+6. **How to play:** seven picture panels the announcer reads (take a job, search,
+   puzzles, name the culprit, the quick-draw, credits and the star map, your first
+   job). Skippable; also on the start menu.
+7. **Bounty Office:** the first job carries a "Start here" tag. The broadcast
+   doesn't play again (the radio on the desk still replays it).
+
+Players who already chose a name or solved a case go straight to Continue. The
+three old places now live in the Bounty Office under **Around town** ("Off duty?
+Have a look around between jobs."); each has a way back to the office.
+
+**Announcer lines** are in `HOST_LINES` (`shared/game.ts`), served from
+`audio/voice/host/<line>/line.mp3` and voiced by the narrator. Until they're
+generated the opening runs silently on reading time; `voices.ts` makes the 13
+missing lines like the others.
+
 ## Build phases
 
 | Phase | What ships | Status |
@@ -188,8 +222,9 @@ arrives only in Act II and III.
     window is in the background, timers and animations stall, so drive the page
     with scripts rather than clicks. With the key in the Keychain, re-runs are
     one command: `npx tsx script/audio/voices.ts`.
-- Sound is off until the player turns it on (corner button, hidden until any
-  audio exists). Music ducks while someone speaks.
+- Sound is off until the player turns it on: the first screen asks ("Turn on
+  the radio" or "Play without sound"), and the corner button changes it any time.
+  Music ducks while someone speaks.
 - The game plays well on phones (owner, 2026-09-26): check new screens at
   phone width.
 
@@ -290,7 +325,20 @@ with the old cover attached:
 > the same tall portrait size, the same three illustrated bands in the same
 > positions, the same banners, colors, aged paper texture and worn edges.
 
-Keeping the bands in place matters: the hub's clickable areas sit on them.
+The bands used to be the hub's clickable areas. Since the new opening
+(2026-10-11) the cover is the start menu's picture, and the three places it shows
+are under "Around town" in the Bounty Office.
+
+**Title key art (optional, not made yet):** a cover made for the start menu, with
+the hero on it. Style block, then:
+
+> A pulp magazine cover, tall portrait 2:3. Title lettering "COSMIC CONQUEST" in
+> chrome block letters across the top, with a small "THRILLING TALES OF THE
+> FUTURE!" banner and a "25¢" price circle. Below: the space cowboy bounty hunter
+> from the reference image (same helmet, hat and silver suit) standing in the
+> foreground, hand near the holster, a vintage radio microphone on a stand
+> beside them, and behind them a sweep of the planets (the Moon, red Mars, misty
+> Venus, ringed Saturn, blue Neptune) with a rocket streaking past.
 
 ## Mars: Rustlers of the Red Sands
 

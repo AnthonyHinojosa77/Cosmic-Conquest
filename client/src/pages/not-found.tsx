@@ -22,7 +22,7 @@ export default function NotFound() {
         </div>
         <Link href="/">
           <button className="retro-btn gold text-lg" data-testid="button-404-home">
-            ★ Return to Hub ★
+            ★ Back to the menu ★
           </button>
         </Link>
         <p className="text-[hsl(38,20%,40%)] text-xs mt-6 marker-text tracking-widest uppercase">
