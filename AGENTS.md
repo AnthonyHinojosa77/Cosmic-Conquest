@@ -7,6 +7,8 @@ Complete authorized work through a usable result. Make reasonable reversible dec
 
 Keep changes focused. Preserve unrelated files and user work. Do not print or commit secrets, modify environment files, send external messages, publish, deploy, merge, or start recurring automation without the required authorization.
 
+Ship each change through a pull request whose description says, in plain terms, what changed and what was checked. Merge it once its checks pass and a reviewer approves only where the owner has authorized agents to merge; otherwise leave it for the owner. Never leave a standing watcher on a pull request.
+
 Before building or restyling any user interface, such as a web page, app screen, component, or dashboard, load the frontend-design skill, with the project's existing brand as its brief.
 
 Run the project's relevant checks and inspect the end-user result when appropriate. Distinguish a saved file, installed capability, successful invocation, and verified outcome. Use current primary sources for changing technical contracts.

@@ -14,4 +14,4 @@ Require an explicit request for the specific pull request before beginning.
 5. Explain false positives factually. Do not expand scope to unrelated feature requests.
 6. Rebase or resolve conflicts only when needed for the requested PR to pass.
 7. Stop when required checks pass and actionable review comments are resolved, or when one concrete blocker requires the user.
-8. Report final merge readiness. Do not merge unless separately authorized.
+8. Merge per the file-pr merge rule, only where the owner has authorized agents to merge, holding changes that need the owner's approval. Report the final state: merged, or left open and why.

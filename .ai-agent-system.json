@@ -1,24 +1,24 @@
 {
-  "content_sha256": "d5114cdad93507346e404bf2cfc0b43b4e2d947a0d8013f38dcdbaecc6b6dfef",
+  "content_sha256": "1d8278a6b2d07bbe066e46a42d81e92cd6f4965315ceca68f12d50b670a653aa",
   "files": {
-    ".agents/skills/babysit-pr/SKILL.md": "c5f47e8313368cf787a2150807481971c85cd43c8be8cca0d45443c3d1990364",
+    ".agents/skills/babysit-pr/SKILL.md": "5ac3d11c2479bf0d5f8e9bffa9992e50072ffa2efeb4253fb491291b2c240dc7",
     ".agents/skills/babysit-pr/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
     ".agents/skills/capability-check/SKILL.md": "4fc82c0dabc3b8fd8ed4867a89f05491b56b1f4e9afc4eb50a39fa79616635f1",
     ".agents/skills/capability-check/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
-    ".agents/skills/file-pr/SKILL.md": "34e9132d175e92ac7ff120fdd8f4572ceff39bca5d81241c2dc51a5bfb5fe89c",
+    ".agents/skills/file-pr/SKILL.md": "859773c190ab5a4467c1ea8b305b1c0237934e5aab158b76440d4970e6ffd6de",
     ".agents/skills/file-pr/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
     ".agents/skills/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     ".agents/skills/frontend-design/SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
     ".agents/skills/frontend-design/agents/openai.yaml": "417050d82c332451b994659166df7226bfb81751d49d65b53463806e973aa237",
     ".agents/skills/html-communication/SKILL.md": "6c60e160ba168cc9a789e7fe6a5a17e83968f3cb3cb74762d25bb15f0624c112",
     ".agents/skills/html-communication/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
-    ".claude/skills/babysit-pr/SKILL.md": "9f22393ce9f10ce38f3e38683896600b72c458ed4e137c33cc7b6f496d021e98",
+    ".claude/skills/babysit-pr/SKILL.md": "1ac38166543984784f2a69060263395da0d0deb808a31565aeb3bad63a521a1f",
     ".claude/skills/capability-check/SKILL.md": "d3770ce8a5d62572592a6f3ecc32cbdb0bfdccbf79bca97641850dde4d48f63a",
-    ".claude/skills/file-pr/SKILL.md": "78c2884b858598506e304fd8d24d8af2b828c55c34cd0c95f0d6af6026f2f810",
+    ".claude/skills/file-pr/SKILL.md": "108fa3dd0b2b43dd30f00875a0c1b38e5d5daba1c177f8ce6f9b5c0291dce73d",
     ".claude/skills/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     ".claude/skills/frontend-design/SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
     ".claude/skills/html-communication/SKILL.md": "a4b1cb0668cbe955b5693f1c385eb4b51b6f2527f29e5db26bafd828fa17d3b1",
-    "AGENTS.md": "d3d571340f5c87274a1e7886d9363c35d5b7c0292d7194b5e9054f51e5caab5b",
+    "AGENTS.md": "7140192444c7374a5fc379c381ad9f5354cb94d194d21cbc8ebe45cc915b5dac",
     "CLAUDE.md": "b865ebd47dede1b2df54abd8affa9e0e7e8dacf43008ba9aef1fe276415afc74"
   },
   "profile": "public-safe",
@@ -36,5 +36,5 @@
   ],
   "source_commit": null,
   "source_repository": "https://github.com/AnthonyHinojosa77/my-skills",
-  "toolkit_version": "1.4.7"
+  "toolkit_version": "2.0.0"
 }
