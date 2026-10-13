@@ -1,0 +1,6 @@
+interface:
+  display_name: "Teardown"
+  short_description: "Turn incident notes into an unbranded teardown"
+  default_prompt: "Use $teardown to turn these incident notes, logs, or bottleneck description into an unbranded operational teardown."
+policy:
+  allow_implicit_invocation: false
