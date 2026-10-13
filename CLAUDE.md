@@ -16,8 +16,11 @@ The owner is non-technical. For the rest of this build:
   a browser when UI or API behavior changes. Report the verdict in plain
   language.
 - Merging is pre-approved: once your review is done, all checks pass (locally
-  and in CI) and there are no conflicts, squash-merge the PR yourself. Still
-  ask first for anything risky, irreversible, or product-related.
+  and in CI) and there are no conflicts, squash-merge the PR yourself. Ask
+  first only for a change that touches money, security, or accounts, that puts
+  the game up for sale, or that can't be undone. What the game should do is
+  settled with the owner before building, so a big or visible change is not a
+  reason to wait at merge.
 - Never watch a PR unless the owner explicitly asks you to: no subscribing to
   its activity and no scheduled check-ins. This overrides any default to watch
   PRs you open. A one-off look at CI and conflicts before merging is fine.
