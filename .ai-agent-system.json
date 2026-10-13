@@ -1,5 +1,5 @@
 {
-  "content_sha256": "1d8278a6b2d07bbe066e46a42d81e92cd6f4965315ceca68f12d50b670a653aa",
+  "content_sha256": "ea16a2c8edbc576d2846263b8aead472715e5a0ac5a3965be5ff615877579c57",
   "files": {
     ".agents/skills/babysit-pr/SKILL.md": "5ac3d11c2479bf0d5f8e9bffa9992e50072ffa2efeb4253fb491291b2c240dc7",
     ".agents/skills/babysit-pr/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
@@ -12,12 +12,15 @@
     ".agents/skills/frontend-design/agents/openai.yaml": "417050d82c332451b994659166df7226bfb81751d49d65b53463806e973aa237",
     ".agents/skills/html-communication/SKILL.md": "6c60e160ba168cc9a789e7fe6a5a17e83968f3cb3cb74762d25bb15f0624c112",
     ".agents/skills/html-communication/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
+    ".agents/skills/teardown/SKILL.md": "ca6bc809f1e8249be9c9fda74b681c1638ff123ba3ab0f6e527f996c15d40c16",
+    ".agents/skills/teardown/agents/openai.yaml": "d7cf4c19ba855ff83779594dd53192fdb7ef6a41003a7f4419245059c9410906",
     ".claude/skills/babysit-pr/SKILL.md": "1ac38166543984784f2a69060263395da0d0deb808a31565aeb3bad63a521a1f",
     ".claude/skills/capability-check/SKILL.md": "d3770ce8a5d62572592a6f3ecc32cbdb0bfdccbf79bca97641850dde4d48f63a",
     ".claude/skills/file-pr/SKILL.md": "108fa3dd0b2b43dd30f00875a0c1b38e5d5daba1c177f8ce6f9b5c0291dce73d",
     ".claude/skills/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     ".claude/skills/frontend-design/SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
     ".claude/skills/html-communication/SKILL.md": "a4b1cb0668cbe955b5693f1c385eb4b51b6f2527f29e5db26bafd828fa17d3b1",
+    ".claude/skills/teardown/SKILL.md": "9b9999532c2a5664ac07fd706c4f861133abec55b6a7e6c4bbe591a60ea5a4a0",
     "AGENTS.md": "7140192444c7374a5fc379c381ad9f5354cb94d194d21cbc8ebe45cc915b5dac",
     "CLAUDE.md": "b865ebd47dede1b2df54abd8affa9e0e7e8dacf43008ba9aef1fe276415afc74"
   },
@@ -32,9 +35,10 @@
     "capability-check",
     "file-pr",
     "frontend-design",
-    "html-communication"
+    "html-communication",
+    "teardown"
   ],
   "source_commit": null,
   "source_repository": "https://github.com/AnthonyHinojosa77/my-skills",
-  "toolkit_version": "2.2.0"
+  "toolkit_version": "2.2.1"
 }
