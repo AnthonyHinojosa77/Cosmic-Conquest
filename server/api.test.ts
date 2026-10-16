@@ -11,7 +11,7 @@ import type { AddressInfo } from "net";
 const dbDir = mkdtempSync(path.join(tmpdir(), "cosmic-conquest-test-"));
 process.env.DATABASE_PATH = path.join(dbDir, "test.db");
 process.env.AUDIO_DIR = path.join(dbDir, "voice");
-for (const f of ["clue/red-sands/telegram.mp3", "taunt/red-sands/line.mp3", "aurora/broadcast/line.mp3", "aurelia/tower/lilies.mp3", "testimony/saturn-orrery/ashgrove--money.mp3", "breakthrough/saturn-orrery/breakthrough-1.mp3"]) {
+for (const f of ["host/intro-tune/line.mp3", "clue/red-sands/telegram.mp3", "taunt/red-sands/line.mp3", "aurora/broadcast/line.mp3", "aurelia/tower/lilies.mp3", "testimony/saturn-orrery/ashgrove--money.mp3", "breakthrough/saturn-orrery/breakthrough-1.mp3"]) {
   mkdirSync(path.dirname(path.join(dbDir, "voice", f)), { recursive: true });
   writeFileSync(path.join(dbDir, "voice", f), "fake mp3");
 }
@@ -564,6 +564,8 @@ test("voice lines are only served when the hunter may read the same text", async
   const hear = async (p: string) => (await fetch(`${base}/api/voice/${p}`, { headers: { Cookie: cookie } })).status;
 
   assert.equal(await hear("aurora/broadcast"), 200);
+  assert.equal(await hear("host/intro-tune"), 200); // the host's lines are for everyone
+  assert.equal(await hear("host/not-a-line"), 404);
   assert.equal(await hear("clue/red-sands/telegram"), 404); // not decoded yet
   assert.equal(await hear("taunt/red-sands"), 404); // culprit not named yet
   assert.equal(await hear("aurelia/tower/lilies"), 404); // not invited

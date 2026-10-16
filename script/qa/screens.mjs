@@ -44,9 +44,13 @@ async function openPage(browser, device, cookie) {
   const page = await ctx.newPage();
   await page.setViewport(device.viewport);
   if (device.ua) await page.setUserAgent(device.ua);
-  // Skip the first-visit broadcast so scenes are visible
+  // Skip the first-visit broadcast so scenes are visible, and the radio intro so "/"
+  // shows the start menu
   await page.evaluateOnNewDocument(() => {
-    try { localStorage.setItem("cc_sterling_broadcast_heard", "1"); } catch {}
+    try {
+      localStorage.setItem("cc_sterling_broadcast_heard", "1");
+      localStorage.setItem("cc_intro_seen", "1");
+    } catch {}
   });
   if (cookie) {
     const [name, value] = cookie.split("=");
@@ -185,7 +189,7 @@ async function pages(browser) {
       await page.screenshot({ path: path.join(OUT, `${name}-p-${label}.png`) });
       report[`${name}-${label}`] = await metrics(page);
     };
-    for (const [label, hash, wait] of [["hub", "/", 1500], ["voyages", "/voyages", 1500], ["expo", "/expo", 1500], ["diner", "/diner", 1500], ["office", "/bounties", 1500], ["aurelia", "/aurelia", 2500]]) {
+    for (const [label, hash, wait] of [["title", "/", 1500], ["voyages", "/voyages", 1500], ["expo", "/expo", 1500], ["diner", "/diner", 1500], ["office", "/bounties", 1500], ["aurelia", "/aurelia", 2500]]) {
       await page.goto(`${BASE}/#${hash}`, { waitUntil: "networkidle0" });
       await sleep(wait);
       await snap(label);

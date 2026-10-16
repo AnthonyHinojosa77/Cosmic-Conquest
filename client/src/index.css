@@ -1014,6 +1014,439 @@
   }
 }
 
+/* ---- The front of the game (pages/title.tsx): radio, title, menu, license, guide ---- */
+@layer components {
+  /* Night sky behind the radio screens: warm glow where the set sits, a few stars */
+  .radio-night {
+    position: relative;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.6rem;
+    padding: calc(3.5rem + env(safe-area-inset-top, 0px)) 1.25rem calc(5rem + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+    color: hsl(40 40% 88%);
+    background:
+      radial-gradient(ellipse 70% 42% at 50% 40%, hsl(28 55% 17% / 0.95), transparent 72%),
+      radial-gradient(1.5px 1.5px at 14% 16%, hsl(45 80% 85%), transparent 70%),
+      radial-gradient(1px 1px at 78% 12%, hsl(45 80% 85%), transparent 70%),
+      radial-gradient(1.5px 1.5px at 88% 34%, hsl(200 60% 85%), transparent 70%),
+      radial-gradient(1px 1px at 22% 72%, hsl(45 80% 85%), transparent 70%),
+      radial-gradient(1px 1px at 66% 84%, hsl(200 60% 85%), transparent 70%),
+      radial-gradient(1.5px 1.5px at 40% 8%, hsl(45 80% 85%), transparent 70%),
+      hsl(22 40% 5%);
+  }
+
+  /* A walnut tabletop radio: arched amber dial with a red needle, cloth grille, two knobs */
+  .radio-set {
+    width: min(86vw, 400px);
+    padding: 16px 16px 18px;
+    border-radius: 36px 36px 16px 16px;
+    background: linear-gradient(170deg, hsl(22 48% 30%), hsl(18 52% 15%));
+    border: 4px solid hsl(20 45% 8%);
+    box-shadow: inset 0 3px 0 hsl(30 55% 45% / 0.45), inset 0 -6px 12px hsl(0 0% 0% / 0.35), 0 30px 70px hsl(0 0% 0% / 0.65);
+  }
+  .radio-dial {
+    position: relative;
+    height: 96px;
+    overflow: hidden;
+    border: 3px solid hsl(42 55% 62%);
+    border-radius: 120px 120px 12px 12px / 80px 80px 12px 12px;
+    background: radial-gradient(ellipse 90% 120% at 50% 110%, hsl(44 96% 66%), hsl(36 88% 47%) 50%, hsl(26 70% 22%));
+    box-shadow: inset 0 0 26px hsl(25 70% 8% / 0.7);
+    filter: brightness(0.38) saturate(0.6);
+    transition: filter 1.4s ease;
+  }
+  .radio-dial.is-on { filter: brightness(1.05) saturate(1); animation: dialFlicker 1.2s steps(2) 1; }
+  .radio-dial::before {
+    content: "";
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    bottom: 30px;
+    height: 14px;
+    background: repeating-linear-gradient(90deg, hsl(25 50% 14% / 0.8) 0 2px, transparent 2px 9px);
+  }
+  .radio-scale {
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    bottom: 9px;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Bangers', cursive;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    color: hsl(25 55% 13%);
+  }
+  .radio-needle {
+    position: absolute;
+    top: 12px;
+    bottom: 8px;
+    left: 14%;
+    width: 3px;
+    border-radius: 2px;
+    background: hsl(0 80% 44%);
+    box-shadow: 0 0 8px hsl(0 90% 55% / 0.8);
+    transition: left 2.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .radio-dial.is-on .radio-needle { left: 63%; }
+  .radio-grille {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 46px;
+    margin-top: 14px;
+    padding: 0 10px;
+    border: 2px solid hsl(20 45% 8%);
+    border-radius: 8px;
+    background: repeating-linear-gradient(0deg, hsl(40 30% 62% / 0.5) 0 3px, hsl(18 50% 12%) 3px 7px);
+  }
+  .radio-knob {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid hsl(20 45% 8%);
+    background: radial-gradient(circle at 35% 30%, hsl(40 40% 82%), hsl(30 30% 38%) 60%, hsl(25 30% 15%));
+    box-shadow: 0 3px 0 hsl(0 0% 0% / 0.4);
+  }
+  @keyframes dialFlicker { 0% { opacity: 0.55; } 25% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+  .gate-actions { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+  .gate-on { font-size: 1.4rem; padding: 12px 28px; }
+  .gate-quiet,
+  .howto-back {
+    background: none;
+    border: 0;
+    padding: 8px 10px;
+    font-size: 0.92rem;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    cursor: pointer;
+  }
+  .gate-quiet { color: hsl(38 30% 74%); }
+  .gate-quiet:hover,
+  .gate-quiet:focus-visible { color: hsl(45 80% 62%); }
+
+  /* "Skip intro" / "Skip" / "Close", top right over any of these screens */
+  .title-skip {
+    position: fixed;
+    z-index: 40;
+    top: calc(0.9rem + env(safe-area-inset-top, 0px));
+    right: calc(1rem + env(safe-area-inset-right, 0px));
+    padding: 6px 14px;
+    border: 1.5px solid hsl(38 30% 75% / 0.55);
+    border-radius: 999px;
+    background: hsl(25 40% 8% / 0.6);
+    color: hsl(38 30% 86%);
+    font-size: 0.85rem;
+    cursor: pointer;
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+
+  /* What the host says, as a caption (also spoken when sound is on) */
+  .host-caption {
+    max-width: 30rem;
+    margin: 0 auto;
+    font-style: italic;
+    font-size: 1.08rem;
+    line-height: 1.55;
+    color: hsl(40 45% 90%);
+    text-shadow: 0 2px 10px hsl(0 0% 0% / 0.6);
+  }
+  .host-caption.is-hidden { visibility: hidden; }
+
+  /* The title card the intro lands on */
+  .title-card { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+  .title-presents { font-family: 'Permanent Marker', cursive; font-size: 1.05rem; color: hsl(38 35% 78%); animation: fadeIn 0.8s ease both; }
+  .title-logo {
+    display: flex;
+    flex-direction: column;
+    margin: 0 0 0.6rem;
+    font-family: 'Bangers', cursive;
+    font-weight: 400;
+    font-size: clamp(3.4rem, 17vw, 7rem);
+    line-height: 0.88;
+    letter-spacing: 0.02em;
+    color: hsl(45 88% 58%);
+    -webkit-text-stroke: 2px hsl(25 45% 9%);
+    text-shadow: 0 6px 0 hsl(0 72% 40%), 0 14px 30px hsl(0 0% 0% / 0.65);
+    animation: titleSlam 0.75s cubic-bezier(0.2, 1.5, 0.35, 1) 0.15s both;
+  }
+  @keyframes titleSlam { from { transform: scale(1.9) rotate(-3deg); opacity: 0; } 55% { opacity: 1; } to { transform: none; opacity: 1; } }
+
+  /* Screens that sit over a scene's backdrop */
+  .title-screen { position: relative; min-height: 100svh; color: hsl(38 30% 88%); }
+  .title-screen > :where(:not(.scene-backdrop, .sheet, .title-skip)) { position: relative; z-index: 1; }
+
+  /* Start menu: the magazine cover, then the choices in thumb reach */
+  .menu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 1rem calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+  .menu-cover-art {
+    width: min(100%, calc(60svh * 2 / 3));
+    aspect-ratio: 2 / 3;
+    border-radius: 6px;
+    box-shadow: 0 24px 60px hsl(0 0% 0% / 0.6);
+  }
+  .menu-cover-img { object-fit: cover; }
+  .menu-actions { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; max-width: 24rem; margin-top: 1.1rem; text-align: center; }
+  .menu-primary { font-size: 1.5rem; padding: 12px 20px; }
+  .menu-secondary { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .menu-secondary .retro-btn { font-size: 1.05rem; padding: 9px 10px; }
+  .menu-welcome { font-size: 0.95rem; color: hsl(45 80% 62%); }
+  .menu-tagline { margin-top: 0.3rem; font-size: 0.75rem; color: hsl(38 20% 55%); }
+  .menu-primary:disabled,
+  .license-action:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+  .top-hunters li {
+    display: grid;
+    grid-template-columns: 2rem 1fr auto;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px dashed hsl(30 20% 68%);
+    font-size: 0.95rem;
+  }
+  .top-hunters-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-hunters-earned { font-weight: 600; }
+
+  /* Meeting your hunter: the Bounty Guild license, signed by hand and stamped */
+  .license-stage {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.3rem;
+    padding: calc(4rem + env(safe-area-inset-top, 0px)) 1rem calc(5rem + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+  }
+  .license {
+    position: relative;
+    width: min(100%, 25rem);
+    overflow: hidden;
+    text-align: left;
+    color: hsl(25 40% 14%);
+    background: hsl(41 52% 89%);
+    border: 3px solid hsl(25 40% 16%);
+    border-radius: 10px;
+    box-shadow: 7px 7px 0 hsl(25 40% 6% / 0.55);
+    rotate: -1.2deg; /* separate from transform, so the slide-up doesn't straighten it */
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
+  }
+  .license-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.1rem 0.6rem;
+    padding: 10px 14px;
+    color: hsl(40 45% 94%);
+    background: hsl(0 72% 44%);
+    border-bottom: 3px solid hsl(25 40% 16%);
+  }
+  .license-title { font-size: 1.35rem; letter-spacing: 0.03em; }
+  .license-issuer { font-size: 0.72rem; opacity: 0.9; }
+  .license-body { display: grid; grid-template-columns: 92px 1fr; gap: 14px; padding: 14px; }
+  .license-photo {
+    height: 128px;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    border: 2px solid hsl(25 40% 16%);
+    border-radius: 4px;
+    background: radial-gradient(circle at 50% 30%, hsl(195 45% 72%), hsl(195 55% 36%));
+  }
+  .license-photo-img { height: 250px; width: auto; max-width: none; margin-top: 6px; }
+  .license-fields { display: flex; flex-direction: column; min-width: 0; }
+  .license-label { margin-top: 8px; font-size: 0.72rem; color: hsl(25 20% 38%); }
+  .license-label:first-child { margin-top: 0; }
+  .license-value { font-size: 0.92rem; font-weight: 600; line-height: 1.3; }
+  .license-name {
+    width: 100%;
+    padding: 2px 0 0;
+    font-family: 'Permanent Marker', cursive;
+    font-size: 1.35rem;
+    color: hsl(220 60% 25%);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid hsl(25 40% 16%);
+    outline: none;
+  }
+  .license-name::placeholder { color: hsl(25 15% 58%); }
+  .license-name:focus-visible { border-bottom-color: hsl(0 72% 44%); box-shadow: 0 2px 0 hsl(0 72% 44%); }
+  .license-stamp {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    padding: 2px 10px;
+    font-size: 1.6rem;
+    letter-spacing: 0.06em;
+    color: hsl(0 72% 42%);
+    border: 3px solid currentColor;
+    border-radius: 6px;
+    opacity: 0.85;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    transform: rotate(-14deg);
+    animation: stampIn 0.38s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  }
+  @keyframes stampIn { from { transform: rotate(-14deg) scale(2.4); opacity: 0; } to { transform: rotate(-14deg) scale(1); opacity: 0.85; } }
+  .license-action { font-size: 1.25rem; padding: 10px 26px; }
+  .license-error { font-size: 0.9rem; color: hsl(0 80% 74%); }
+
+  /* How to play: one picture and one line at a time, centred over the scene's glow */
+  .howto {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100svh;
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: calc(3.5rem + env(safe-area-inset-top, 0px)) 0 calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+  .howto-art { position: relative; flex: none; height: min(48svh, 26rem); overflow: hidden; background: hsl(22 40% 8%); }
+  .howto-cover { position: absolute; inset: 0; }
+  .howto-cover-img { object-fit: cover; }
+  .howto-hero {
+    position: absolute;
+    left: 50%;
+    bottom: 4%;
+    height: 78%;
+    width: auto;
+    transform: translateX(-50%);
+    filter: drop-shadow(0 10px 18px hsl(0 0% 0% / 0.6));
+  }
+  .howto-suspects {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3%;
+    padding: 0 5%;
+    background: radial-gradient(circle at 50% 40%, hsl(30 40% 22%), hsl(22 40% 8%));
+  }
+  .howto-suspect {
+    width: 30%;
+    aspect-ratio: 1;
+    border: 3px solid hsl(25 40% 16%);
+    border-radius: 4px;
+    box-shadow: 4px 4px 0 hsl(0 0% 0% / 0.45);
+  }
+  .howto-suspect img { object-fit: cover; }
+  .howto-suspect:nth-child(1) { transform: rotate(-3deg); }
+  .howto-suspect:nth-child(2) { transform: translateY(-6%); }
+  .howto-suspect:nth-child(3) { transform: rotate(3deg); }
+  .howto-map {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 8% 10%;
+    background:
+      radial-gradient(1.5px 1.5px at 12% 18%, hsl(45 90% 85%), transparent),
+      radial-gradient(1px 1px at 38% 8%, hsl(45 90% 85%), transparent),
+      radial-gradient(1.5px 1.5px at 71% 14%, hsl(45 90% 85%), transparent),
+      radial-gradient(1px 1px at 90% 52%, hsl(45 90% 85%), transparent),
+      radial-gradient(1px 1px at 6% 72%, hsl(45 90% 85%), transparent),
+      radial-gradient(1.5px 1.5px at 55% 93%, hsl(45 90% 85%), transparent),
+      radial-gradient(circle at 50% 40%, hsl(220 45% 20%), hsl(220 45% 9%));
+  }
+  .howto-map span {
+    display: flex;
+    align-items: flex-start;
+    padding: 6px 8px;
+    font-size: 1.1rem;
+    line-height: 1;
+    color: hsl(210 25% 62%);
+    border: 2px dashed hsl(210 25% 38%);
+    border-radius: 6px;
+    background: hsl(220 40% 22% / 0.55);
+  }
+  .howto-map span.is-found {
+    color: hsl(0 72% 40%);
+    border: 2px solid hsl(45 80% 55%);
+    background: hsl(45 70% 86%);
+    box-shadow: 0 0 14px hsl(45 90% 55% / 0.5);
+  }
+  .howto-card {
+    flex: none;
+    padding: 1rem 1.25rem 1.25rem;
+    color: hsl(25 40% 14%);
+    background: hsl(38 35% 88%);
+    border-top: 4px solid hsl(25 40% 16%);
+    border-bottom: 4px solid hsl(25 40% 16%);
+  }
+  .howto-steps { display: flex; gap: 6px; }
+  .howto-steps span { width: 22px; height: 5px; border-radius: 3px; background: hsl(25 20% 72%); transition: width 0.3s ease, background 0.3s ease; }
+  .howto-steps span.is-done { background: hsl(25 40% 35%); }
+  .howto-steps span.is-current { width: 34px; background: hsl(0 72% 46%); }
+  .howto-title { margin-top: 0.7rem; font-size: 1.75rem; line-height: 1.05; color: hsl(0 72% 40%); }
+  /* Room for three lines, so the panel doesn't shift as the lines change */
+  .howto-line { max-width: 34rem; min-height: 4.65em; margin-top: 0.45rem; font-size: 1.02rem; line-height: 1.55; }
+  .howto-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; }
+  .howto-nav .retro-btn { font-size: 1.15rem; padding: 9px 24px; }
+  .howto-back { color: hsl(25 25% 32%); }
+  .howto-title:focus { outline: none; }
+  .howto-title:focus-visible { outline: 3px solid hsl(45 85% 55%); outline-offset: 4px; }
+  @media (max-width: 639px) {
+    /* Keep Next clear of the sound button in the bottom corner */
+    .howto-nav { padding-right: 3.5rem; }
+  }
+  @media (max-height: 700px) {
+    .howto-art { height: min(38svh, 26rem); }
+  }
+  @media (min-width: 768px) {
+    .howto { padding: 2rem 1rem; }
+    .howto-art { border: 4px solid hsl(25 40% 16%); border-bottom: 0; border-radius: 14px 14px 0 0; }
+    .howto-card { border: 4px solid hsl(25 40% 16%); border-radius: 0 0 14px 14px; padding-bottom: 1.5rem; }
+  }
+
+  /* Bounty Office: the first job, and the places around town */
+  .is-first-job { box-shadow: 0 0 0 3px hsl(45 85% 55%), 4px 4px 0 hsl(25 40% 18% / 0.2); }
+  .first-job-tag {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 2px 10px 3px;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    color: hsl(25 40% 12%);
+    background: hsl(45 85% 52%);
+    border-bottom-left-radius: 6px;
+  }
+  .town-card { display: flex; flex-direction: column; color: hsl(25 40% 14%); background: hsl(38 35% 88%); text-decoration: none; transition: transform 0.15s; }
+  .town-card:hover { transform: translateY(-2px); }
+  .town-card-art { aspect-ratio: 3 / 2; }
+  .town-card-img { object-fit: cover; }
+  .town-card-text { display: flex; flex-direction: column; padding: 8px 10px 10px; }
+  .town-card-name { font-size: 1.1rem; }
+  .town-card-line { font-size: 0.8rem; color: hsl(25 25% 32%); }
+  @media (max-width: 639px) {
+    .town-card { flex-direction: row; }
+    .town-card-art { width: 38%; flex-shrink: 0; aspect-ratio: auto; min-height: 76px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .radio-dial,
+    .radio-needle,
+    .howto-steps span,
+    .town-card { transition: none !important; }
+    .radio-dial.is-on,
+    .title-presents,
+    .title-logo,
+    .license,
+    .license-stamp { animation: none !important; }
+  }
+}
+
 /* Elevation utilities */
 @layer utilities {
   input[type='search']::-webkit-search-cancel-button { @apply hidden; }

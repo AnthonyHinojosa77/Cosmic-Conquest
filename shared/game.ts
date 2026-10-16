@@ -117,6 +117,26 @@ export interface Suspect {
   description: string;
 }
 
+// The game's host: the radio announcer (the narrator's voice) who opens the show,
+// signs up new hunters and explains how a case works. Spoken by voice lines at
+// /api/voice/host/<id>; nothing here touches a case's answers.
+export const HOST_LINES = {
+  "intro-tune": "From the far reaches of tomorrow, through the crackle of the stars...",
+  "intro-title": "Sterling Atomic presents... Cosmic Conquest!",
+  "intro-tagline": "The adventures of the boldest bounty hunter in the spaceways!",
+  license: "And here's our hero now. Every hunter needs a name on the Guild register. What do they call you?",
+  "story-before": "Before your first job, listen close. This message is still playing on every radio in the solar system.",
+  "story-after": "Every dreamer, crook and bounty hunter is chasing that fortune now. Starting today, so are you.",
+  "how-office": "Jobs are posted at the Bounty Office. Pick one from the Wanted board.",
+  "how-search": "Then go looking. Tap the glowing spots in each place to search them. Every clue goes in your notebook.",
+  "how-puzzles": "Some clues fight back: coded telegrams, locked lockers, suspects who lie to your face. Crack them, and the case cracks too.",
+  "how-accuse": "Found enough clues? Name the culprit. Guess wrong and you'll be laughed out of the room, but you can always try again.",
+  "how-showdown": "Then it's a quick-draw. Wait for the call of DRAW, then tap fast. Too early or too slow, and you'll have to face them again.",
+  "how-reward": "Every job pays credits for gear at the Outfitters, and turns up a piece of Aurora Sterling's star map.",
+  "how-ready": "The Bounty Office is open, and your first job is on the board. Good hunting!",
+} as const;
+export type HostLine = keyof typeof HOST_LINES;
+
 // Aurora Sterling's last broadcast (shown on screen and spoken by her voice line).
 export const AURORA_BROADCAST = {
   intro: "This is Aurora Sterling.",
