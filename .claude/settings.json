@@ -1,0 +1,53 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_Notion__*",
+      "mcp__claude_ai_Linear__*",
+      "mcp__claude_ai_Slack__*",
+      "mcp__claude_ai_Airtable__*",
+      "mcp__claude_ai_Asana__*",
+      "mcp__claude_ai_Trello__*",
+      "mcp__claude_ai_ClickUp__*",
+      "mcp__claude_ai_Miro__*",
+      "mcp__claude_ai_monday_com__*",
+      "mcp__claude_ai_Atlassian_MCP__*"
+    ],
+    "ask": [
+      "mcp__claude_ai_Notion__notion-delete-pages",
+      "mcp__claude_ai_Notion__notion-delete-databases",
+      "mcp__claude_ai_Notion__notion-delete-comment",
+      "mcp__claude_ai_Notion__notion-update-data-source",
+      "mcp__claude_ai_Notion__notion-update-folder",
+      "mcp__claude_ai_Notion__notion-stop-session",
+      "mcp__claude_ai_Notion__notion-set-discussion-resolved",
+      "mcp__claude_ai_Airtable__delete_automation",
+      "mcp__claude_ai_Airtable__delete_interface",
+      "mcp__claude_ai_Airtable__delete_page",
+      "mcp__claude_ai_Airtable__delete_records_for_table",
+      "mcp__claude_ai_Airtable__delete_table",
+      "mcp__claude_ai_Asana__delete_task",
+      "mcp__claude_ai_Asana__update_tasks",
+      "mcp__claude_ai_Miro__canvas_update_from_svg",
+      "mcp__claude_ai_Miro__comment_resolve",
+      "mcp__claude_ai_monday_com__form_questions_editor",
+      "mcp__claude_ai_monday_com__manage_automations",
+      "mcp__claude_ai_monday_com__manage_agent",
+      "mcp__claude_ai_monday_com__all_monday_api",
+      "mcp__claude_ai_Atlassian_MCP__executeDestructive",
+      "mcp__claude_ai_Atlassian_MCP__executeWrite",
+      "mcp__claude_ai_Atlassian_MCP__deleteJiraIssue",
+      "mcp__claude_ai_Atlassian_MCP__deleteJiraComment",
+      "mcp__claude_ai_Atlassian_MCP__deleteJiraIssueAttachment",
+      "mcp__claude_ai_Atlassian_MCP__archiveConfluenceContent",
+      "mcp__claude_ai_Atlassian_MCP__manageJiraProjectVersion",
+      "mcp__claude_ai_Atlassian_MCP__manageJiraSprint",
+      "mcp__claude_ai_Atlassian_MCP__transitionJiraIssue",
+      "mcp__claude_ai_Atlassian_MCP__updateJsmOpsAlert",
+      "mcp__claude_ai_Atlassian_MCP__transitionJsmRequest",
+      "mcp__claude_ai_Atlassian_MCP__completeConfluenceTask",
+      "mcp__claude_ai_Atlassian_MCP__updateConfluenceCommentResolution",
+      "mcp__claude_ai_Atlassian_MCP__resolveBitbucketRepoPullRequestComment",
+      "mcp__claude_ai_Atlassian_MCP__setBitbucketRepoPullRequestTaskState"
+    ]
+  }
+}
