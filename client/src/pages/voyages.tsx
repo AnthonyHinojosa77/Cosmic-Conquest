@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { BackButton } from "@/components/BackButton";
+import { OfficeLink } from "@/components/OfficeLink";
 import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
 import type { Postcard } from "@shared/schema";
 import { HotspotHint } from "@/components/HotspotHint";
@@ -123,7 +123,7 @@ export default function Voyages() {
       {/* Scene header */}
       <header className="game-header bg-[hsl(220,30%,14%)]/80 border-[hsl(195,65%,38%)]">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <BackButton />
+          <OfficeLink />
           <h1 className="pulp-title text-xl md:text-2xl text-[hsl(45,80%,55%)] tracking-wider">
             Cosmic Voyages
           </h1>

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
-import { BackButton } from "@/components/BackButton";
+import { OfficeLink } from "@/components/OfficeLink";
 import type { Prediction } from "@shared/schema";
 import { HotspotHint } from "@/components/HotspotHint";
 import { Scene } from "@/components/Scene";
@@ -143,7 +143,7 @@ export default function Expo() {
       {/* Scene header */}
       <header className="game-header bg-[hsl(42,35%,16%)]/80 border-[hsl(45,80%,48%)]">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <BackButton />
+          <OfficeLink />
           <h1 className="pulp-title text-xl md:text-2xl text-[hsl(45,80%,55%)] tracking-wider">
             The Atomic Expo
           </h1>

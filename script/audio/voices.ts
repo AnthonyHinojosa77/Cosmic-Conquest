@@ -13,7 +13,7 @@
 import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { AURORA_BROADCAST, BOUNTIES } from "@shared/game";
+import { AURORA_BROADCAST, BOUNTIES, HOST_LINES } from "@shared/game";
 import { BOUNTY_SOLUTIONS, CLUES, TESTIMONY } from "../../server/bounties";
 import { aureliaFor } from "../../server/aurelia";
 
@@ -54,6 +54,8 @@ function lines(): Line[] {
       role: "aurora",
       text: `${AURORA_BROADCAST.intro} ${AURORA_BROADCAST.quote}`,
     },
+    // The host (the narrator's voice) opens the game and explains how to play
+    ...Object.entries(HOST_LINES).map(([id, text]) => ({ file: `host/${id}/line.mp3`, role: "narrator" as Role, text })),
   ];
   for (const b of BOUNTIES.filter((b) => b.available)) {
     if (b.briefing) out.push({ file: `briefing/${b.id}/line.mp3`, role: "narrator", text: b.briefing });

@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { BackButton } from "@/components/BackButton";
+import { OfficeLink } from "@/components/OfficeLink";
 import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
 import type { MenuItem } from "@shared/schema";
 import { HotspotHint } from "@/components/HotspotHint";
@@ -144,7 +144,7 @@ export default function Diner() {
       {/* Scene header */}
       <header className="game-header bg-[hsl(350,30%,14%)]/80 border-[hsl(45,80%,45%)]">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <BackButton />
+          <OfficeLink />
           <h1 className="pulp-title text-xl md:text-2xl text-[hsl(45,80%,55%)] tracking-wider">
             Astro Diner
           </h1>

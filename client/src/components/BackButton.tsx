@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 
+// Back to the start menu (the front of the game).
 export function BackButton() {
   return (
     <Link href="/">
@@ -8,7 +9,7 @@ export function BackButton() {
         data-testid="button-back"
       >
         <span className="text-lg">←</span>
-        <span>Back to Hub</span>
+        <span>Menu</span>
       </button>
     </Link>
   );

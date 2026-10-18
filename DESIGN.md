@@ -81,7 +81,7 @@ dependency being present). Keyframes and utility classes live in the
 | `.hotspot-indicator`       | `hotspot-pulse`| `2s ease-in-out infinite` (scale 1 → 1.4, opacity 0.7 → 1) | Pulsing "click me" hotspot marker |
 | `.hotspot` hover           | —              | `transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1)` | Hotspot highlight on hover         |
 | `.retro-btn` hover/active  | —              | `transition: all 0.15s` + translate + shadow shift  | Tactile "press" feedback on buttons  |
-| `animate-pulse` (Tailwind) | built-in       | default Tailwind pulse                              | "Online" status dot in the hub       |
+| `animate-pulse` (Tailwind) | built-in       | default Tailwind pulse                              | Loading placeholders                 |
 
 The signature easing curve is `cubic-bezier(0.16, 1, 0.3, 1)` (a soft "ease-out-expo"),
 used for both entrance slides and hotspot transitions.
@@ -92,7 +92,7 @@ Scenes are the screen, not framed pictures. Components (all in `client/src/compo
 
 | Component | What it does |
 | --------- | ------------ |
-| `Scene` | Edge-to-edge explorable art. Upright phones: drawn at ~1.85x the screen width and swiped sideways (native scrolling), centred on `focus`, with edge arrows (`‹ ›` plus a count of unsearched spots that way), a "Look closer" button that outlines unsearched spots for 2 s (recharges in 8 s), a ripple on taps that hit nothing, a one-time "Swipe to look around" tip and a 1.6 s establishing pan the first time a picture is shown. Wider screens: fits the column. `fit` never zooms (the hub's magazine cover). Hotspots are children positioned in % of the art and marked `data-unfound` while unsearched. |
+| `Scene` | Edge-to-edge explorable art. Upright phones: drawn at ~1.85x the screen width and swiped sideways (native scrolling), centred on `focus`, with edge arrows (`‹ ›` plus a count of unsearched spots that way), a "Look closer" button that outlines unsearched spots for 2 s (recharges in 8 s), a ripple on taps that hit nothing, a one-time "Swipe to look around" tip and a 1.6 s establishing pan the first time a picture is shown. Wider screens: fits the column. `fit` never zooms (for a picture that must be seen whole). Hotspots are children positioned in % of the art and marked `data-unfound` while unsearched. |
 | `SceneBackdrop` | The page behind takes the scene's colours: its tiny preview, blurred and darkened, fills the screen; crossfades between scenes. |
 | `Sheet` | Clue text and place descriptions slide up from the bottom over the scene (non-modal, Esc or ✕ closes). Centred card on wide screens. |
 | `ArtImage` | Portraits, cutouts and other pictures: blurred preview (or average colour), fade or slide in once decoded. |
@@ -110,6 +110,27 @@ instantly. `lib/art.ts` prefetches the next places, suspects and duel art in idl
 Ambient motion: a one-way 40 s drift (scale 1.04 → 1.07) on scenes, twinkling glints on
 unsearched spots (not constant pulsing), vignette and a soft fade into the page. All of it is
 listed in the reduced-motion block.
+
+## Opening screens (2026-10-11)
+
+The front of the game (`pages/title.tsx`) is an old-time radio show. Its screens sit on
+`.radio-night` (a dark room with a faint warm glow) or `.title-screen` (any screen with a
+`SceneBackdrop`):
+
+- **Radio set** (`.radio-set`): a walnut cabinet with a glowing dial whose needle sweeps
+  when it's on. The announcer's words appear under it as `.host-caption`, in quotes.
+- **Title card** (`.title-logo`): "Cosmic Conquest" slams in once (`titleSlam`), the only
+  big motion in the opening.
+- **Start menu**: the magazine cover at the top, then one gold primary button and two
+  teal secondary buttons in thumb reach.
+- **Hunter's License** (`components/HunterLicense.tsx`): a paper card with the hero's
+  photo; the name is written in Permanent Marker and stamped "Licensed" (`stampIn`).
+- **How to play** (`components/HowToPlay.tsx`): one picture over one paper card at a time,
+  centred over the picture's glow, with step bars, Back/Next and a Skip/Close pill.
+  The text box keeps room for three lines so the card doesn't jump between steps.
+
+`.title-skip` is the shared top-right pill for skipping or closing. Every animation above
+is in the reduced-motion block.
 
 ## Reduced motion
 

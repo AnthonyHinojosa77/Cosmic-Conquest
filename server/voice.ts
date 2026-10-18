@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import path from "path";
 import fs from "fs";
-import { invitedToAurelia } from "../shared/game.js";
+import { invitedToAurelia, HOST_LINES } from "../shared/game.js";
 import { liveBounty, clueOf } from "./gameRoutes.js";
 import { foundClues, showdownStartedAt, getProfile } from "./gameStorage.js";
 import { TESTIMONY } from "./bounties.js";
@@ -16,6 +16,8 @@ type Gate = (visitorId: string) => Promise<boolean>;
 
 function gateFor(scope: string, a: string, b?: string): Gate | null {
   if (scope === "aurora" && a === "broadcast" && !b) return async () => true;
+  // The host's lines say nothing about any case, so anyone may hear them
+  if (scope === "host" && !b && Object.hasOwn(HOST_LINES, a)) return async () => true;
   const bounty = liveBounty(a);
   if (scope === "briefing" && bounty && !b) return async () => true;
   if (scope === "clue" && bounty && b && clueOf(bounty, b)) {
