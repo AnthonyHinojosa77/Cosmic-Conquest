@@ -13,6 +13,8 @@ Ship each change through a pull request whose description says, in plain terms, 
 
 Before building or restyling any user interface, such as a web page, app screen, component, or dashboard, load the frontend-design skill, with the project's existing brand as its brief.
 
+In a project that has `BRIEFME.html`, read it before starting work there, and refresh it with the brief-me skill after any work that changes the project.
+
 Run the project's relevant checks and inspect the end-user result when appropriate. Distinguish a saved file, installed capability, successful invocation, and verified outcome. Use current primary sources for changing technical contracts. Verify a fact or capability against its current source before stating it and say how you know, or label it unverified or an inference; a capability counts as available only after it is checked on the owner's own plans, accounts, and costs, and no recommendation or approval request rests on an unchecked one.
 
 Delegate and review: use workers for implementation and a fresh independent reviewer for consequential deliverables. Select an available qualified reviewer under the owner's current policy and limits; never claim a review that did not occur. Workers consult current primary evidence when needed; reviewers inspect the final change and relevant checks. Resolve findings independently and continue until the authorized result is usable. Ask the owner only for an actual owner-only decision or action. Follow the repository's authorized delivery rules; this generic profile grants no new merge, push, publication or spending authority.
