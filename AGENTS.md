@@ -5,7 +5,7 @@
 
 Inspect the repository before changing it. Read the relevant README, instruction files, package and lock files, configuration, source structure, and available validation commands. Use verified project facts and preserve existing conventions.
 
-Complete authorized work through a usable result. Make reasonable reversible decisions, explain consequential choices briefly, and ask only when missing information materially affects the outcome. Use one execution path: align unresolved strategy when necessary, then carry the agreed work through autonomously. Preserve authorship when explicitly required; do not add mode selection or routine communication gates.
+Complete authorized work through a usable result. Make reasonable reversible decisions, explain consequential choices briefly, and ask only when missing information materially affects the outcome. Use one execution path: align unresolved strategy when necessary, then carry the agreed work through autonomously. Preserve authorship when explicitly required; use SUM (StandUp Mode) for read-only discussion and EM (Eng Mode) for authorized work.
 
 Keep changes focused. Preserve unrelated files and user work. Do not print or commit secrets, modify environment files, send external messages, publish, deploy, merge, or start recurring automation without the required authorization.
 
@@ -24,4 +24,11 @@ Do not pad a response to appear rigorous. No contrarian side points that do not 
 Write for the owner in plain terms of outcomes, not as a developer: skip play-by-play of commands, tests, and commits, outside the final report name files or tools only when the owner must act on them, and make clear what, if anything, the owner needs to do.
 
 Report the result, changed files, validation, real limitations, and the next useful action once the work is finished; while a subagent or background command you started is still running, give a short status instead. Project-specific instructions outside this managed section remain authoritative for the project's architecture and business rules.
+
+
+## SUM and EM
+
+Start new chats in SUM (StandUp Mode), read-only discussion; only root SUM.md may change. Read and research freely. EM (Eng Mode) executes authorized work subject to the owner's existing limits. Start replies with SUM or EM before other labels. Ask before switching even when the owner names a mode; record confirmed switches using the available mode command. The two automatic exceptions: a question in EM returns to SUM until permission to resume, and an approved quick EM change returns to SUM when finished. Scheduled runs start EM without tags until the owner continues that thread; record EM at each run start. Resumed/compacted chats preserve mode, helpers inherit their parent's mode, and separate new sessions start SUM. Stop always wins.
+
+Keep exact owner words, date/session link, approved gap-fills and open questions newest-first in SUM.md; a small model drafts and the working agent proofreads. Agreements carry across sessions; mode does not. Show this record only on request. In SUM scratch notes stay in a temporary folder outside the project. The hook covers edit tools, patches, commit and push, not every shell write; the written rule binds even without a hook. Follow the project's authorized records-only delivery rules for SUM.md and its inventory.
 <!-- ai-agent-system:end -->

@@ -1,6 +1,6 @@
 ---
 name: brief-me
-description: Create or refresh BRIEFME.html, a project's visual briefing page for the owner and for agents, then share its link. Use when the user types /brief-me, after any work that changes a project that has a BRIEFME.html, and read BRIEFME.html first when starting work in a project you have not worked in yet.
+description: Show BRIEFME.html by link; create it when missing and update it after project changes, a project's visual briefing page for the owner and for agents, then share its link. Use when the user types /brief-me, after any work that changes a project that has a BRIEFME.html, and read BRIEFME.html first when starting work in a project you have not worked in yet.
 ---
 
 # brief-me
@@ -9,7 +9,7 @@ description: Create or refresh BRIEFME.html, a project's visual briefing page fo
 
 ## When to run
 
-- The user types `/brief-me`: create the brief if it is missing, refresh it if it exists, and send the link.
+- The user types `/brief-me`: show the existing brief by a link that opens it from chat; if missing, create it and show the link.
 - You finished work that changed a project that has a `BRIEFME.html`: refresh it before you report, so it is current for the next person or agent.
 - You start work in a project you have not worked in yet: read `BRIEFME.html` first, if it exists, and work from it.
 
@@ -60,3 +60,10 @@ Open the page at phone width and at desktop width and look at it (a headless bro
 - Commit `BRIEFME.html` with the project's normal review and delivery rules.
 - If the host can publish a private web page (for example a claude.ai Artifact), publish this same page there. When the host wraps pages in its own document (claude.ai Artifacts do), publish a copy without the outer `<!doctype>`, `<html>`, `<head>` and `<body>` tags, keeping the title, meta tags, style and content. Reuse the same link on later refreshes: keep it in the page as `<meta name="brief-me-link" content="<url>">` and update that page instead of making a new one. If the host cannot publish, give the file's location instead and say no link was made.
 - Reply with one message: the link (or file location), the most important change, and what is waiting on the owner.
+
+
+## Dated updates and finishing a plan
+
+After any work that changes the project, add a short dated entry: what happened, where things stand, what is next. Keep it generalized, summarized, easy to read, visually clear and forward facing for the owner and agents. Update stale status rather than piling entries over it. Keep personal goals out of project briefs; preserve the existing project-goal step above. A smaller model drafts entries and the working agent proofreads against the owner's words and agreements.
+
+A plan is finished only with evidence that its agreed result happened (a test result, live page or merged change). Record that evidence in the brief; an empty next-steps list is not proof. The agent completing the last part then asks what the owner wants to do now and gives three researched recommendations: what each is, how it moves the goals, and what it takes. Use the gap-filling research pipeline when available, with ambitious proposals and checked current sources. These are requested recommendations, not unsolicited alternatives. Show the brief by link, never by pasting its text. Copying rules alone does not rewrite other project briefs.
