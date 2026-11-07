@@ -1,16 +1,13 @@
 import { useState } from "react";
 import { usePlayer, useStarMap } from "@/lib/game";
-import { BOUNTIES, MAP_FRAGMENTS, STAR_MAP_SIZE, fragmentsFor, numeral, type MapFragment } from "@shared/game";
+import { MAP_FRAGMENTS, STAR_MAP_SIZE, LIVE_CHART_COUNT, chartLine, fragmentsFor, numeral, type MapFragment } from "@shared/game";
 
 const NIGHT = "hsl(220,45%,13%)";
-
-// Fragments a live contract can turn up today; the sectors past them are still uncharted.
-const LIVE_FRAGMENT_COUNT = BOUNTIES.filter((b) => b.available && b.fragment).length;
 
 // Sterling's star map: the player's own fragments plus how far the whole community has got.
 export function StarMap() {
   const { data: player } = usePlayer();
-  const { data: status, isError } = useStarMap();
+  const { data: status, isError, refetch } = useStarMap();
   const [open, setOpen] = useState<MapFragment | null>(null);
 
   const mine = new Set(fragmentsFor(player?.completedBounties ?? []).map((f) => f.id));
@@ -62,7 +59,7 @@ export function StarMap() {
               >
                 <span className="pulp-title text-lg text-[hsl(210,25%,62%)] leading-none">{numeral(n)}</span>
                 <span className="text-[10px] leading-tight text-[hsl(210,25%,70%)]">
-                  {n <= LIVE_FRAGMENT_COUNT ? "Undiscovered — take a contract at the Bounty Office" : "Uncharted sector — future contracts"}
+                  {n <= LIVE_CHART_COUNT ? "Undiscovered — take a contract at the Bounty Office" : "Blank on this chart"}
                   {count > 0 && <span className="block mt-1">Recovered by {count} hunter{count === 1 ? "" : "s"}</span>}
                 </span>
               </div>
@@ -79,18 +76,22 @@ export function StarMap() {
 
         <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-[hsl(38,30%,85%)]">
           <span data-testid="text-map-mine">
-            <span className="pulp-title text-[hsl(45,80%,60%)]">You:</span> {mine.size} of {total} fragments
+            <span className="pulp-title text-[hsl(45,80%,60%)]">You:</span>{" "}
+            {chartLine(mine.size)}
           </span>
           <span data-testid="text-map-community">
             <span className="pulp-title text-[hsl(45,80%,60%)]">All hunters:</span>{" "}
             {status ? (
               <>
-                {status.fragments.filter((f) => f.hunters > 0).length} of {total} recovered
+                {status.fragments.filter((f) => f.hunters > 0).length} of {LIVE_CHART_COUNT} recovered on this chart
                 {" · "}
                 {status.searchers} hunter{status.searchers === 1 ? "" : "s"} on the trail
               </>
             ) : isError ? (
-              "the signal's down; try again soon"
+              <>
+                the signal's down.{" "}
+                <button className="underline" onClick={() => refetch()} data-testid="button-retry-star-map">Try again</button>
+              </>
             ) : (
               "tuning in…"
             )}

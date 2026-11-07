@@ -58,6 +58,8 @@ function lines(): Line[] {
   for (const b of BOUNTIES.filter((b) => b.available)) {
     if (b.briefing) out.push({ file: `briefing/${b.id}/line.mp3`, role: "narrator", text: b.briefing });
     for (const [id, clue] of Object.entries(CLUES[b.id] ?? {})) {
+      // The file on disk still says the old cocoa line. Do not treat it as current.
+      if (b.id === "saturn-orrery" && id === "guestbook") continue;
       out.push({ file: `clue/${b.id}/${id}.mp3`, role: "narrator", text: clue.text });
     }
     for (const [suspect, topics] of Object.entries(TESTIMONY[b.id] ?? {})) {
@@ -80,7 +82,7 @@ function lines(): Line[] {
   const MARK = "HUNTERNAME";
   for (const loc of aureliaFor(MARK, [])) {
     for (const spot of loc.spots) {
-      if (spot.id === "dispatch" || spot.text.includes(MARK) || /first case file|Recovered by/.test(spot.text)) continue;
+      if (spot.id === "dispatch" || spot.id === "board" || spot.text.includes(MARK) || /first case file|Recovered by/.test(spot.text)) continue;
       out.push({ file: `aurelia/${loc.id}/${spot.id}.mp3`, role: "narrator", text: spot.text });
     }
   }

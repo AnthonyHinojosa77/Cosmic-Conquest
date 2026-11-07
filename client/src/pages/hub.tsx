@@ -7,7 +7,7 @@ import { useTapWord } from "@/lib/device";
 import { Scene } from "@/components/Scene";
 import { SceneBackdrop } from "@/components/SceneBackdrop";
 import { usePlayer } from "@/lib/game";
-import { fragmentsFor, hunterRank, STAR_MAP_SIZE } from "@shared/game";
+import { BOUNTIES, chartLine, fragmentsFor, hunterRank, hubBadgeState } from "@shared/game";
 
 // The Bounty Office entrance, with the hunter's standing once they've started playing.
 function HunterDispatch() {
@@ -21,16 +21,14 @@ function HunterDispatch() {
             <span className="pulp-title text-[hsl(45,80%,60%)]">{player.callsign}</span>
             {" · "}{hunterRank(player.completedBounties.length).title}
             {" · "}💰 {player.credits.toLocaleString()} CR
-            {" · "}★ {fragmentsFor(player.completedBounties).length}/{STAR_MAP_SIZE} map fragments
+            {" · "}★ {chartLine(fragmentsFor(player.completedBounties).length)}
           </>
         ) : (
           <span className="marker-text">Aurora Sterling's fortune is out there among the stars. The Bounty Office is hiring.</span>
         )}
       </p>
-      <Link href="/bounties">
-        <button className="retro-btn gold w-full sm:w-auto py-3 text-base md:text-lg" data-testid="button-enter-bounties">
-          ★ Bounty Office — Take a job, hunter ★
-        </button>
+      <Link href="/bounties" className="retro-btn gold w-full sm:w-auto py-3 text-base md:text-lg text-center" data-testid="button-enter-bounties">
+        ★ Bounty Office — Take a job, hunter ★
       </Link>
     </div>
   );
@@ -82,9 +80,11 @@ function VisitorTicker({ visitors }: { visitors: Visitor[] }) {
 export default function Hub() {
   useMusic("hub");
   const tap = useTapWord();
+  const { data: player, isError: profileError, refetch: refetchProfile } = usePlayer();
   const [hoveredWorld, setHoveredWorld] = useState<string | null>(null);
+  const badge = hubBadgeState(player ?? null, profileError, BOUNTIES);
 
-  const { data: recentVisitors } = useQuery<Visitor[]>({
+  const { data: recentVisitors, isError: visitorsError, refetch: refetchVisitors } = useQuery<Visitor[]>({
     queryKey: ["/api/visitors"],
     refetchInterval: 8000,
   });
@@ -95,7 +95,7 @@ export default function Hub() {
       id: "voyages",
       path: "/voyages",
       title: "Cosmic Voyages",
-      subtitle: "Interplanetary Tourism Bureau",
+      subtitle: "Posters for the open contracts",
       // "Blast-off to the planets!" band of the magazine cover
       top: "19%", left: "3%", width: "94%", height: "20%",
     },
@@ -103,7 +103,7 @@ export default function Hub() {
       id: "expo",
       path: "/expo",
       title: "The Atomic Expo",
-      subtitle: "World's Fair of Tomorrow",
+      subtitle: "The Heart of Luna was stolen here",
       // "City of Tomorrow!" band
       top: "40%", left: "3%", width: "94%", height: "21%",
     },
@@ -111,7 +111,7 @@ export default function Hub() {
       id: "diner",
       path: "/diner",
       title: "Astro Diner",
-      subtitle: "Orbital Dining & Refreshments",
+      subtitle: "Cookie's diner, on the Luna job",
       // "Robot waitress of Space Diner!" band
       top: "62%", left: "3%", width: "94%", height: "34%",
     },
@@ -122,16 +122,39 @@ export default function Hub() {
       <SceneBackdrop src="./scenes/hub-cover.webp" />
       {/* Magazine masthead */}
       <header className="w-full text-center pb-2 px-4 relative z-10" style={{ paddingTop: "calc(1.5rem + env(safe-area-inset-top, 0px))" }}>
-        <div className="starburst-badge mx-auto mb-2" style={{ width: 48, height: 48, fontSize: "0.55rem" }}>
-          EXPLORE<br/>3 WORLDS
-        </div>
+        {badge.kind === "error" ? (
+          <button
+            type="button"
+            className="starburst-badge mx-auto mb-2"
+            style={{ width: 48, height: 48, fontSize: "0.42rem" }}
+            onClick={() => refetchProfile()}
+            aria-label="Hunter profile did not load. Try again"
+            data-testid="button-retry-jobs"
+          >
+            ?<br/>RETRY
+          </button>
+        ) : (
+          <div
+            className="starburst-badge mx-auto mb-2"
+            style={{ width: 48, height: 48, fontSize: badge.kind === "ready" && badge.figure === "REPLAY" ? "0.42rem" : "0.55rem" }}
+            data-testid="text-jobs-badge"
+          >
+            {badge.kind === "loading" ? <>…<br/>JOBS</> : <>{badge.figure}<br/>{badge.caption}</>}
+          </div>
+        )}
         <h1 className="pulp-title text-4xl md:text-6xl text-[hsl(45,80%,55%)] drop-shadow-lg tracking-wider">
           Cosmic Conquest
         </h1>
         <p className="marker-text text-[hsl(38,30%,75%)] text-sm md:text-base mt-1 tracking-wide">
-          A Social Voyage Through Tomorrow's Past
+          Take a bounty. Name the culprit. Draw.
         </p>
-        <VisitorTicker visitors={recentVisitors ?? []} />
+        {visitorsError && !recentVisitors ? (
+          <p className="text-xs text-[hsl(0,65%,65%)] mt-2" role="alert" data-testid="text-feed-error">
+            Couldn't load the arrivals. <button className="underline" onClick={() => refetchVisitors()}>Try again</button>
+          </p>
+        ) : (
+          <VisitorTicker visitors={recentVisitors ?? []} />
+        )}
       </header>
 
       {/* Magazine cover illustration with clickable panels */}
@@ -142,28 +165,23 @@ export default function Hub() {
 
           {/* Clickable world panels overlay */}
           {worlds.map((world) => (
-            <Link key={world.id} href={world.path}>
-              <div
-                className="hotspot"
-                role="button"
-                aria-label={`Enter ${world.title} — ${world.subtitle}`}
-                title={world.title}
-                style={{
-                  top: world.top,
-                  left: world.left,
-                  width: world.width,
-                  height: world.height,
-                }}
-                onMouseEnter={() => setHoveredWorld(world.id)}
-                onMouseLeave={() => setHoveredWorld(null)}
-                data-testid={`hotspot-world-${world.id}`}
-              >
-                {/* Pulsing indicator dot */}
-                <div
-                  className="hotspot-indicator"
-                  style={{ top: "82%", left: "50%" }}
-                />
-              </div>
+            <Link
+              key={world.id}
+              href={world.path}
+              className="hotspot"
+              aria-label={`Enter ${world.title} — ${world.subtitle}`}
+              title={world.title}
+              style={{
+                top: world.top,
+                left: world.left,
+                width: world.width,
+                height: world.height,
+              }}
+              onMouseEnter={() => setHoveredWorld(world.id)}
+              onMouseLeave={() => setHoveredWorld(null)}
+              data-testid={`hotspot-world-${world.id}`}
+            >
+              <div className="hotspot-indicator" style={{ top: "82%", left: "50%" }} />
             </Link>
           ))}
           </Scene>
@@ -178,6 +196,9 @@ export default function Hub() {
                   {worlds.find(w => w.id === hoveredWorld)?.title}
                 </span>
                 <span className="block text-[hsl(38,25%,65%)] text-xs mt-0.5">
+                  {worlds.find(w => w.id === hoveredWorld)?.subtitle}
+                </span>
+                <span className="block text-[hsl(38,25%,65%)] text-xs">
                   {tap} to enter
                 </span>
               </div>
@@ -188,13 +209,13 @@ export default function Hub() {
         {/* Bottom navigation strip — fallback / mobile-friendly */}
         <div className="grid grid-cols-3 gap-3 mt-4">
           {worlds.map((world) => (
-            <Link key={world.id} href={world.path}>
-              <button
-                className="retro-btn w-full text-center text-sm py-3"
-                data-testid={`button-enter-${world.id}`}
-              >
-                {world.title}
-              </button>
+            <Link
+              key={world.id}
+              href={world.path}
+              className="retro-btn w-full text-center text-sm py-3"
+              data-testid={`button-enter-${world.id}`}
+            >
+              {world.title}
             </Link>
           ))}
         </div>

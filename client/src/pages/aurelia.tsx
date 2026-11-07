@@ -5,9 +5,11 @@ import { SceneBackdrop } from "@/components/SceneBackdrop";
 import { Sheet } from "@/components/Sheet";
 import { prefetchArt } from "@/lib/art";
 import { useAurelia, errorMessage, AURELIA_KEY } from "@/lib/game";
+import { useDiscovered } from "@/lib/discovered";
 import { useMusic, useVoice } from "@/lib/sound";
 import { queryClient } from "@/lib/queryClient";
-import { AURELIA_INVITE_FRAGMENTS, type AureliaSpot } from "@shared/game";
+import { aureliaSpot } from "@/lib/votes";
+import { AURELIA_INVITE_FRAGMENTS } from "@shared/game";
 
 // Aurelia's own look: indigo night, silver and gold (Art Deco), on the same paper.
 const NIGHT = "hsl(240,40%,10%)";
@@ -49,15 +51,16 @@ function Gates({ message }: { message: string }) {
 export default function Aurelia() {
   const { data: locations, error, isLoading } = useAurelia();
   const [locationId, setLocationId] = useState<string | null>(null);
-  const [open, setOpen] = useState<AureliaSpot | null>(null);
-  const [seen, setSeen] = useState<Set<string>>(new Set());
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [seen, markSeen] = useDiscovered("aurelia");
 
   const location = locations?.find((l) => l.id === locationId) ?? locations?.[0];
+  const open = aureliaSpot(location?.spots, openId);
   useMusic("aurelia");
   useVoice(open && location ? `aurelia/${location.id}/${open.id}` : null);
   const refused = !locations && error ? refusal(error) : null;
   const failed = !locations && error && !refused ? errorMessage(error) : null;
-  const closeSpot = useCallback(() => setOpen(null), []);
+  const closeSpot = useCallback(() => setOpenId(null), []);
 
   return (
     <div className="game-page" style={{ background: NIGHT }}>
@@ -99,7 +102,7 @@ export default function Aurelia() {
                 onClick={() => {
                   if (l.id === location.id) return;
                   setLocationId(l.id);
-                  setOpen(null);
+                  setOpenId(null);
                 }}
                 data-testid={`button-aurelia-${l.id}`}
               >
@@ -122,8 +125,8 @@ export default function Aurelia() {
                     className="hotspot"
                     style={{ top: spot.top, left: spot.left, width: spot.width, height: spot.height }}
                     onClick={() => {
-                      setOpen(spot);
-                      setSeen((prev) => new Set(prev).add(`${location.id}/${spot.id}`));
+                      setOpenId(spot.id);
+                      markSeen(`${location.id}/${spot.id}`);
                     }}
                     aria-label={`Look at ${spot.label}`}
                     title={spot.label}
@@ -147,6 +150,7 @@ export default function Aurelia() {
               tone="hsl(245 45% 22%)"
               titleColor={GOLD}
               testId="panel-aurelia-spot"
+              returnFocusTo={`hotspot-aurelia-${open.id}`}
             >
               <p className="text-sm leading-relaxed animate-fade-in">{open.text}</p>
             </Sheet>

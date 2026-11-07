@@ -10,6 +10,10 @@ You're a helmeted space cowboy: a bounty hunter drifting across a 1950s-pulp
 solar system. You take jobs from the Bounty Office, travel to hand-drawn
 planets, find clues, name the culprit and settle it with a quick-draw
 showdown. Bounties pay credits; credits buy suits, gear and weapon upgrades.
+Act I is five live contracts. Together they pay 6,100 credits, which is the
+full Outfitters: three suits, the Lucky Ray-Gun, the Hair-Trigger Holster,
+the Guild Star, and the Red Bandana. The star map is twelve sectors; five
+are charted, and sectors VI–XII stay blank.
 
 - **Feel:** mostly exploring and solving (point-and-click), with short,
   simple action moments at the end of each job.
@@ -40,10 +44,10 @@ showdown. Bounties pay credits; credits buy suits, gear and weapon upgrades.
 | ----- | ---------- | ------ |
 | 1. First playable bounty | Bounty Office, "The Heart of Luna Heist", quick-draw showdown, credits, shop (suits, bandana, ray-gun), leaderboard, placeholder hero art | **Done** |
 | 2. Real art | ChatGPT-made hero poses (ready, firing, too slow), suspect portraits, Cookie showdown pose, showdown street and Bounty Office scenes | **Done** — plus a relaxed standing pose (Bounty Office) and every pose in red, teal and gold (2026-09-25) |
-| 3. The Sterling Legacy | The story hook (below), map fragments earned from bounties, a community tracker showing how close everyone is | **Built** — Aurora's broadcast (first Bounty Office visit, replay on the desk radio), a 12-piece star map with fragment I from the Heart of Luna, and the community count |
-| 4. Puzzles & RPG | Puzzles inside investigations (safes, circuits, coded telegrams, star charts), an inventory of found items used elsewhere, hunter rank, gadgets that help with puzzles, and conversations with suspects | **Started** — puzzles: coded telegram + decoder dial (Mars), combination lock from torn-note scraps (Venus), questioning suspects and catching lies with evidence (Saturn), finding a hiding place on a sea chart (Neptune); a satchel of items kept between bounties, and hunter rank (Greenhorn → Legend of the Spaceways) |
+| 3. The Sterling Legacy | The story hook (below), map fragments earned from bounties, a community tracker showing how close everyone is | **Built** — Aurora's broadcast (first Bounty Office visit, replay on the desk radio), a 12-piece star map with fragment I from the Heart of Luna, and the community count. Player-facing counts say "N of 5 on this chart"; sectors VI–XII stay blank. |
+| 4. Puzzles & RPG | Puzzles inside investigations (safes, circuits, coded telegrams, star charts), an inventory of found items used elsewhere, hunter rank, gadgets that help with puzzles, and conversations with suspects | **Started** — puzzles: coded telegram + decoder dial (Mars), combination lock from torn-note scraps (Venus), questioning suspects and catching lies with evidence (Saturn; Lady Ashgrove's lie is optional, and the guestbook counts as proof against Tuttle), finding a hiding place on a sea chart (Neptune); a satchel of items kept between bounties (the Brass Orrery Key opens the receipt lock on Aurelia's contracts board), and hunter rank (Greenhorn → Legend of the Spaceways; clearing the five live contracts reads as Act I charted). A collected contract replays from an empty notebook; it does not pay again and does not change the Clean Case seal. Saturn cannot be named until Tuttle's own lie is caught, and the notebook stays shut until the server agrees. The guestbook recording stays silent until it matches the new line |
 | 5. More worlds | Tomorrowland-style planets: Mars ("Rustlers of the Red Sands"), Venus ("The Venus Fog Phantom"), each with scenes, puzzles, a fragment and a showdown | **Mars, Venus, Saturn and Neptune built** (800 CR / II, 1,200 CR / III, 1,600 CR / IV, 2,000 CR / V; Neptune's art made and the bounty released 2026-09-29) |
-| 6. Deeper gear | Suits (**live**: red/teal/gold, worn in the office and in showdowns), weapons that change showdowns, gadgets, ship paint | Later |
+| 6. Deeper gear | Suits (**live**: red/teal/gold, worn in the office and in showdowns), weapons that change showdowns, gadgets, ship paint | **Started** — the Red Bandana (2,050 CR) forgives one jumpy draw and does not widen the window. The full Outfitters now costs the 6,100 CR the five contracts pay. Ray-gun and holster still only add draw time. |
 | 7. Co-op | Team up with friends on a bounty (shared clues, split reward) | Later, needs live multiplayer |
 
 ## Story bible: the Sterling Legacy
@@ -424,6 +428,10 @@ style reference; sources in the Drive folder.
   the first bounty pays 500 credits once, so a hunter can't buy everything
   from it (ray-gun 300 + gold suit 250 = 550). The better gear is a reason to
   keep exploring and take on new bounties as they arrive. Purchases are final.
+- **Act I spends what it pays.** Five live contracts pay 6,100 credits, and
+  the full Outfitters costs 6,100. A hunter who buys everything finishes at
+  zero. Replay does not pay again. The ray-gun and holster add draw time.
+  The Red Bandana forgives one early shot and does not change the painting.
 
 ## Hosting (2026-09-29)
 

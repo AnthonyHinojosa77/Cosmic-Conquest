@@ -11,13 +11,38 @@ export function getVisitorName(): string {
   return visitorName;
 }
 
-// Guard against duplicate visitor logs (React 18 StrictMode double-mount in dev)
-const loggedWorlds = new Set<string>();
+// A world is reserved while its arrival is in flight, and logged only after that request succeeds.
+export type VisitBook = { logged: Set<string>; pending: Set<string> };
+
+export function beginVisit(book: VisitBook, world: string): boolean {
+  if (book.logged.has(world) || book.pending.has(world)) return false;
+  book.pending.add(world);
+  return true;
+}
+
+export function settleVisit(book: VisitBook, world: string, ok: boolean): void {
+  book.pending.delete(world);
+  if (ok) book.logged.add(world);
+}
+
+const visits: VisitBook = { logged: new Set(), pending: new Set() };
 
 export function shouldLogVisit(world: string): boolean {
-  if (loggedWorlds.has(world)) return false;
-  loggedWorlds.add(world);
-  return true;
+  return beginVisit(visits, world);
+}
+
+export function finishVisit(world: string, ok: boolean): void {
+  settleVisit(visits, world, ok);
+}
+
+// Don't sign the log until the hunter's own callsign is loaded. A failed profile is not an Explorer number.
+export function arrivalName(
+  player: { callsign: string } | null,
+  pending: boolean,
+  failed: boolean,
+): string | null {
+  if (!player && (pending || failed)) return null;
+  return player?.callsign ?? null;
 }
 
 // Items this page session has voted on. The server's cookie-based check is the

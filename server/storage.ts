@@ -142,6 +142,18 @@ const SCHEMA = `
     \`started_at\` text NOT NULL
   );
   CREATE UNIQUE INDEX IF NOT EXISTS \`showdowns_visitor_bounty_unique\` ON \`showdowns\` (\`visitor_id\`,\`bounty_id\`);
+  CREATE TABLE IF NOT EXISTS \`duel_shots\` (
+    \`visitor_id\` text NOT NULL,
+    \`bounty_id\` text NOT NULL,
+    \`draw_at\` text NOT NULL,
+    \`won\` integer DEFAULT 0 NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS \`duel_shots_visitor_bounty_unique\` ON \`duel_shots\` (\`visitor_id\`,\`bounty_id\`);
+  CREATE TABLE IF NOT EXISTS \`replay_receipts\` (
+    \`visitor_id\` text NOT NULL,
+    \`bounty_id\` text NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS \`replay_receipts_visitor_bounty_unique\` ON \`replay_receipts\` (\`visitor_id\`,\`bounty_id\`);
   CREATE TABLE IF NOT EXISTS \`bounty_attempts\` (
     \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     \`visitor_id\` text NOT NULL,

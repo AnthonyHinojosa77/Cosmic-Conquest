@@ -20,10 +20,8 @@ export default function NotFound() {
             back to charted territory.
           </p>
         </div>
-        <Link href="/">
-          <button className="retro-btn gold text-lg" data-testid="button-404-home">
-            ★ Return to Hub ★
-          </button>
+        <Link href="/" className="retro-btn gold text-lg" data-testid="button-404-home">
+          ★ Return to Hub ★
         </Link>
         <p className="text-[hsl(38,20%,40%)] text-xs mt-6 marker-text tracking-widest uppercase">
           ★ The future isn't what it used to be ★

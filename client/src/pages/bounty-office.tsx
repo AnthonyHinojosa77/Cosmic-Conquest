@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { BackButton } from "@/components/BackButton";
 import { HeroArt, preloadHeroPoses } from "@/components/HeroArt";
 import { StarMap } from "@/components/StarMap";
@@ -10,7 +10,7 @@ import { InstallHint } from "@/components/InstallHint";
 import { useMusic } from "@/lib/sound";
 import { SterlingBroadcast, hasHeardBroadcast, markBroadcastHeard } from "@/components/SterlingBroadcast";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
-import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ITEMS, ownsSuit, hunterRank, fragmentsFor, isBountyUnlocked, lockedLabel, AURELIA_INVITE_FRAGMENTS } from "@shared/game";
+import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ITEMS, ownsSuit, hunterRank, rankLine, fragmentsFor, isBountyUnlocked, lockedLabel, AURELIA_INVITE_FRAGMENTS, creditsLabel, shopButtonLabel } from "@shared/game";
 
 const INK = "hsl(25,40%,15%)";
 const GOLD = "hsl(45,80%,42%)";
@@ -30,16 +30,16 @@ function HunterHonors({ starred, cleanCount }: { starred: boolean; cleanCount: n
   );
 }
 
-function CreditsBadge({ credits }: { credits: number }) {
+function CreditsBadge({ credits }: { credits: number | null }) {
   return (
     <div className="visitor-ticker text-base" data-testid="text-credits">
-      <span aria-hidden>💰</span> {credits.toLocaleString()} credits
+      <span aria-hidden>💰</span> {creditsLabel(credits)}
     </div>
   );
 }
 
 function HeroCard() {
-  const { data: player } = usePlayer();
+  const { data: player, isError, refetch } = usePlayer();
   const update = useUpdatePlayer();
   const changeSuit = useUpdatePlayer(); // separate state so errors show next to the right control
   const [callsign, setCallsign] = useState("");
@@ -53,6 +53,14 @@ function HeroCard() {
     if (player) setCallsign(player.callsign);
   }, [player?.callsign]);
 
+  if (isError && !player) {
+    return (
+      <p className="text-sm text-[hsl(0,65%,45%)]" role="alert" data-testid="text-hero-error">
+        Couldn't load your hunter.{" "}
+        <button className="underline" onClick={() => refetch()}>Try again</button>
+      </p>
+    );
+  }
   if (!player) return <div className="comic-panel bg-[hsl(38,35%,88%)] p-6 h-full animate-pulse" />;
 
   const trimmed = callsign.trim();
@@ -71,6 +79,9 @@ function HeroCard() {
       {player.owned.includes("holster") && (
         <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Hair-Trigger Holster on the hip</p>
       )}
+      {player.owned.includes("bandana") && (
+        <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Red bandana, gold star at the collar. The painting does not change. One early shot forgiven.</p>
+      )}
 
       {ownedSuits.length > 1 && (
         <div className="mt-3 flex items-center gap-2" role="group" aria-label="Suit" data-testid="picker-suit">
@@ -83,7 +94,7 @@ function HeroCard() {
               title={SUITS[s].name}
               disabled={changeSuit.isPending}
               onClick={() => player.suit !== s && changeSuit.mutate({ suit: s })}
-              className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
+              className="w-11 h-11 rounded-full border-2 transition-transform hover:scale-110"
               style={{
                 background: SUITS[s].color,
                 borderColor: SUITS[s].trim,
@@ -146,26 +157,45 @@ function HeroCard() {
 
 function RankBadge({ bounties }: { bounties: number }) {
   const rank = hunterRank(bounties);
+  const line = rankLine(bounties, BOUNTIES.filter((b) => b.available).length);
   return (
     <div className="text-center mt-2" data-testid="text-rank">
       <p className="pulp-title text-base text-[hsl(0,72%,40%)] tracking-wider">★ {rank.title}</p>
-      {rank.next && (
-        <p className="text-[11px] text-[hsl(25,15%,42%)]">
-          {rank.next.needed} more bount{rank.next.needed === 1 ? "y" : "ies"} to {rank.next.title}
-        </p>
+      {line && (
+        <p className="text-[11px] text-[hsl(25,15%,42%)]">{line}</p>
       )}
     </div>
   );
 }
 
 function BountyBoard() {
-  const { data: player } = usePlayer();
+  const { data: player, isPending, isError, refetch } = usePlayer();
+  const [, setLocation] = useLocation();
+  if (isPending && !player) {
+    return (
+      <section className="space-y-3" data-testid="panel-bounty-board">
+        <h2 className="pulp-title text-2xl text-[hsl(45,80%,55%)] tracking-wider">Wanted</h2>
+        <p className="text-sm text-[hsl(38,30%,75%)] marker-text">Checking the board…</p>
+      </section>
+    );
+  }
+  if (isError && !player) {
+    return (
+      <section className="space-y-3" data-testid="panel-bounty-board">
+        <h2 className="pulp-title text-2xl text-[hsl(45,80%,55%)] tracking-wider">Wanted</h2>
+        <p className="text-sm text-[hsl(0,65%,65%)]" role="alert" data-testid="text-board-error">
+          Couldn't load your hunter.{" "}
+          <button className="underline" onClick={() => refetch()}>Try again</button>
+        </p>
+      </section>
+    );
+  }
   return (
     <section className="space-y-3" data-testid="panel-bounty-board">
       <h2 className="pulp-title text-2xl text-[hsl(45,80%,55%)] tracking-wider">Wanted</h2>
       {BOUNTIES.map((b) => {
         const done = player?.completedBounties.includes(b.id);
-        const open = !player || isBountyUnlocked(b, player.completedBounties, player.startedBounties);
+        const open = isBountyUnlocked(b, player?.completedBounties ?? [], player?.startedBounties ?? []);
         return (
           <div
             key={b.id}
@@ -188,11 +218,13 @@ function BountyBoard() {
                     {lockedLabel(b)}
                   </span>
                 ) : (
-                  <Link href={`/bounty/${b.id}`}>
-                    <button className={`retro-btn text-sm ${done ? "teal" : ""}`} data-testid={`button-take-${b.id}`}>
-                      {done ? "✓ Collected — replay" : "Take the job"}
-                    </button>
-                  </Link>
+                  <button
+                    className={`retro-btn text-sm ${done ? "teal" : ""}`}
+                    data-testid={`button-take-${b.id}`}
+                    onClick={() => setLocation(`/bounty/${b.id}`)}
+                  >
+                    {done ? "✓ Collected — open" : "Take the job"}
+                  </button>
                 )}
               </div>
             </div>
@@ -228,9 +260,7 @@ function AureliaCard() {
               : `The private planet where Aurora Sterling's world lives in style. Hunters are admitted by invitation only: recover ${AURELIA_INVITE_FRAGMENTS} pieces of her star map to earn yours (you hold ${have}).`}
           </p>
           {!player ? null : invited ? (
-            <Link href="/aurelia">
-              <button className="retro-btn gold" data-testid="button-enter-aurelia">✦ Enter Aurelia</button>
-            </Link>
+            <Link href="/aurelia" className="retro-btn gold" data-testid="button-enter-aurelia">✦ Enter Aurelia</Link>
           ) : (
             <span className="pulp-title text-sm text-[hsl(45,80%,60%)]" data-testid="text-aurelia-locked">
               Invitation only · {have}/{AURELIA_INVITE_FRAGMENTS}
@@ -243,8 +273,9 @@ function AureliaCard() {
 }
 
 function Shop() {
-  const { data: player } = usePlayer();
+  const { data: player, isError, refetch } = usePlayer();
   const buy = useBuyItem();
+  const profileError = isError && !player;
   return (
     <section data-testid="panel-shop">
       <h2 className="pulp-title text-2xl text-[hsl(45,80%,55%)] tracking-wider">Outfitters</h2>
@@ -266,11 +297,17 @@ function Shop() {
               <p className="text-xs text-[hsl(25,30%,30%)] mt-1 flex-1">{item.description}</p>
               <button
                 className="retro-btn gold text-sm mt-2 self-start disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!player || item.comingSoon || owned || !affordable || buy.isPending}
-                onClick={() => buy.mutate(item.id)}
+                disabled={profileError ? buy.isPending : !player || item.comingSoon || owned || !affordable || buy.isPending}
+                onClick={() => profileError ? refetch() : buy.mutate(item.id)}
                 data-testid={`button-buy-${item.id}`}
               >
-                {item.comingSoon ? "Coming soon" : owned ? "✓ Owned" : affordable ? "Buy" : "Need more credits"}
+                {shopButtonLabel({
+                  comingSoon: !!item.comingSoon,
+                  playerReady: !!player,
+                  profileError,
+                  owned,
+                  affordable,
+                })}
               </button>
             </div>
           );
@@ -282,11 +319,18 @@ function Shop() {
 }
 
 function Leaderboard() {
-  const { data: board = [] } = useLeaderboard();
+  const { data: board = [], isError, refetch, isPending } = useLeaderboard();
   return (
     <section className="comic-panel bg-[hsl(38,35%,88%)] p-4" data-testid="panel-leaderboard">
       <h2 className="pulp-title text-xl tracking-wider" style={{ color: INK }}>Top Hunters</h2>
-      {board.length === 0 ? (
+      {isError && board.length === 0 ? (
+        <p className="text-sm text-[hsl(0,65%,45%)] mt-2" role="alert" data-testid="text-leaderboard-error">
+          Couldn't load the board.{" "}
+          <button className="underline" onClick={() => refetch()}>Try again</button>
+        </p>
+      ) : isPending && board.length === 0 ? (
+        <p className="text-sm text-[hsl(25,15%,42%)] mt-2 marker-text">Checking the board…</p>
+      ) : board.length === 0 ? (
         <p className="text-sm text-[hsl(25,15%,42%)] mt-2 marker-text">No bounties collected yet. Be the first!</p>
       ) : (
         <ol className="mt-2 space-y-1">
@@ -307,7 +351,8 @@ function Leaderboard() {
 }
 
 export default function BountyOffice() {
-  const { data: player } = usePlayer();
+  const { data: player, isError, refetch } = usePlayer();
+  const profileMissing = isError && !player;
   useMusic("office");
   // New hunters hear Aurora Sterling's broadcast once; the desk radio replays it.
   const [broadcast, setBroadcast] = useState(() => !hasHeardBroadcast());
@@ -322,7 +367,19 @@ export default function BountyOffice() {
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           <BackButton />
           <h1 className="pulp-title text-xl md:text-2xl text-[hsl(45,80%,58%)] tracking-wider">Bounty Office</h1>
-          <CreditsBadge credits={player?.credits ?? 0} />
+          {profileMissing ? (
+            <button
+              type="button"
+              className="visitor-ticker text-base"
+              onClick={() => refetch()}
+              aria-label="Hunter profile did not load. Try again"
+              data-testid="button-retry-credits"
+            >
+              {creditsLabel(null, true)}
+            </button>
+          ) : (
+            <CreditsBadge credits={player ? player.credits : null} />
+          )}
         </div>
       </header>
 

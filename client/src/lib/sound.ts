@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { API_BASE } from "@/lib/queryClient";
+import { dropVoiceOnPlayError, engineNeedsWake, musicOnVisibility, voiceOnVisibility } from "@/lib/votes";
 
 // Background music per place, plus character voice lines. Everything starts muted;
 // the player turns sound on with the button in the corner (browsers also require a
@@ -21,6 +22,7 @@ let hasVoices = false;
 let wanted: Track | null = null;
 let current: { track: Track; el: HTMLAudioElement; gain: GainNode | null } | null = null;
 let voice: HTMLAudioElement | null = null;
+let voiceHeld = false;
 let ctx: AudioContext | null = null;
 const listeners = new Set<() => void>();
 
@@ -42,7 +44,7 @@ function audioContext(): AudioContext | null {
     if (!Ctor) return null;
     ctx = new Ctor();
   }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  if (engineNeedsWake(ctx.state)) ctx.resume().catch(() => {});
   return ctx;
 }
 
@@ -139,6 +141,42 @@ for (const type of ["pointerdown", "keydown"]) {
   });
 }
 
+// A locked phone or a switched app pauses the track and any line being spoken.
+document.addEventListener("visibilitychange", () => {
+  const hidden = document.visibilityState === "hidden";
+  const voiceAction = voiceOnVisibility(hidden, hidden ? !!voice && !voice.paused : voiceHeld);
+  const action = musicOnVisibility(hidden, current !== null);
+  if (voiceAction === "pause" && voice) {
+    voice.pause();
+    voiceHeld = true;
+  }
+  if (action === "pause") {
+    current?.el.pause();
+    return;
+  }
+  if (voiceAction === "resume" && voice) {
+    voiceHeld = false;
+    const line = voice;
+    line.play().catch(() => {
+      if (!dropVoiceOnPlayError(voiceHeld) && voice === line) return;
+      if (voice === line) stopVoice();
+    });
+  }
+  if (!enabled) return;
+  if (ctx && engineNeedsWake(ctx.state)) ctx.resume().catch(() => {});
+  if (action === "start") {
+    sync();
+    return;
+  }
+  const m = current;
+  if (!m) return;
+  m.el.play()
+    .then(() => current === m && level(voice ? DUCKED_VOLUME : MUSIC_VOLUME, m))
+    .catch(() => {
+      if (current === m) current = null;
+    });
+});
+
 export function setSoundOn(on: boolean) {
   enabled = on;
   try {
@@ -180,6 +218,7 @@ export function useMusic(track: Track | null) {
 }
 
 export function stopVoice() {
+  voiceHeld = false;
   if (voice) {
     voice.pause();
     voice = null;
@@ -200,7 +239,10 @@ export function playVoice(path: string) {
   el.addEventListener("playing", () => voice === el && level(DUCKED_VOLUME)); // dip only once it really plays
   el.addEventListener("ended", done);
   el.addEventListener("error", done);
-  el.play().catch(done);
+  el.play().catch(() => {
+    if (!dropVoiceOnPlayError(voiceHeld) && voice === el) return;
+    done();
+  });
 }
 
 // Speak a line when the calling component shows it; stop when it goes away.

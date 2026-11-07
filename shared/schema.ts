@@ -145,6 +145,24 @@ export const clueFinds = sqliteTable("clue_finds", {
   uniqueIndex("clue_finds_visitor_bounty_clue_unique").on(table.visitorId, table.bountyId, table.clueId),
 ]);
 
+// The server's record of a draw. Claim pays only after this row says the shot landed.
+export const duelShots = sqliteTable("duel_shots", {
+  visitorId: text("visitor_id").notNull(),
+  bountyId: text("bounty_id").notNull(),
+  drawAt: text("draw_at").notNull(),
+  won: integer("won").notNull().default(0),
+}, (table) => [
+  uniqueIndex("duel_shots_visitor_bounty_unique").on(table.visitorId, table.bountyId),
+]);
+
+// A finished replay whose showdown row is gone. A lost claim response can be retried.
+export const replayReceipts = sqliteTable("replay_receipts", {
+  visitorId: text("visitor_id").notNull(),
+  bountyId: text("bounty_id").notNull(),
+}, (table) => [
+  uniqueIndex("replay_receipts_visitor_bounty_unique").on(table.visitorId, table.bountyId),
+]);
+
 // When a hunter named the right suspect and stepped into the showdown
 export const showdowns = sqliteTable("showdowns", {
   id: integer("id").primaryKey({ autoIncrement: true }),

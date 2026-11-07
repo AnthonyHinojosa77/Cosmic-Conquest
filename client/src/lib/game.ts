@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
-import type { PlayerProfile, LeaderboardEntry, SuitId, CaseSolution, StarMapStatus, BountyProgress, ClueSearch, AureliaLocation } from "@shared/game";
+import { arrivalName, finishVisit, shouldLogVisit } from "@/lib/visitor";
+import { BOUNTIES, closeReplayDuel, readyWithoutInterview, withAccusation, withCaught, type PlayerProfile, type LeaderboardEntry, type SuitId, type CaseSolution, type StarMapStatus, type BountyProgress, type ClueSearch, type AureliaLocation } from "@shared/game";
+import { nameAfterReset } from "@/lib/votes";
 
 export const PLAYER_KEY = ["/api/player"];
 export const LEADERBOARD_KEY = ["/api/leaderboard"];
@@ -16,31 +17,42 @@ export function usePlayer() {
 // The social worlds use the hunter's callsign as their name: it signs the arrival log
 // (once the profile has loaded) and pre-fills the form until the visitor types their own.
 export function useCallsignName(world: string) {
-  const { data: player, isLoading } = usePlayer();
+  const { data: player, isLoading, isPending, isError } = usePlayer();
   const [name, setNameState] = useState("");
   const edited = useRef(false);
+  const signed = arrivalName(player ?? null, isPending || isLoading, isError);
 
   useEffect(() => {
-    if (isLoading || !shouldLogVisit(world)) return;
+    if (!signed || !shouldLogVisit(world)) return;
     apiRequest("POST", "/api/visitors", {
-      visitorName: player?.callsign || getVisitorName(),
+      visitorName: signed,
       world,
       action: "arrived at",
-    }).catch(() => {});
-  }, [isLoading]);
+    }).then(() => {
+      finishVisit(world, true);
+      queryClient.invalidateQueries({ queryKey: ["/api/visitors"] });
+    }).catch(() => {
+      finishVisit(world, false);
+    });
+  }, [signed, world]);
 
   useEffect(() => {
     if (!edited.current && player?.callsign) setNameState(player.callsign);
   }, [player?.callsign]);
 
+  const latestName = useRef(name);
+  latestName.current = name;
+  const callsign = useRef(player?.callsign);
+  callsign.current = player?.callsign;
   const setName = (value: string) => {
     edited.current = true;
     setNameState(value);
   };
-  // After a successful submission
+  // After a successful submission. No profile yet: keep the name they typed.
   const resetName = () => {
-    edited.current = false;
-    setNameState(player?.callsign ?? "");
+    const next = nameAfterReset(latestName.current, callsign.current);
+    edited.current = next.edited;
+    setNameState(next.name);
   };
   return { name, setName, resetName };
 }
@@ -93,15 +105,79 @@ export function useBuyItem() {
   });
 }
 
+// Testimony text is not in the progress record. Keep it for this visit so a tab change
+// does not make the hunter ask again. A replay drops that bounty’s lines.
+const heardLines = new Map<string, string>();
+
+export function heardFor(bountyId: string): Record<string, string> {
+  const prefix = `${bountyId}/`;
+  const lines: Record<string, string> = {};
+  heardLines.forEach((text, key) => {
+    if (key.startsWith(prefix)) lines[key.slice(prefix.length)] = text;
+  });
+  return lines;
+}
+
+export function keepLine(bountyId: string, suspect: string, topic: string, text: string) {
+  heardLines.set(`${bountyId}/${suspect}/${topic}`, text);
+}
+
+export function forgetLines(bountyId: string) {
+  const prefix = `${bountyId}/`;
+  const drop: string[] = [];
+  heardLines.forEach((_text, key) => {
+    if (key.startsWith(prefix)) drop.push(key);
+  });
+  drop.forEach((key) => heardLines.delete(key));
+}
+
+// Open a collected case again. The notebook comes back empty. The payout and seal stay.
+export async function replayBounty(bountyId: string): Promise<void> {
+  await apiRequest("POST", `/api/bounties/${bountyId}/replay`);
+  forgetLines(bountyId);
+  const key = progressKey(bountyId);
+  await queryClient.cancelQueries({ queryKey: key });
+  queryClient.setQueryData<BountyProgress>(key, { found: {}, canAccuse: false, needsLie: false });
+  queryClient.invalidateQueries({ queryKey: key });
+}
+
 // Name a suspect with a found clue as proof. Returns the case solution (showdown + outro)
 // when both are right, else null (a wrong guess costs the Clean Case seal, never credits).
 export async function accuse(bountyId: string, suspect: string, proof: string): Promise<CaseSolution | null> {
   const res = await apiRequest("POST", `/api/bounties/${bountyId}/accuse`, { suspect, proof });
   const body = await res.json();
-  return body.correct ? { showdown: body.showdown, outro: body.outro } : null;
+  if (!body.correct) return null;
+  const solution: CaseSolution = { showdown: body.showdown, outro: body.outro };
+  await rememberAccusation(bountyId, suspect, solution);
+  return solution;
+}
+
+// The progress query does not refetch on its own, so a correct name has to be written
+// into the cache or "Back to the showdown" disappears until a full reload.
+// Cancel first: an older progress response can still be in flight, and infinite
+// freshness would keep that response and drop the showdown.
+export async function rememberAccusation(bountyId: string, suspect: string, solution: CaseSolution) {
+  const key = progressKey(bountyId);
+  await queryClient.cancelQueries({ queryKey: key });
+  queryClient.setQueryData<BountyProgress>(key, (p) => {
+    if (!p) return p;
+    const player = queryClient.getQueryData<PlayerProfile>(PLAYER_KEY);
+    const replayDuel = p.replayDuel === true || (player?.completedBounties.includes(bountyId) ?? false);
+    return withAccusation(p, suspect, solution, replayDuel);
+  });
+  await queryClient.invalidateQueries({ queryKey: key });
 }
 
 export type ClaimOutcome = "paid" | "already_claimed";
+
+export function openDraw(bountyId: string): Promise<Response> {
+  return apiRequest("POST", `/api/bounties/${bountyId}/draw`);
+}
+
+export async function landShot(bountyId: string): Promise<{ won: boolean }> {
+  const res = await apiRequest("POST", `/api/bounties/${bountyId}/shot`);
+  return res.json();
+}
 
 export async function claimBounty(bountyId: string, suspect: string): Promise<ClaimOutcome> {
   try {
@@ -109,7 +185,15 @@ export async function claimBounty(bountyId: string, suspect: string): Promise<Cl
     onProfile(await res.json());
     return "paid";
   } catch (err) {
-    if (err instanceof Error && err.message.startsWith("409")) return "already_claimed";
+    // Only a real second payout is "already collected". Other 409s
+    // ("Win the showdown first", "Name the culprit before you collect") stay errors.
+    if (err instanceof Error && err.message.startsWith("409") && err.message.includes("Bounty already collected")) {
+      const key = progressKey(bountyId);
+      await queryClient.cancelQueries({ queryKey: key });
+      queryClient.setQueryData<BountyProgress>(key, (p) => (p ? closeReplayDuel(p) : p));
+      queryClient.invalidateQueries({ queryKey: key });
+      return "already_claimed";
+    }
     throw err;
   }
 }
@@ -124,19 +208,29 @@ export function useProgress(bountyId: string | null) {
 
 // Show the find right away, then re-read the server's record (so an older in-flight
 // progress response can't wipe it out).
-async function addFound(bountyId: string, clueId: string, text: string) {
+async function addFound(bountyId: string, clueId: string, text: string, caught?: { suspect: string; topic: string }) {
   const key = progressKey(bountyId);
   await queryClient.cancelQueries({ queryKey: key });
-  queryClient.setQueryData<BountyProgress>(key, (p) =>
-    ({ ...(p ?? { found: {} }), found: { ...(p?.found ?? {}), [clueId]: text } }));
+  queryClient.setQueryData<BountyProgress>(key, (p) => {
+    const found = { ...(p?.found ?? {}), [clueId]: text };
+    const ready = readyWithoutInterview(BOUNTIES.find((b) => b.id === bountyId), found);
+    const canAccuse = ready === null ? (p?.canAccuse ?? false) : ready;
+    const next: BountyProgress = { ...(p ?? { found, canAccuse, needsLie: false }), found, canAccuse, needsLie: p?.needsLie ?? false };
+    return caught ? withCaught(next, caught.suspect, caught.topic, clueId) : next;
+  });
   queryClient.invalidateQueries({ queryKey: key });
+}
+
+// A searched spot can put an item in the satchel, which Aurelia reads on the next visit.
+export function cachesAfterSearch(): (typeof PLAYER_KEY | typeof AURELIA_KEY)[] {
+  return [PLAYER_KEY, AURELIA_KEY];
 }
 
 // Search a spot; the server records it and returns the clue (and may add an item to the satchel).
 export async function searchClue(bountyId: string, clueId: string): Promise<ClueSearch> {
   const result = (await (await apiRequest("POST", `/api/bounties/${bountyId}/clues/${clueId}/search`)).json()) as ClueSearch;
   if (result.text !== undefined) await addFound(bountyId, clueId, result.text);
-  queryClient.invalidateQueries({ queryKey: PLAYER_KEY }); // an item may have been found
+  cachesAfterSearch().forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
   return result;
 }
 
@@ -168,7 +262,7 @@ export async function presentClue(
 ): Promise<{ correct: false } | { correct: true; id: string; text: string }> {
   const body = await (await apiRequest("POST", `/api/bounties/${bountyId}/suspects/${suspect}/ask/${topic}/present`, { clue })).json();
   if (body.correct) {
-    await addFound(bountyId, body.id, body.text); // re-reads progress, which now lists this caught lie
+    await addFound(bountyId, body.id, body.text, { suspect, topic });
   }
   return body;
 }

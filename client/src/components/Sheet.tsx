@@ -11,6 +11,7 @@ export function Sheet({
   tone = "hsl(0 72% 48%)",
   titleColor,
   testId,
+  returnFocusTo,
 }: {
   title: React.ReactNode;
   onClose: () => void;
@@ -18,16 +19,23 @@ export function Sheet({
   tone?: string;
   titleColor?: string;
   testId?: string;
+  // The hotspot that last opened this card. Updated when the card swaps contents.
+  returnFocusTo?: string;
 }) {
   const body = useRef<HTMLDivElement>(null);
   // Drag the header down to put the card away (phones)
   const drag = useRef<{ y: number; id: number } | null>(null);
   const [dy, setDy] = useState(0);
+  const returnTo = useRef(returnFocusTo);
+  returnTo.current = returnFocusTo;
 
-  // Closing hands keyboard focus back to the hotspot (or button) that opened the card
+  // Closing hands keyboard focus back to the hotspot that last opened the card
   useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
+    const fallback = document.activeElement as HTMLElement | null;
     return () => {
+      const id = returnTo.current;
+      const named = id ? document.querySelector(`[data-testid="${id}"]`) : null;
+      const opener = named instanceof HTMLElement ? named : fallback;
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
   }, []);

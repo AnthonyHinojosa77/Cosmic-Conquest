@@ -11,7 +11,7 @@ import type { AddressInfo } from "net";
 const dbDir = mkdtempSync(path.join(tmpdir(), "cosmic-conquest-test-"));
 process.env.DATABASE_PATH = path.join(dbDir, "test.db");
 process.env.AUDIO_DIR = path.join(dbDir, "voice");
-for (const f of ["briefing/red-sands/line.mp3", "testimony/saturn-orrery/tuttle--night.mp3", "clue/red-sands/telegram.mp3", "taunt/red-sands/line.mp3", "aurora/broadcast/line.mp3", "aurelia/tower/lilies.mp3", "testimony/saturn-orrery/ashgrove--money.mp3", "breakthrough/saturn-orrery/breakthrough-1.mp3"]) {
+for (const f of ["briefing/red-sands/line.mp3", "testimony/saturn-orrery/tuttle--night.mp3", "clue/red-sands/telegram.mp3", "taunt/red-sands/line.mp3", "taunt/heart-of-luna/line.mp3", "outro/heart-of-luna/line.mp3", "aurora/broadcast/line.mp3", "aurelia/tower/lilies.mp3", "testimony/saturn-orrery/ashgrove--money.mp3", "breakthrough/saturn-orrery/breakthrough-1.mp3"]) {
   mkdirSync(path.dirname(path.join(dbDir, "voice", f)), { recursive: true });
   writeFileSync(path.join(dbDir, "voice", f), "fake mp3");
 }
@@ -103,8 +103,21 @@ async function proofFor(bountyId: string): Promise<string> {
 async function solve(bountyId: string, suspect: string, cookie: string) {
   await investigate(bountyId, cookie);
   await post(`/api/bounties/${bountyId}/accuse`, { suspect, proof: await proofFor(bountyId) }, cookie);
-  await wait(850); // the showdown
+  await winDuel(bountyId, cookie);
   return post(`/api/bounties/${bountyId}/claim`, { suspect }, cookie);
+}
+
+// The server pays only after it has recorded a shot inside the draw window.
+async function winDuel(bountyId: string, cookie: string) {
+  let draw = await post(`/api/bounties/${bountyId}/draw`, {}, cookie);
+  if (draw.status === 409) {
+    await wait(850);
+    draw = await post(`/api/bounties/${bountyId}/draw`, {}, cookie);
+  }
+  assert.equal(draw.status, 200, `${bountyId} draw`);
+  const shot = await post(`/api/bounties/${bountyId}/shot`, {}, cookie);
+  assert.equal(shot.status, 200, `${bountyId} shot`);
+  assert.equal((await shot.json()).won, true);
 }
 
 function cookieOf(res: Response): string {
@@ -212,6 +225,10 @@ test("game: full bounty loop — accuse, claim once, buy, equip, leaderboard", a
   // Too soon after naming him: the showdown can't be over yet
   assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 409);
   await wait(850);
+  const waited = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  assert.equal(waited.status, 409);
+  assert.match((await waited.json()).error, /Win the showdown first/);
+  await winDuel("heart-of-luna", cookie);
   const paid = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
   assert.equal(paid.status, 200);
   const afterClaim = await paid.json();
@@ -318,7 +335,7 @@ test("game: Mars bounty pays 800 to the right suspect and turns up fragment II",
   assert.equal(right.showdown.scene, "./game/showdown-street-mars.webp");
   const resumed = await (await fetch(base + "/api/bounties/red-sands/progress", { headers: { Cookie: cookie } })).json();
   assert.equal(resumed.accused.suspect, "quill"); // lets a refresh go back to the duel
-  await wait(850);
+  await winDuel("red-sands", cookie);
   const paid = await (await post("/api/bounties/red-sands/claim", { suspect: "quill" }, cookie)).json();
   assert.equal(paid.credits, 800);
   const map = await (await fetch(base + "/api/star-map")).json();
@@ -420,10 +437,24 @@ test("game: every hotspot has server clue text, and coded clues have a key", asy
 });
 
 test("game: hunter rank and the telegram cipher", async () => {
-  const { hunterRank, shiftLetters, bountyById } = await import("../shared/game.js");
+  const { hunterRank, rankLine, chartLine, duelPress, shiftLetters, bountyById } = await import("../shared/game.js");
   assert.equal(hunterRank(0).title, "Greenhorn");
   assert.deepEqual(hunterRank(1), { title: "Deputy", next: { title: "Marshal", needed: 1 } });
   assert.equal(hunterRank(99).next, undefined);
+  assert.equal(rankLine(0, 5), "1 more bounty to Deputy");
+  assert.equal(rankLine(4, 5), "1 contract left on this chart.");
+  assert.match(rankLine(5, 5)!, /Act I charted/);
+  assert.equal(chartLine(0, 5), "0 of 5 on this chart.");
+  assert.equal(chartLine(4, 5), "4 of 5 on this chart.");
+  assert.equal(chartLine(5, 5), "Act I charted. 5 of 5 on this chart.");
+  assert.equal(chartLine(9, 5), "Act I charted. 5 of 5 on this chart.");
+  const pardoned = duelPress("waiting", true, 0, 500);
+  assert.equal(pardoned.state, "steady");
+  assert.equal(pardoned.pardon, false);
+  assert.equal(duelPress("steady", false, 0, 500).state, "early");
+  assert.equal(duelPress("waiting", false, 0, 500).state, "early");
+  assert.equal(duelPress("draw", false, 400, 500).won, true);
+  assert.equal(duelPress("draw", false, 600, 500).state, "slow");
   assert.equal(shiftLetters(shiftLetters("RAIN-MAKERS, Q.", 2), -2), "RAIN-MAKERS, Q.");
   assert.equal(shiftLetters("XYZ", 2), "ZAB");
   const { CLUES } = await import("./bounties.js");
@@ -485,8 +516,61 @@ test("game: questioning suspects: topics unlock with clues, and the right clue c
   assert.ok(progress.found[caught.id].includes("stepped out"));
   assert.deepEqual(progress.caught, { "tuttle/night": caught.id }); // survives leaving the tab or reloading
 
-  // Still can't accuse without every clue and both breakthroughs
+  // Two clues and one lie are not enough to name anyone
   assert.equal((await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "telescope" }, cookie)).status, 409);
+});
+
+test("game: Saturn can be closed without Lady Ashgrove's lie", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  await unlock("saturn-orrery", cookie);
+  for (const id of ["orrery", "telescope", "guestbook", "table", "galley", "luggage"]) {
+    assert.equal((await post(`/api/bounties/saturn-orrery/clues/${id}/search`, {}, cookie)).status, 200);
+  }
+  const caught = await post("/api/bounties/saturn-orrery/suspects/tuttle/ask/night/present", { clue: "telescope" }, cookie);
+  assert.equal((await caught.json()).correct, true);
+  const named = await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "telescope" }, cookie);
+  assert.equal((await named.json()).correct, true);
+});
+
+test("game: Saturn stays shut until Tuttle's own lie is caught", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  await unlock("saturn-orrery", cookie);
+  for (const id of ["orrery", "telescope", "guestbook", "table", "galley", "luggage"]) {
+    assert.equal((await post(`/api/bounties/saturn-orrery/clues/${id}/search`, {}, cookie)).status, 200);
+  }
+  const ashgrove = await post("/api/bounties/saturn-orrery/suspects/ashgrove/ask/money/present", { clue: "guestbook" }, cookie);
+  assert.equal((await ashgrove.json()).correct, true);
+  assert.equal((await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "guestbook" }, cookie)).status, 409);
+  const held = await (await fetch(base + "/api/bounties/saturn-orrery/progress", { headers: { Cookie: cookie } })).json();
+  assert.equal(held.canAccuse, false);
+  assert.equal(held.needsLie, true);
+  const tuttle = await post("/api/bounties/saturn-orrery/suspects/tuttle/ask/night/present", { clue: "guestbook" }, cookie);
+  assert.equal((await tuttle.json()).correct, true);
+  const named = await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "guestbook" }, cookie);
+  assert.equal((await named.json()).correct, true);
+  const open = await (await fetch(base + "/api/bounties/saturn-orrery/progress", { headers: { Cookie: cookie } })).json();
+  assert.equal(open.canAccuse, true);
+  assert.equal(open.needsLie, false);
+  mkdirSync(path.join(process.env.AUDIO_DIR!, "clue/saturn-orrery"), { recursive: true });
+  writeFileSync(path.join(process.env.AUDIO_DIR!, "clue/saturn-orrery/guestbook.mp3"), "left it on the bench");
+  assert.equal((await fetch(`${base}/api/voice/clue/saturn-orrery/guestbook`, { headers: { Cookie: cookie } })).status, 404);
+});
+
+test("game: a clue that points at the culprit counts as proof", async () => {
+  const venus = cookieOf(await fetch(base + "/api/player"));
+  await investigate("venus-fog", venus);
+  const orchids = await post("/api/bounties/venus-fog/accuse", { suspect: "vance", proof: "orchids" }, venus);
+  assert.equal((await orchids.json()).correct, true);
+
+  const mars = cookieOf(await fetch(base + "/api/player"));
+  await investigate("red-sands", mars);
+  const pad = await post("/api/bounties/red-sands/accuse", { suspect: "quill", proof: "pad" }, mars);
+  assert.equal((await pad.json()).correct, true);
+
+  const saturn = cookieOf(await fetch(base + "/api/player"));
+  await investigate("saturn-orrery", saturn);
+  const book = await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "guestbook" }, saturn);
+  assert.equal((await book.json()).correct, true);
 });
 
 test("game: Saturn bounty pays 1600 and turns up fragment IV", async () => {
@@ -544,7 +628,7 @@ test("game: Neptune bounty pays 2000 and turns up fragment V", async () => {
   assert.deepEqual(await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "sonar" }, cookie)).json(), { correct: false });
   const right = await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door" }, cookie)).json();
   assert.equal(right.showdown.scene, "./game/showdown-promenade-neptune.webp");
-  await wait(850);
+  await winDuel("neptune-deep", cookie);
   const paid = await post("/api/bounties/neptune-deep/claim", { suspect: "coralie" }, cookie);
   assert.equal(paid.status, 200);
   assert.equal((await paid.json()).credits, 2000);
@@ -781,7 +865,7 @@ test("Clean Case: earned with no wrong accusations, lost with one, kept through 
   await investigate("heart-of-luna", sloppy);
   assert.deepEqual(await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "dome" }, sloppy)).json(), { correct: false });
   await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "dome" }, sloppy);
-  await wait(850);
+  await winDuel("heart-of-luna", sloppy);
   const sloppyPaid = await (await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, sloppy)).json();
   assert.equal(sloppyPaid.cleanBounties.includes("heart-of-luna"), false);
 
@@ -808,6 +892,67 @@ test("Clean Case: earned with no wrong accusations, lost with one, kept through 
 });
 
 // --- Contract order ------------------------------------------------------------------
+
+test("game: replay clears the notebook, pays nothing, and keeps the Clean Case seal", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  assert.equal((await post("/api/bounties/heart-of-luna/replay", {}, cookie)).status, 409);
+  const paid = await solve("heart-of-luna", "cookie", cookie);
+  assert.equal(paid.status, 200);
+  const first = await paid.json();
+  const closed = await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json();
+  assert.equal(closed.replayDuel, false);
+  assert.equal((await post("/api/bounties/heart-of-luna/replay", {}, cookie)).status, 200);
+  const progress = await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json();
+  assert.deepEqual(progress.found, {});
+  assert.equal(progress.accused, undefined);
+  assert.equal(progress.replayDuel, false);
+  assert.equal((await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "dome" }, cookie)).status, 409);
+  assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 409);
+  await investigate("heart-of-luna", cookie);
+  const wrong = await post("/api/bounties/heart-of-luna/accuse", { suspect: "vela", proof: await proofFor("heart-of-luna") }, cookie);
+  assert.equal(wrong.status, 200);
+  assert.equal((await wrong.json()).correct, false);
+  const afterWrong = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
+  assert.ok(afterWrong.cleanBounties.includes("heart-of-luna"));
+  assert.equal((await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: await proofFor("heart-of-luna") }, cookie)).status, 200);
+  const reopened = await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json();
+  assert.equal(reopened.accused.suspect, "cookie");
+  assert.equal(reopened.replayDuel, true);
+  const early = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  assert.equal(early.status, 409);
+  assert.match((await early.json()).error, /Win the showdown first/);
+  const stillOpen = await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json();
+  assert.equal(stillOpen.replayDuel, true);
+  await wait(850);
+  const noShot = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  assert.equal(noShot.status, 409);
+  assert.match((await noShot.json()).error, /Win the showdown first/);
+  assert.equal((await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json()).replayDuel, true);
+  await winDuel("heart-of-luna", cookie);
+  const finished = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  assert.equal(finished.status, 409);
+  assert.match((await finished.json()).error, /already collected/);
+  const shut = await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json();
+  assert.equal(shut.accused, undefined);
+  assert.equal(shut.replayDuel, false);
+  const outro = await fetch(base + "/api/voice/outro/heart-of-luna", {
+    headers: { Cookie: cookie, "Cache-Control": "no-cache" },
+  });
+  assert.equal(outro.status, 200);
+  assert.equal((await fetch(base + "/api/voice/taunt/heart-of-luna", { headers: { Cookie: cookie } })).status, 404);
+  const again = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
+  assert.equal(again.credits, first.credits);
+  assert.ok(again.cleanBounties.includes("heart-of-luna"));
+  const retry = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  assert.equal(retry.status, 409);
+  assert.match((await retry.json()).error, /already collected/);
+  assert.equal((await post("/api/bounties/heart-of-luna/replay", {}, cookie)).status, 200);
+  const cleared = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  assert.equal(cleared.status, 409);
+  assert.match((await cleared.json()).error, /Name the culprit/);
+  const afterRetry = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
+  assert.equal(afterRetry.credits, first.credits);
+});
 
 test("contracts open in order, and hunters who already started one keep it", async () => {
   const { claimBounty, recordClue } = await import("./gameStorage.js");
@@ -861,12 +1006,14 @@ test("shop: the Guild Gold Star and Hair-Trigger Holster, and the draw window th
   assert.equal(drawWindowMs(["raygun"]), 750);
   assert.equal(drawWindowMs(["holster"]), 650);
   assert.equal(drawWindowMs(["raygun", "holster", "suit-red"]), 900);
+  assert.equal(drawWindowMs(["bandana", "raygun", "holster"]), 900);
   assert.equal(shopItem("guild-star")?.price, 1200);
   assert.equal(shopItem("holster")?.price, 2000);
-  // The five live contracts pay 6,100 CR in all: enough for the whole Outfitters
+  assert.equal(shopItem("bandana")?.price, 2050);
+  // The five live contracts pay 6,100 CR, and the whole Outfitters costs exactly that.
   const paid = BOUNTIES.filter((b) => b.available).reduce((sum, b) => sum + b.reward, 0);
   assert.equal(paid, 6100);
-  assert.ok(SHOP_ITEMS.reduce((sum, i) => sum + i.price, 0) <= paid);
+  assert.equal(SHOP_ITEMS.reduce((sum, i) => sum + i.price, 0), paid);
 
   const cookie = cookieOf(await fetch(base + "/api/player"));
   await claimBounty(visitorOf(cookie), "shop-test", 3200);
@@ -915,4 +1062,301 @@ test("Aurelia: the Outer Rim Dispatch only reads with a decoder ring; clean trop
   await grantItem(visitorOf(cookie), "decoder-ring");
   const after = (await guild()).spots.find((s: { id: string }) => s.id === "dispatch");
   assert.match(after.text, /OUTER RIM EXPEDITION — TITAN & EUROPA CHARTERS SEALED BY ORDER OF STERLING ATOMIC\./);
+
+  const board = (await guild()).spots.find((s: { id: string }) => s.id === "board");
+  assert.match(board.text, /receipt lock/);
+  assert.equal(board.text.includes("TITAN TRANSFER"), false);
+  await grantItem(visitorOf(cookie), "orrery-key");
+  const opened = (await guild()).spots.find((s: { id: string }) => s.id === "board");
+  assert.match(opened.text, /TITAN TRANSFER — CHARTER SEALED BY STERLING ATOMIC/);
+  // A recording on disk must still stay silent: the words change with the satchel.
+  mkdirSync(path.join(process.env.AUDIO_DIR!, "aurelia/guild"), { recursive: true });
+  writeFileSync(path.join(process.env.AUDIO_DIR!, "aurelia/guild/board.mp3"), "stale");
+  writeFileSync(path.join(process.env.AUDIO_DIR!, "aurelia/guild/dispatch.mp3"), "stale");
+  assert.equal((await fetch(`${base}/api/voice/aurelia/guild/board`, { headers: { Cookie: cookie } })).status, 404);
+  assert.equal((await fetch(`${base}/api/voice/aurelia/guild/dispatch`, { headers: { Cookie: cookie } })).status, 404);
+});
+
+test("game: hotspots stay inside the border, and the sidewalk opens its own exhibit", async () => {
+  const { BOUNTIES } = await import("../shared/game.js");
+  const pct = (value: string) => Number(value.replace("%", ""));
+  const boxOf = (id: string, top: string, left: string, width: string, height: string) => ({
+    id,
+    top: pct(top),
+    left: pct(left),
+    right: pct(left) + pct(width),
+    bottom: pct(top) + pct(height),
+  });
+  const overlaps = (a: { left: number; right: number; top: number; bottom: number }, b: typeof a) =>
+    a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  const assertInside = (box: { id: string; top: number; left: number; right: number; bottom: number }) => {
+    assert.ok(box.left >= 3 && box.top >= 3 && box.right <= 97 && box.bottom <= 97, `${box.id} sits on the border`);
+  };
+
+  for (const bounty of BOUNTIES) {
+    for (const loc of bounty.locations ?? []) {
+      const boxes = loc.clues.map((c) => boxOf(`${bounty.id}/${c.id}`, c.top, c.left, c.width, c.height));
+      for (const box of boxes) assertInside(box);
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          assert.equal(overlaps(boxes[i], boxes[j]), false, `${boxes[i].id} overlaps ${boxes[j].id}`);
+        }
+      }
+    }
+  }
+
+  const pages = ["diner.tsx", "expo.tsx", "voyages.tsx", "hub.tsx"];
+  const hotspot = /id: "([^"]+)"(?:(?!id:)[\s\S])*?top: "([\d.]+)%",\s*left: "([\d.]+)%",\s*width: "([\d.]+)%",\s*height: "([\d.]+)%"/g;
+  for (const page of pages) {
+    const source = readFileSync(path.join("client/src/pages", page), "utf8");
+    const boxes = [...source.matchAll(hotspot)].map((m) => boxOf(`${page}/${m[1]}`, m[2], m[3], m[4], m[5]));
+    assert.ok(boxes.length >= (page === "hub.tsx" ? 3 : 4), page);
+    for (const box of boxes) assertInside(box);
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        assert.equal(overlaps(boxes[i], boxes[j]), false, `${boxes[i].id} overlaps ${boxes[j].id}`);
+      }
+    }
+  }
+
+  const expo = readFileSync("client/src/pages/expo.tsx", "utf8");
+  const exhibits = [...expo.matchAll(/name: "([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(exhibits[5], "The Moving Sidewalk");
+  assert.match(expo, /id: "moving-sidewalk"(?:(?!id:)[\s\S])*exhibitIndex: 5/);
+  assert.equal(expo.includes("Time Capsule"), false);
+  assert.equal(expo.includes("Atomic Home Reactor"), true);
+
+  const office = readFileSync("client/src/pages/bounty-office.tsx", "utf8");
+  const radio = /top: "([\d.]+)%", left: "([\d.]+)%", width: "([\d.]+)%", height: "([\d.]+)%"[\s\S]{0,400}?data-testid="(hotspot-[^"]+)"/g;
+  const officeBoxes = [...office.matchAll(radio)].map((m) => boxOf(`bounty-office.tsx/${m[5]}`, m[1], m[2], m[3], m[4]));
+  assert.equal(officeBoxes.length, 1);
+  for (const box of officeBoxes) assertInside(box);
+
+  const { aureliaFor } = await import("./aurelia.js");
+  for (const place of aureliaFor("Ada", ["heart-of-luna"])) {
+    const boxes = place.spots.map((s) => boxOf(`aurelia/${place.id}/${s.id}`, s.top, s.left, s.width, s.height));
+    for (const box of boxes) assertInside(box);
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        assert.equal(overlaps(boxes[i], boxes[j]), false, `${boxes[i].id} overlaps ${boxes[j].id}`);
+      }
+    }
+  }
+});
+
+test("game: the accuse label, and a collected case opens without wiping notes", async () => {
+  const { accuseLabel, readyWithoutInterview, bountyById } = await import("../shared/game.js");
+  const lie = "Catch the lie that doesn't add up";
+  // Six scene clues, and six plus an optional lie: the required interview is still open.
+  assert.equal(accuseLabel({ interviews: true, canAccuse: false, needsLie: true, foundCount: 6, needed: 7 }), lie);
+  assert.equal(accuseLabel({ interviews: true, canAccuse: false, needsLie: true, foundCount: 7, needed: 7 }), lie);
+  // Five scene clues plus the required lie leaves one ordinary clue.
+  assert.equal(accuseLabel({ interviews: true, canAccuse: false, needsLie: false, foundCount: 6, needed: 7 }), "Find 1 more clue");
+  assert.equal(accuseLabel({ interviews: false, canAccuse: true, needsLie: false, foundCount: 4, needed: 4 }), "★ Name your suspect");
+  const { withAccusation, showResume, topicCaught, accuseSealCopy, cleanCaseCopy, doneCopy, contractLinkPhase, caseFileGate, closeReplayDuel } = await import("../shared/game.js");
+  const noted = { found: { cap: "a red cap" }, canAccuse: true, needsLie: false };
+  const solution = { showdown: { opponent: "Cookie", image: "./x.webp", taunt: "Draw." }, outro: "Closed." };
+  const remembered = withAccusation(noted, "cookie", solution);
+  assert.equal(remembered.accused?.suspect, "cookie");
+  assert.equal(remembered.accused?.showdown.taunt, "Draw.");
+  assert.equal(remembered.found.cap, "a red cap");
+  const reopened = withAccusation(noted, "cookie", solution, true);
+  assert.equal(reopened.replayDuel, true);
+  const shut = closeReplayDuel(reopened);
+  assert.equal(shut.accused, undefined);
+  assert.equal(shut.replayDuel, false);
+  assert.equal(shut.found.cap, "a red cap");
+  assert.equal(showResume(false, true), true);
+  assert.equal(showResume(true, true), false);
+  assert.equal(showResume(true, true, true), true);
+  assert.equal(showResume(false, false), false);
+  assert.match(accuseSealCopy(false), /first try/);
+  assert.match(accuseSealCopy(true), /first collection/);
+  assert.match(cleanCaseCopy(true), /first accusation/);
+  assert.match(cleanCaseCopy(false), /first collection/);
+  assert.match(doneCopy("Cookie takes the fall.", true, 500), /Cookie takes the fall\. 500 credits/);
+  assert.match(doneCopy("Cookie takes the fall.", false, 500), /Cookie takes the fall\./);
+  assert.match(doneCopy("Cookie takes the fall.", false, 500), /only pays once/);
+  const lunaJob = bountyById("heart-of-luna")!;
+  const marsJob = bountyById("red-sands")!;
+  assert.equal(contractLinkPhase(lunaJob, null, "pending"), "checking");
+  assert.equal(contractLinkPhase(lunaJob, null, "error"), "error");
+  assert.equal(contractLinkPhase(marsJob, { completedBounties: [], startedBounties: [] }, "ready"), "locked");
+  assert.equal(contractLinkPhase(lunaJob, { completedBounties: ["heart-of-luna"], startedBounties: [] }, "ready"), "collected");
+  assert.equal(caseFileGate({ playerReady: false, playerError: false, unlocked: false, progressReady: false, progressError: false }), "checking");
+  assert.equal(caseFileGate({ playerReady: true, playerError: false, unlocked: true, progressReady: false, progressError: true }), "progress-error");
+  assert.equal(caseFileGate({ playerReady: true, playerError: false, unlocked: true, progressReady: true, progressError: false }), "start");
+  assert.equal(topicCaught({ "tuttle/night": "breakthrough-2" }, { "breakthrough-2": "The lie." }, "tuttle", "night"), true);
+  assert.equal(topicCaught({ "tuttle/night": "breakthrough-2" }, {}, "tuttle", "night"), false);
+  const { queryClient } = await import("../client/src/lib/queryClient.ts");
+  const { rememberAccusation } = await import("../client/src/lib/game.ts");
+  const key = ["/api/bounties", "heart-of-luna", "progress"];
+  queryClient.setQueryData(key, noted);
+  await rememberAccusation("heart-of-luna", "cookie", solution);
+  const cached = queryClient.getQueryData<typeof remembered>(key);
+  assert.equal(cached?.accused?.suspect, "cookie");
+  assert.equal(cached?.found.cap, "a red cap");
+  let releaseStale: (value: typeof noted) => void = () => undefined;
+  const staleFlight = new Promise<typeof noted>((resolve) => {
+    releaseStale = resolve;
+  });
+  let ran = false;
+  const flight = queryClient.fetchQuery({
+    queryKey: key,
+    staleTime: 0,
+    queryFn: () => {
+      ran = true;
+      return staleFlight;
+    },
+  });
+  await Promise.resolve();
+  assert.equal(ran, true);
+  const writing = rememberAccusation("heart-of-luna", "cookie", solution);
+  releaseStale(noted);
+  await writing;
+  await flight.catch(() => undefined);
+  const afterRace = queryClient.getQueryData<typeof remembered>(key);
+  assert.equal(afterRace?.accused?.suspect, "cookie");
+  assert.equal(afterRace?.found.cap, "a red cap");
+  const luna = bountyById("heart-of-luna")!;
+  const found = Object.fromEntries(luna.locations!.flatMap((l) => l.clues).slice(0, 4).map((c) => [c.id, "noted"]));
+  assert.equal(readyWithoutInterview(luna, found), true);
+  assert.equal(readyWithoutInterview(bountyById("saturn-orrery"), found), null);
+
+  const office = readFileSync("client/src/pages/bounty-office.tsx", "utf8");
+  const link = readFileSync("client/src/components/ContractLink.tsx", "utf8");
+  assert.equal(office.includes("replayBounty"), false);
+  assert.equal(link.includes("replayBounty"), false);
+  assert.match(office, /Collected — open/);
+  assert.match(readFileSync("client/src/pages/bounty.tsx", "utf8"), /Replay from a fresh notebook/);
+  for (const [page, field] of [["expo.tsx", "input-prediction-text"], ["diner.tsx", "input-dish-desc"], ["voyages.tsx", "input-postcard-message"]] as const) {
+    const source = readFileSync(path.join("client/src/pages", page), "utf8");
+    assert.match(source, new RegExp(`maxLength=\\{500\\}[\\s\\S]{0,500}data-testid="${field}"`));
+    assert.match(source, /role="alert"/);
+  }
+});
+
+test("game: a second vote stays pending, a replay forgets testimony, and the bandana note waits", async () => {
+  const { trackVote, trackPending, claimSearch, clueSheetKind, showEmptyError, drawFromKey, drawKeyPlan, keepDraft, nameAfterReset, engineNeedsWake, musicOnVisibility, voiceOnVisibility, dropVoiceOnPlayError, aureliaSpot, replayArmed } = await import("../client/src/lib/votes.ts");
+  const first = trackVote(new Set<number>(), 1, true);
+  const both = trackVote(first, 2, true);
+  assert.equal(both.has(1), true);
+  assert.equal(both.has(2), true);
+  const left = trackVote(both, 2, false);
+  assert.equal(left.has(1), true);
+  assert.equal(left.has(2), false);
+  const searches = trackPending(trackPending(new Set<string>(), "chart", true), "locker", true);
+  const chartStillPending = trackPending(searches, "locker", false);
+  assert.equal(chartStillPending.has("chart"), true);
+  assert.equal(chartStillPending.has("locker"), false);
+  const one = claimSearch(new Set<string>(), "telegram");
+  assert.equal(one?.has("telegram"), true);
+  assert.equal(claimSearch(one!, "telegram"), null);
+  assert.equal(claimSearch(one!, "cap")?.has("cap"), true);
+  const coded = { lock: false, chart: false, cipher: true, found: false, pending: true, error: false, coded: false };
+  assert.equal(clueSheetKind(coded), "searching");
+  assert.equal(clueSheetKind({ ...coded, pending: false, error: true }), "error");
+  assert.equal(clueSheetKind({ ...coded, pending: false, coded: true }), "decoder");
+  assert.equal(clueSheetKind({ ...coded, pending: false, found: true }), "decoder");
+  assert.equal(showEmptyError(true, 2), false);
+  assert.equal(showEmptyError(true, 0), true);
+  const { loadDiscovered, saveDiscovered, discoveryList, discoveryAfter } = await import("../client/src/lib/discovered.ts");
+  const remembered = saveDiscovered(saveDiscovered({}, "expo", ["jetpack"]), "aurelia", ["guild/board"]);
+  assert.deepEqual(loadDiscovered(remembered, "expo"), ["jetpack"]);
+  assert.deepEqual(loadDiscovered(remembered, "aurelia"), ["guild/board"]);
+  assert.deepEqual(loadDiscovered(remembered, "diner"), []);
+  const blocked = discoveryAfter({}, {}, "expo", "jetpack");
+  assert.deepEqual(discoveryList(blocked, {}, "expo"), ["jetpack"]);
+  assert.deepEqual(discoveryAfter(blocked, {}, "expo", "visor").expo, ["jetpack", "visor"]);
+  assert.deepEqual(discoveryAfter(blocked, {}, "expo", "jetpack").expo, ["jetpack"]);
+  assert.equal(drawFromKey("Space", false), true);
+  assert.equal(drawFromKey("Enter", true), false);
+  assert.equal(drawFromKey("KeyA", false), false);
+  assert.equal(replayArmed(false, false), "ask");
+  assert.equal(replayArmed(true, false), "go");
+  assert.equal(replayArmed(true, true), "wait");
+  assert.equal(drawKeyPlan("Space", true, false), "native");
+  assert.equal(drawKeyPlan("Space", false, true), "ignore");
+  assert.equal(drawKeyPlan("Enter", false, false), "fire");
+  assert.equal(keepDraft("Wish you were here", "Wish you were here"), "");
+  assert.equal(keepDraft("Wish you were here", "Wish you were here — and the rings"), "Wish you were here — and the rings");
+  assert.deepEqual(nameAfterReset("Ada", undefined), { edited: true, name: "Ada" });
+  assert.deepEqual(nameAfterReset("Ada", "Hunter #7"), { edited: false, name: "Hunter #7" });
+  assert.equal(engineNeedsWake("suspended"), true);
+  assert.equal(engineNeedsWake("interrupted"), true);
+  assert.equal(engineNeedsWake("running"), false);
+  assert.equal(engineNeedsWake("closed"), false);
+  assert.equal(musicOnVisibility(true, true), "pause");
+  assert.equal(musicOnVisibility(false, true), "resume");
+  assert.equal(musicOnVisibility(false, false), "start");
+  assert.equal(voiceOnVisibility(true, true), "pause");
+  assert.equal(voiceOnVisibility(false, true), "resume");
+  assert.equal(voiceOnVisibility(true, false), "idle");
+  assert.equal(dropVoiceOnPlayError(true), false);
+  assert.equal(dropVoiceOnPlayError(false), true);
+  const stale = { id: "dispatch", text: "cipher" };
+  const fresh = { id: "dispatch", text: "clear" };
+  assert.equal(aureliaSpot([stale], "dispatch"), stale);
+  assert.equal(aureliaSpot([fresh], "dispatch"), fresh);
+  assert.equal(aureliaSpot([fresh], "missing"), null);
+  assert.equal(aureliaSpot(undefined, "dispatch"), null);
+  const { beginVisit, settleVisit, arrivalName } = await import("../client/src/lib/visitor.ts");
+  assert.equal(arrivalName(null, true, false), null);
+  assert.equal(arrivalName(null, false, true), null);
+  assert.equal(arrivalName({ callsign: "Ada" }, false, false), "Ada");
+  const visits = { logged: new Set<string>(), pending: new Set<string>() };
+  assert.equal(beginVisit(visits, "expo"), true);
+  assert.equal(beginVisit(visits, "expo"), false);
+  settleVisit(visits, "expo", false);
+  assert.equal(beginVisit(visits, "expo"), true);
+  settleVisit(visits, "expo", true);
+  assert.equal(beginVisit(visits, "expo"), false);
+  const { withCaught, isBountyUnlocked, bountyById, openJobs, jobsBadge, BOUNTIES } = await import("../shared/game.js");
+  const caught = withCaught({ found: { lie: "caught" }, canAccuse: false, needsLie: true }, "tuttle", "night", "lie");
+  assert.equal(caught.caught?.["tuttle/night"], "lie");
+  assert.equal(isBountyUnlocked(bountyById("red-sands")!, [], []), false);
+  assert.equal(isBountyUnlocked(bountyById("heart-of-luna")!, [], []), true);
+  assert.equal(openJobs(BOUNTIES, [], []), 1);
+  assert.equal(openJobs(BOUNTIES, ["heart-of-luna"], []), 2);
+  assert.equal(openJobs(BOUNTIES, ["heart-of-luna", "red-sands", "venus-fog", "saturn-orrery", "neptune-deep"], []), 0);
+  assert.deepEqual(jobsBadge(1, false), { figure: "1", caption: "JOBS" });
+  assert.deepEqual(jobsBadge(0, true), { figure: "REPLAY", caption: "ACT I" });
+  const { hubBadgeState, claimWithoutShowdown, creditsLabel, shopButtonLabel } = await import("../shared/game.js");
+  assert.equal(hubBadgeState(null, false, BOUNTIES).kind, "loading");
+  assert.equal(hubBadgeState(null, true, BOUNTIES).kind, "error");
+  assert.deepEqual(hubBadgeState({ completedBounties: [], startedBounties: [] }, false, BOUNTIES), { kind: "ready", figure: "1", caption: "JOBS" });
+  assert.equal(claimWithoutShowdown(true), "already_collected");
+  assert.equal(claimWithoutShowdown(false), "name_the_culprit");
+  assert.equal(creditsLabel(null), "…");
+  assert.equal(creditsLabel(null, true), "? credits");
+  assert.equal(creditsLabel(0), "0 credits");
+  const { shotLands } = await import("../shared/game.js");
+  assert.equal(shotLands(100, 500), true);
+  assert.equal(shotLands(1600, 500), false);
+  assert.equal(shopButtonLabel({ comingSoon: false, playerReady: false, owned: false, affordable: false }), "Checking…");
+  assert.equal(shopButtonLabel({ comingSoon: false, playerReady: false, owned: false, affordable: false, profileError: true }), "Profile didn't load");
+  assert.equal(shopButtonLabel({ comingSoon: false, playerReady: true, owned: false, affordable: false }), "Need more credits");
+  assert.equal(shopButtonLabel({ comingSoon: false, playerReady: true, owned: true, affordable: true }), "✓ Owned");
+  const bountyPage = readFileSync("client/src/pages/bounty.tsx", "utf8");
+  assert.match(bountyPage, /trackPending\(current, clue\.id, false\)/);
+  assert.match(bountyPage, /button-back-case-file/);
+  assert.match(readFileSync("client/src/index.css", "utf8"), /\.sheet-close \{[\s\S]*?width: 44px;/);
+  assert.match(readFileSync("client/src/pages/expo.tsx", "utf8"), /!discoveredItems\.has\(hs\.id\) && \([\s\S]*hotspot-indicator/);
+
+  const { keepLine, heardFor, forgetLines, cachesAfterSearch, PLAYER_KEY, AURELIA_KEY } = await import("../client/src/lib/game.ts");
+  assert.deepEqual(cachesAfterSearch(), [PLAYER_KEY, AURELIA_KEY]);
+  keepLine("saturn-orrery", "tuttle", "night", "I was in the galley.");
+  keepLine("heart-of-luna", "cookie", "alibi", "I was on the grill.");
+  assert.equal(heardFor("saturn-orrery")["tuttle/night"], "I was in the galley.");
+  forgetLines("saturn-orrery");
+  assert.deepEqual(heardFor("saturn-orrery"), {});
+  assert.equal(heardFor("heart-of-luna")["cookie/alibi"], "I was on the grill.");
+  forgetLines("heart-of-luna");
+
+  const { bandanaNote } = await import("../shared/game.js");
+  assert.equal(bandanaNote(true, "steady"), true);
+  assert.equal(bandanaNote(true, "waiting"), true);
+  assert.equal(bandanaNote(true, "early"), false);
+  assert.equal(bandanaNote(true, "draw"), false);
+  assert.equal(bandanaNote(false, "steady"), false);
 });

@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { and, eq, desc, sql, inArray } from "drizzle-orm";
-import { players, bountyClaims, playerItems, clueFinds, showdowns, bountyAttempts, type Player } from "../shared/schema.js";
+import { players, bountyClaims, playerItems, clueFinds, showdowns, replayReceipts, duelShots, bountyAttempts, type Player } from "../shared/schema.js";
 import {
   DEFAULT_SUIT,
   ownsSuit,
@@ -9,6 +9,7 @@ import {
   BOUNTIES,
   STAR_MAP_SIZE,
   isBountyUnlocked,
+  shotLands,
   type Bounty,
   type PlayerProfile,
   type LeaderboardEntry,
@@ -286,6 +287,26 @@ export async function recordClue(visitorId: string, bountyId: string, clueId: st
     .run();
 }
 
+// A collected case can be investigated again. The payout and the Clean Case seal stay put.
+export async function replayInvestigation(visitorId: string, bountyId: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    if (!(await completedBounties(visitorId, tx)).includes(bountyId)) return false;
+    await tx.delete(clueFinds)
+      .where(and(eq(clueFinds.visitorId, visitorId), eq(clueFinds.bountyId, bountyId)))
+      .run();
+    await tx.delete(showdowns)
+      .where(and(eq(showdowns.visitorId, visitorId), eq(showdowns.bountyId, bountyId)))
+      .run();
+    await tx.delete(replayReceipts)
+      .where(and(eq(replayReceipts.visitorId, visitorId), eq(replayReceipts.bountyId, bountyId)))
+      .run();
+    await tx.delete(duelShots)
+      .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
+      .run();
+    return true;
+  });
+}
+
 export async function foundClues(visitorId: string, bountyId: string): Promise<string[]> {
   const rows = await db.select({ clueId: clueFinds.clueId })
     .from(clueFinds)
@@ -309,4 +330,86 @@ export async function showdownStartedAt(visitorId: string, bountyId: string): Pr
     .where(and(eq(showdowns.visitorId, visitorId), eq(showdowns.bountyId, bountyId)))
     .get();
   return row ? Date.parse(row.startedAt) : null;
+}
+
+// True when the saved duel started after this bounty was collected. That is a replay
+// the hunter has not closed. The original duel started before the claim.
+// The replay duel is finished. The original claim, credits, and seal stay.
+// The receipt lets a lost "already collected" response be retried after the row is gone.
+export async function closeShowdown(visitorId: string, bountyId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.delete(showdowns)
+      .where(and(eq(showdowns.visitorId, visitorId), eq(showdowns.bountyId, bountyId)))
+      .run();
+    await tx.insert(replayReceipts)
+      .values({ visitorId, bountyId })
+      .onConflictDoNothing()
+      .run();
+    await tx.delete(duelShots)
+      .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
+      .run();
+  });
+}
+
+export async function beginDraw(visitorId: string, bountyId: string): Promise<void> {
+  const drawAt = new Date().toISOString();
+  await db.insert(duelShots)
+    .values({ visitorId, bountyId, drawAt, won: 0 })
+    .onConflictDoUpdate({
+      target: [duelShots.visitorId, duelShots.bountyId],
+      set: { drawAt, won: 0 },
+    })
+    .run();
+}
+
+export async function showdownWon(visitorId: string, bountyId: string): Promise<boolean> {
+  const row = await db.select({ won: duelShots.won })
+    .from(duelShots)
+    .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
+    .get();
+  return row?.won === 1;
+}
+
+export async function resolveShot(
+  visitorId: string,
+  bountyId: string,
+  windowMs: number,
+  graceMs: number,
+): Promise<{ won: boolean; elapsed: number | null }> {
+  const row = await db.select({ drawAt: duelShots.drawAt, won: duelShots.won })
+    .from(duelShots)
+    .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
+    .get();
+  if (!row) return { won: false, elapsed: null };
+  if (row.won === 1) return { won: true, elapsed: null };
+  const elapsed = Date.now() - Date.parse(row.drawAt);
+  if (shotLands(elapsed, windowMs, graceMs)) {
+    await db.update(duelShots)
+      .set({ won: 1 })
+      .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
+      .run();
+    return { won: true, elapsed };
+  }
+  await db.delete(duelShots)
+    .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
+    .run();
+  return { won: false, elapsed };
+}
+
+export async function hasReplayReceipt(visitorId: string, bountyId: string): Promise<boolean> {
+  const row = await db.select({ bountyId: replayReceipts.bountyId })
+    .from(replayReceipts)
+    .where(and(eq(replayReceipts.visitorId, visitorId), eq(replayReceipts.bountyId, bountyId)))
+    .get();
+  return !!row;
+}
+
+export async function replayDuelOpen(visitorId: string, bountyId: string): Promise<boolean> {
+  const started = await showdownStartedAt(visitorId, bountyId);
+  if (started === null) return false;
+  const claim = await db.select({ createdAt: bountyClaims.createdAt })
+    .from(bountyClaims)
+    .where(and(eq(bountyClaims.visitorId, visitorId), eq(bountyClaims.bountyId, bountyId)))
+    .get();
+  return !!claim && started > Date.parse(claim.createdAt);
 }

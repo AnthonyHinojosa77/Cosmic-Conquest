@@ -2,7 +2,7 @@
 // Solutions are NOT here — they live server-side in server/bounties.ts.
 
 export type SuitId = "silver" | "red" | "teal" | "gold";
-export type GearId = "raygun" | "holster" | "guild-star";
+export type GearId = "raygun" | "holster" | "guild-star" | "bandana";
 export type ShopItemId = `suit-${Exclude<SuitId, "silver">}` | GearId;
 
 export const SUITS: Record<SuitId, { name: string; color: string; trim: string }> = {
@@ -35,6 +35,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "suit-red", name: "Pulp Red Suit", price: 150, description: "Loud, proud, and visible from orbit." },
   { id: "suit-teal", name: "Atomic Teal Suit", price: 150, description: "Cool as the far side of the Moon." },
   { id: "suit-gold", name: "Gold Rush Suit", price: 250, description: "For hunters who want the whole saloon to know they've arrived." },
+  { id: "bandana", name: "Red Bandana", price: 2050, description: "A red bandana with a gold star, knotted at the collar. In a showdown it forgives one jumpy draw. The painting does not change, and it does not buy extra time." },
 ];
 
 // Only items that can actually be bought right now
@@ -55,6 +56,39 @@ export function drawWindowMs(owned: readonly string[]): number {
   return DRAW_WINDOW_MS
     + (owned.includes("raygun") ? DRAW_WINDOW_RAYGUN_BONUS_MS : 0)
     + (owned.includes("holster") ? DRAW_WINDOW_HOLSTER_BONUS_MS : 0);
+}
+
+// The Red Bandana changes the showdown itself: one early shot is ignored.
+// It does not widen the draw window.
+export function bandanaSteadies(owned: readonly string[]): boolean {
+  return owned.includes("bandana");
+}
+
+// After the pardon is spent, say so only while the hunter is waiting out the draw.
+// "TOO JUMPY!" is the failed shot, and it should not also claim the jump was forgiven.
+export function bandanaNote(spentPardon: boolean, state: DuelState): boolean {
+  return spentPardon && (state === "steady" || state === "waiting");
+}
+
+export type DuelState = "idle" | "waiting" | "steady" | "draw" | "early" | "slow" | "won";
+
+// One press in a showdown. The first early press is forgiven only while `pardon` is true.
+// A second early press, including one during the "steady" beat, ends the attempt.
+export function duelPress(
+  state: DuelState,
+  pardon: boolean,
+  elapsedMs: number,
+  windowMs: number,
+): { state: DuelState; pardon: boolean; won: boolean } {
+  if (state === "steady") return { state: "early", pardon: false, won: false };
+  if (state === "waiting" && pardon) return { state: "steady", pardon: false, won: false };
+  if (state === "waiting") return { state: "early", pardon: false, won: false };
+  if (state === "draw") {
+    return elapsedMs <= windowMs
+      ? { state: "won", pardon, won: true }
+      : { state: "slow", pardon, won: false };
+  }
+  return { state, pardon, won: false };
 }
 
 // Items found during bounties stay in the hunter's satchel for later jobs.
@@ -236,7 +270,7 @@ export const BOUNTIES: Bounty[] = [
           {
             id: "jukebox",
             label: "Atomic Jukebox",
-            top: "36%", left: "1%", width: "16%", height: "34%",
+            top: "36%", left: "3%", width: "14%", height: "32%",
           },
         ],
       },
@@ -315,7 +349,7 @@ export const BOUNTIES: Bounty[] = [
           {
             id: "skiff",
             label: "Dusty's Sand-Skiff",
-            top: "20%", left: "63%", width: "35%", height: "62%",
+            top: "20%", left: "63%", width: "34%", height: "62%",
           },
           {
             id: "crates",
@@ -382,7 +416,7 @@ export const BOUNTIES: Bounty[] = [
         clues: [
           { id: "case", label: "The Empty Jewel Case", top: "64%", left: "28%", width: "42%", height: "28%" },
           { id: "bandstand", label: "The Bandstand", top: "30%", left: "3%", width: "31%", height: "24%" },
-          { id: "keys", label: "Reception Key Board", top: "20%", left: "86%", width: "12%", height: "36%" },
+          { id: "keys", label: "Reception Key Board", top: "20%", left: "86%", width: "11%", height: "36%" },
         ],
       },
       {
@@ -390,9 +424,9 @@ export const BOUNTIES: Bounty[] = [
         name: "Orchid Conservatory",
         image: "./scenes/venus-conservatory.webp",
         clues: [
-          { id: "fog-machine", label: "The Fog Machine", top: "15%", left: "2%", width: "18%", height: "55%" },
+          { id: "fog-machine", label: "The Fog Machine", top: "15%", left: "3%", width: "18%", height: "55%" },
           { id: "orchids", label: "Orchid Bed", top: "38%", left: "28%", width: "30%", height: "40%" },
-          { id: "locker", label: "Locked Staff Locker", lock: { dials: 3 }, top: "40%", left: "86%", width: "12%", height: "48%" },
+          { id: "locker", label: "Locked Staff Locker", lock: { dials: 3 }, top: "40%", left: "86%", width: "11%", height: "48%" },
         ],
       },
     ],
@@ -437,6 +471,9 @@ export const BOUNTIES: Bounty[] = [
     teaser: "The golden orrery aboard the Ring Line Express stopped mid-journey, and its master gear is gone.",
     briefing:
       "The Ring Line Express glides around Saturn on a track laid across the rings themselves, and its pride is the Sterling Orrery: a golden clockwork model of the solar system that Aurora Sterling gave to the Saturn colonies. Last night, somewhere between the Cassini Gap and the Titan Transfer, it stopped. Its master gear, the Saturn Gear, is missing. The Ring Line is paying 1,600 credits to get it back. Search the Observatory Car and the Dining Car, question the three passengers who were awake that night, and catch whoever is lying.",
+    // Six scene clues plus the culprit's lie. Lady Ashgrove's pawn-ticket lie stays
+    // available, and it is not required before you can name someone.
+    cluesNeeded: 7,
     breakthroughs: ["breakthrough-1", "breakthrough-2"],
     locations: [
       {
@@ -444,9 +481,9 @@ export const BOUNTIES: Bounty[] = [
         name: "Observatory Car",
         image: "./scenes/saturn-observatory.webp",
         clues: [
-          { id: "orrery", label: "The Sterling Orrery", grants: "orrery-key", top: "18%", left: "38%", width: "42%", height: "62%" },
-          { id: "telescope", label: "The Great Telescope", top: "5%", left: "74%", width: "25%", height: "42%" },
-          { id: "guestbook", label: "Observatory Guestbook", top: "60%", left: "2%", width: "30%", height: "22%" },
+          { id: "orrery", label: "The Sterling Orrery", grants: "orrery-key", top: "18%", left: "38%", width: "34%", height: "62%" },
+          { id: "telescope", label: "The Great Telescope", top: "5%", left: "74%", width: "23%", height: "42%" },
+          { id: "guestbook", label: "Observatory Guestbook", top: "60%", left: "3%", width: "30%", height: "22%" },
         ],
       },
       {
@@ -454,9 +491,9 @@ export const BOUNTIES: Bounty[] = [
         name: "Dining Car",
         image: "./scenes/saturn-dining.webp",
         clues: [
-          { id: "table", label: "Table for One", top: "55%", left: "2%", width: "47%", height: "30%" },
+          { id: "table", label: "Table for One", top: "55%", left: "3%", width: "47%", height: "30%" },
           { id: "galley", label: "The Galley", top: "15%", left: "50%", width: "17%", height: "55%" },
-          { id: "luggage", label: "Baggage Rack", top: "5%", left: "70%", width: "28%", height: "25%" },
+          { id: "luggage", label: "Baggage Rack", top: "5%", left: "70%", width: "27%", height: "25%" },
         ],
       },
     ],
@@ -551,7 +588,7 @@ export const BOUNTIES: Bounty[] = [
                 { cell: "A5", name: "Kelp Forest", icon: "kelp" },
               ],
             },
-            top: "68%", left: "2%", width: "42%", height: "28%",
+            top: "68%", left: "3%", width: "41%", height: "28%",
           },
         ],
       },
@@ -560,9 +597,9 @@ export const BOUNTIES: Bounty[] = [
         name: "The Glass Promenade",
         image: "./scenes/neptune-promenade.webp",
         clues: [
-          { id: "sonar", label: "Sonar Lookout", top: "40%", left: "2%", width: "34%", height: "55%" },
+          { id: "sonar", label: "Sonar Lookout", top: "40%", left: "3%", width: "34%", height: "55%" },
           { id: "beacon", label: "Call Box to the Beacon", top: "22%", left: "44%", width: "16%", height: "52%" },
-          { id: "stage-door", label: "Aquacade Stage Door", top: "10%", left: "79%", width: "19%", height: "64%" },
+          { id: "stage-door", label: "Aquacade Stage Door", top: "10%", left: "79%", width: "18%", height: "64%" },
         ],
       },
     ],
@@ -615,6 +652,94 @@ export function isBountyUnlocked(
     || (bounty.requires ?? []).every((id) => completedBounties.includes(id));
 }
 
+// Jobs still open on the cover: unlocked, live, and not yet collected.
+export function openJobs(
+  bounties: readonly Bounty[],
+  completed: readonly string[],
+  started: readonly string[] = [],
+): number {
+  return bounties.filter((b) => b.available && isBountyUnlocked(b, completed, started) && !completed.includes(b.id)).length;
+}
+
+// The cover badge. A finished Act I chart says so; otherwise it counts the jobs left.
+export function jobsBadge(open: number, finished: boolean): { figure: string; caption: string } {
+  if (finished && open === 0) return { figure: "REPLAY", caption: "ACT I" };
+  return { figure: String(open), caption: "JOBS" };
+}
+
+export type HubBadge =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "ready"; figure: string; caption: string };
+
+// No profile yet: an error can be retried. A profile shows the jobs that are left.
+export function hubBadgeState(
+  player: { completedBounties: readonly string[]; startedBounties: readonly string[] } | null,
+  isError: boolean,
+  bounties: readonly Bounty[],
+): HubBadge {
+  if (!player) return isError ? { kind: "error" } : { kind: "loading" };
+  const live = bounties.filter((b) => b.available);
+  const open = openJobs(live, player.completedBounties, player.startedBounties);
+  const finished = live.every((b) => player.completedBounties.includes(b.id));
+  return { kind: "ready", ...jobsBadge(open, finished) };
+}
+
+// A claim with no open showdown. A finished replay can be retried; anything else still needs the culprit.
+export function claimWithoutShowdown(hasReceipt: boolean): "already_collected" | "name_the_culprit" {
+  return hasReceipt ? "already_collected" : "name_the_culprit";
+}
+
+export function creditsLabel(credits: number | null, failed = false): string {
+  if (credits === null && failed) return "? credits";
+  return credits === null ? "…" : `${credits.toLocaleString()} credits`;
+}
+
+// A shot lands if it reaches the server inside the draw window, plus a short allowance for the request.
+export function shotLands(elapsedMs: number, windowMs: number, graceMs = 1000): boolean {
+  return elapsedMs >= 0 && elapsedMs <= windowMs + graceMs;
+}
+
+export function shopButtonLabel(opts: {
+  comingSoon: boolean;
+  playerReady: boolean;
+  owned: boolean;
+  affordable: boolean;
+  profileError?: boolean;
+}): string {
+  if (opts.comingSoon) return "Coming soon";
+  if (!opts.playerReady) return opts.profileError ? "Profile didn't load" : "Checking…";
+  if (opts.owned) return "✓ Owned";
+  if (opts.affordable) return "Buy";
+  return "Need more credits";
+}
+
+// A poster contract before the hunter profile exists. Empty arrays are not a profile.
+export function contractLinkPhase(
+  bounty: Bounty | undefined,
+  player: { completedBounties: readonly string[]; startedBounties: readonly string[] } | null,
+  load: "pending" | "error" | "ready",
+): "hidden" | "checking" | "error" | "locked" | "collected" | "open" {
+  if (!bounty?.available) return "hidden";
+  if (!player) return load === "error" ? "error" : "checking";
+  if (!isBountyUnlocked(bounty, player.completedBounties, player.startedBounties)) return "locked";
+  return player.completedBounties.includes(bounty.id) ? "collected" : "open";
+}
+
+// The case-file action row. A missing notebook is not an empty one.
+export function caseFileGate(opts: {
+  playerReady: boolean;
+  playerError: boolean;
+  unlocked: boolean;
+  progressReady: boolean;
+  progressError: boolean;
+}): "checking" | "hunter-error" | "locked" | "progress-error" | "start" {
+  if (!opts.playerReady) return opts.playerError ? "hunter-error" : "checking";
+  if (!opts.unlocked) return "locked";
+  if (!opts.progressReady) return opts.progressError ? "progress-error" : "checking";
+  return "start";
+}
+
 // "🔒 Complete The Heart of Luna Heist first", shown instead of "Take the job".
 export function lockedLabel(bounty: Bounty): string {
   const titles = (bounty.requires ?? []).map((id) => bountyById(id)?.title ?? id);
@@ -645,10 +770,58 @@ export function hunterRank(bounties: number): { title: string; next?: { title: s
   return { title: RANKS[i].title, ...(next ? { next: { title: next.title, needed: next.min - bounties } } : {}) };
 }
 
+// What the office says under the rank. Clearing every live contract is the end of
+// Act I, even when a higher title still sits past this chart.
+export function rankLine(completed: number, liveContracts: number): string | null {
+  const rank = hunterRank(completed);
+  if (!rank.next) return null;
+  const left = Math.max(0, liveContracts - completed);
+  if (left === 0) return `Act I charted. ${rank.next.title} is a rank this chart does not reach.`;
+  if (rank.next.needed > left) return left === 1 ? "1 contract left on this chart." : `${left} contracts left on this chart.`;
+  const n = rank.next.needed;
+  return `${n} more bount${n === 1 ? "y" : "ies"} to ${rank.next.title}`;
+}
+
+// How many fragments a live contract can turn up. The other sectors stay blank.
+export const LIVE_CHART_COUNT = BOUNTIES.filter((b) => b.available && b.fragment).length;
+
+// The hunter's own progress on this chart. A full set is the end of Act I.
+export function chartLine(held: number, live = LIVE_CHART_COUNT): string {
+  const n = Math.max(0, Math.min(held, live));
+  if (live > 0 && n >= live) return `Act I charted. ${live} of ${live} on this chart.`;
+  return `${n} of ${live} on this chart.`;
+}
+
 
 // Clues a hunter must find before naming a suspect (server and browser agree on this).
 export function cluesNeeded(bounty: Bounty): number {
   return bounty.cluesNeeded ?? (bounty.locations ?? []).reduce((n, l) => n + l.clues.length, 0) + (bounty.breakthroughs?.length ?? 0);
+}
+
+// Cases with no interviews can be named as soon as the count is met.
+// A case with interviews stays on the server's canAccuse, so a lie is never treated as already caught.
+export function readyWithoutInterview(bounty: Bounty | undefined, found: Record<string, string>): boolean | null {
+  if (!bounty || bounty.interviews) return null;
+  const scene = (bounty.locations ?? []).flatMap((l) => l.clues).filter((c) => found[c.id] !== undefined).length;
+  const breaks = (bounty.breakthroughs ?? []).filter((id) => found[id] !== undefined).length;
+  return scene + breaks >= cluesNeeded(bounty);
+}
+
+// The accuse button. The lie line names no one, and it only shows once a required interview is still open.
+export function accuseLabel(opts: {
+  interviews: boolean;
+  canAccuse: boolean;
+  needsLie: boolean;
+  foundCount: number;
+  needed: number;
+}): string {
+  const counted = opts.foundCount >= opts.needed;
+  const ready = opts.canAccuse && counted;
+  const left = opts.needed - opts.foundCount;
+  if (ready) return "★ Name your suspect";
+  if (opts.interviews && opts.needsLie && opts.foundCount >= opts.needed - 1) return "Catch the lie that doesn't add up";
+  if (counted) return "Checking the notebook…";
+  return `Find ${left} more clue${left === 1 ? "" : "s"}`;
 }
 
 // Aurelia: the private planet of the rich. Hunters are invited once they've
@@ -711,6 +884,75 @@ export interface BountyProgress {
   caught?: Record<string, string>;
   // Set once the hunter has named the right suspect (lets a refresh return to the duel)
   accused?: { suspect: string } & CaseSolution;
+  // Enough is on record to name someone. False when a required lie is still missing.
+  canAccuse: boolean;
+  // This showdown started after the bounty was collected: an unfinished replay duel.
+  replayDuel?: boolean;
+  // A required interview is still open. Does not name the speaker.
+  needsLie: boolean;
+}
+
+// Remember a correct accusation in the notebook the case file already has open.
+export function withAccusation(progress: BountyProgress, suspect: string, solution: CaseSolution, replayDuel = progress.replayDuel): BountyProgress {
+  return {
+    ...progress,
+    accused: { suspect, showdown: solution.showdown, outro: solution.outro },
+    ...(replayDuel ? { replayDuel: true } : {}),
+  };
+}
+
+// A won replay duel is over. The notebook stays. The showdown button does not.
+export function closeReplayDuel(progress: BountyProgress): BountyProgress {
+  const next: BountyProgress = { ...progress, replayDuel: false };
+  delete next.accused;
+  return next;
+}
+
+// A caught lie names who said it, in the same notebook update as the breakthrough text.
+export function withCaught(progress: BountyProgress, suspect: string, topic: string, id: string): BountyProgress {
+  return { ...progress, caught: { ...(progress.caught ?? {}), [`${suspect}/${topic}`]: id } };
+}
+
+// The first duel of a collected case stays closed. A replay that names the culprit again
+// (its showdown starts after the claim) can be resumed. One-time payouts stay one-time.
+export function showResume(collected: boolean, hasShowdown: boolean, replayDuel = false): boolean {
+  if (!hasShowdown) return false;
+  if (!collected) return true;
+  return replayDuel;
+}
+
+// The accusation screen. A collected case already settled its seal.
+export function accuseSealCopy(collected: boolean): string {
+  const lead = "Pick your suspect, then the clue from your notebook that proves it. ";
+  if (collected) {
+    return lead + "The Clean Case seal was settled on your first collection. A wrong guess on this replay never changes it.";
+  }
+  return lead + "Crack the case on your first try to earn a ★ Clean Case seal. A wrong guess never costs you credits.";
+}
+
+// The done screen. A replay still shows the seal, labeled as the first collection's.
+export function cleanCaseCopy(firstCollection: boolean): string {
+  return firstCollection
+    ? "★ Clean Case: solved on your first accusation"
+    : "★ Clean Case: earned on your first collection";
+}
+
+// The done screen. A replay keeps the ending, and says the bounty already paid.
+export function doneCopy(outro: string | undefined, paid: boolean, reward: number): string {
+  const ending = outro?.trim() ? outro.trim() : "Case closed.";
+  if (paid) return `${ending} ${reward} credits are yours — spend them at the Outfitters.`;
+  return `${ending} You already collected this bounty. Each bounty only pays once per hunter.`;
+}
+
+// A caught lie stays visible after the interview panel unmounts. The server record is enough.
+export function topicCaught(
+  caughtTopics: Record<string, string>,
+  found: Record<string, string>,
+  suspect: string,
+  topic: string,
+): boolean {
+  const id = caughtTopics[`${suspect}/${topic}`];
+  return id !== undefined && found[id] !== undefined;
 }
 
 // Result of searching a clue: its text, or the coded message if it needs decoding.

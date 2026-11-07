@@ -19,11 +19,19 @@ function gateFor(scope: string, a: string, b?: string): Gate | null {
   const bounty = liveBounty(a);
   // Contracts open in order: a locked bounty's briefing and testimony stay silent too.
   if (scope === "briefing" && bounty && !b) return (v) => canAccessBounty(v, bounty);
+  // The guestbook recording still says the old line. Stay silent until it is re-recorded.
+  if (scope === "clue" && a === "saturn-orrery" && b === "guestbook") return null;
   if (scope === "clue" && bounty && b && clueOf(bounty, b)) {
     return async (v) => (await foundClues(v, a)).includes(b);
   }
-  if ((scope === "taunt" || scope === "outro") && bounty && !b) {
+  if (scope === "taunt" && bounty && !b) {
     return async (v) => (await showdownStartedAt(v, a)) !== null;
+  }
+  // The ending stays available after the replay duel is closed. The collection is the record.
+  if (scope === "outro" && bounty && !b) {
+    return async (v) =>
+      (await showdownStartedAt(v, a)) !== null
+      || (await getProfile(v)).completedBounties.includes(a);
   }
   // What a suspect says: once the topic can be asked (file name "<suspect>--<topic>")
   if (scope === "testimony" && bounty && b) {
@@ -35,6 +43,9 @@ function gateFor(scope: string, a: string, b?: string): Gate | null {
   }
   // A caught lie: once the hunter has caught it
   if (scope === "breakthrough" && bounty?.breakthroughs?.includes(b ?? "")) return async (v) => (await foundClues(v, a)).includes(b!);
+  // The contracts board and the dispatch change with the satchel, so a single
+  // recording would speak the wrong line. They stay silent.
+  if (scope === "aurelia" && (b === "board" || b === "dispatch")) return null;
   if (scope === "aurelia" && b) return async (v) => invitedToAurelia((await getProfile(v)).completedBounties);
   return null;
 }

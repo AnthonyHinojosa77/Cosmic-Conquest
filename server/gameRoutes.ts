@@ -9,6 +9,8 @@ import {
   fragmentsFor,
   AURELIA_INVITE_FRAGMENTS,
   onChart,
+  claimWithoutShowdown,
+  drawWindowMs,
   type Bounty,
   type BountyProgress,
   type ClueSearch,
@@ -29,8 +31,15 @@ import {
   foundClues,
   startShowdown,
   showdownStartedAt,
+  replayDuelOpen,
   canAccessBounty,
   recordWrongAccusation,
+  replayInvestigation,
+  closeShowdown,
+  hasReplayReceipt,
+  beginDraw,
+  showdownWon,
+  resolveShot,
 } from "./gameStorage.js";
 
 const accusationSchema = z.object({ suspect: z.string().min(1).max(40), proof: z.string().min(1).max(40) });
@@ -44,6 +53,7 @@ const presentSchema = z.object({ clue: z.string().min(1).max(50) });
 // (SHOWDOWN_MIN_MS only exists so tests can shorten it; a bad value falls back.)
 const envMin = Number(process.env.SHOWDOWN_MIN_MS);
 const SHOWDOWN_MIN_MS = Number.isFinite(envMin) && envMin >= 0 ? envMin : 1500;
+const SHOT_GRACE_MS = 1000;
 
 export function liveBounty(id: unknown): Bounty | undefined {
   const bounty = bountyById(String(id));
@@ -105,8 +115,14 @@ async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProg
   }
   const solution = BOUNTY_SOLUTIONS[bounty.id];
   const accused = (await showdownStartedAt(visitorId, bounty.id)) !== null;
+  const replayDuel = accused && await replayDuelOpen(visitorId, bounty.id);
+  const needsLie = (solution?.beforeAccusation ?? []).some((id) => !ids.includes(id));
+  const canAccuse = ids.length >= cluesNeeded(bounty) && !needsLie;
   return {
     found,
+    canAccuse,
+    needsLie,
+    replayDuel,
     ...(Object.keys(caught).length ? { caught } : {}),
     ...(accused && solution
       ? { accused: { suspect: solution.suspect, showdown: solution.showdown, outro: solution.outro } }
@@ -243,17 +259,50 @@ export function registerGameRoutes(app: Express) {
     const parsed = accusationSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const found = await foundClues(req.visitorId!, bounty.id);
-    if (found.length < cluesNeeded(bounty)) {
+    const solution = BOUNTY_SOLUTIONS[bounty.id];
+    const ready = found.length >= cluesNeeded(bounty)
+      && (solution?.beforeAccusation ?? []).every((id) => found.includes(id));
+    if (!ready) {
       return res.status(409).json({ error: "Find more clues before you name anyone" });
     }
     if (!found.includes(parsed.data.proof)) return res.status(409).json({ error: "You haven't found that clue" });
-    const solution = BOUNTY_SOLUTIONS[bounty.id];
     if (!solution || solution.suspect !== parsed.data.suspect || !solution.proof.includes(parsed.data.proof)) {
       await recordWrongAccusation(req.visitorId!, bounty.id);
       return res.json({ correct: false });
     }
     await startShowdown(req.visitorId!, bounty.id);
     res.json({ correct: true, showdown: solution.showdown, outro: solution.outro });
+  });
+
+  // Collected cases open again with an empty notebook. The payout and Clean Case seal stay.
+  app.post("/api/bounties/:id/replay", gameLimiter, async (req, res) => {
+    const bounty = await openBounty(req, res);
+    if (!bounty) return;
+    if (!(await replayInvestigation(req.visitorId!, bounty.id))) {
+      return res.status(409).json({ error: "Collect this bounty before you replay it" });
+    }
+    res.json({ ok: true });
+  });
+
+  // The stare-down is over. The server starts the draw clock.
+  app.post("/api/bounties/:id/draw", gameLimiter, async (req, res) => {
+    const bounty = await openBounty(req, res);
+    if (!bounty) return;
+    const started = await showdownStartedAt(req.visitorId!, bounty.id);
+    if (started === null) return res.status(409).json({ error: "Name the culprit before you collect" });
+    if (Date.now() - started < SHOWDOWN_MIN_MS) return res.status(409).json({ error: "Win the showdown first" });
+    if (!(await showdownWon(req.visitorId!, bounty.id))) await beginDraw(req.visitorId!, bounty.id);
+    res.json({ ready: true });
+  });
+
+  // The shot is won only if it arrives inside the hunter's draw window.
+  app.post("/api/bounties/:id/shot", gameLimiter, async (req, res) => {
+    const bounty = await openBounty(req, res);
+    if (!bounty) return;
+    const started = await showdownStartedAt(req.visitorId!, bounty.id);
+    if (started === null) return res.status(409).json({ error: "Name the culprit before you collect" });
+    const profile = await getProfile(req.visitorId!);
+    res.json(await resolveShot(req.visitorId!, bounty.id, drawWindowMs(profile.owned), SHOT_GRACE_MS));
   });
 
   // Pay out once per hunter, only after a correct accusation and a real showdown.
@@ -264,13 +313,22 @@ export function registerGameRoutes(app: Express) {
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     // Checked before the suspect, so /claim can't be used to test guesses.
     const started = await showdownStartedAt(req.visitorId!, bounty.id);
-    if (started === null) return res.status(409).json({ error: "Name the culprit before you collect" });
+    if (started === null) {
+      const settled = claimWithoutShowdown(await hasReplayReceipt(req.visitorId!, bounty.id));
+      const error = settled === "already_collected" ? "Bounty already collected" : "Name the culprit before you collect";
+      return res.status(409).json({ error });
+    }
     if (BOUNTY_SOLUTIONS[bounty.id]?.suspect !== parsed.data.suspect) {
       return res.status(422).json({ error: "Wrong suspect" });
     }
     if (Date.now() - started < SHOWDOWN_MIN_MS) return res.status(409).json({ error: "Win the showdown first" });
+    if (!(await showdownWon(req.visitorId!, bounty.id))) return res.status(409).json({ error: "Win the showdown first" });
     const result = await claimBounty(req.visitorId!, bounty.id, bounty.reward);
-    if (result.status === "already_claimed") return res.status(409).json({ error: "Bounty already collected" });
+    if (result.status === "already_claimed") {
+      // The showdown clock already ran. Close the replay duel. Pay nothing again.
+      await closeShowdown(req.visitorId!, bounty.id);
+      return res.status(409).json({ error: "Bounty already collected" });
+    }
     res.json(result.profile);
   });
 
@@ -296,7 +354,13 @@ export function registerGameRoutes(app: Express) {
         needed: AURELIA_INVITE_FRAGMENTS,
       });
     }
-    res.json(aureliaFor(profile.callsign, profile.completedBounties, profile.items.includes("decoder-ring"), profile.cleanBounties));
+    res.json(aureliaFor(
+      profile.callsign,
+      profile.completedBounties,
+      profile.items.includes("decoder-ring"),
+      profile.cleanBounties,
+      profile.items.includes("orrery-key"),
+    ));
   });
 
   app.get("/api/star-map", async (_req, res) => {

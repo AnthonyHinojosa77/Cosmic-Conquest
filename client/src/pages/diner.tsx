@@ -1,10 +1,13 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
 import { getVotedIds, rememberVote } from "@/lib/visitor";
-import { useCallsignName } from "@/lib/game";
+import { errorMessage, useCallsignName } from "@/lib/game";
+import { keepDraft, showEmptyError, trackVote } from "@/lib/votes";
+import { useDiscovered, useRestoreFocus } from "@/lib/discovered";
 import type { MenuItem } from "@shared/schema";
+import { ContractLink } from "@/components/ContractLink";
 import { HotspotHint } from "@/components/HotspotHint";
 import { Scene } from "@/components/Scene";
 import { SceneBackdrop } from "@/components/SceneBackdrop";
@@ -16,14 +19,14 @@ const hotspots = [
     id: "jukebox",
     label: "Atomic Jukebox",
     description: "The Wurlitzer Galaxia stands seven feet tall, its vacuum tubes pulsing amber and violet with every downbeat. It plays hits beamed in from relay stations across the solar system — Martian blues, Venusian swing, the haunting theremin ballads of the outer rim. Drop in a credit and feel the bass rattle the chrome trim on every booth in the joint.",
-    top: "25%", left: "2%", width: "22%", height: "55%",
+    top: "36%", left: "3%", width: "14%", height: "32%",
     indicatorPos: { top: "40%", left: "50%" },
   },
   {
     id: "menu-board",
     label: "Today's Specials",
     description: "Hand-lettered every morning by the robot chef in crisp white paint on a slab of polished asteroid. The Nebula Noodle Soup glows a faint cerulean — perfectly safe, they assure you. The daily specials rotate with the station's orbit, so what's fresh depends on which cargo freighter docked last.",
-    top: "5%", left: "30%", width: "20%", height: "30%",
+    top: "4%", left: "24%", width: "36%", height: "32%",
     indicatorPos: { top: "50%", left: "50%" },
     showsMenu: true,
   },
@@ -31,22 +34,22 @@ const hotspots = [
     id: "robot-waiter",
     label: "Servo the Robot Waiter",
     description: "Model T-800 hospitality unit, polished to a mirror finish and programmed with the manners of a Lunar Grand Hotel concierge. Servo glides between booths on magnetic rails, balancing six plates on each articulated arm without spilling a drop. Tips aren't required, but leave one and his optical sensors flash a grateful pink.",
-    top: "20%", left: "42%", width: "18%", height: "60%",
+    top: "22%", left: "62%", width: "34%", height: "50%",
     indicatorPos: { top: "30%", left: "50%" },
   },
   {
     id: "counter",
     label: "Chrome Counter",
     description: "The counter curves like a rocket's aileron, its chrome surface polished to a mirror finish by Servo's tireless buffing arm every night after closing. Twelve swiveling stools in cherry-red vinyl line the bar, each one worn smooth by a generation of spacers, engineers, and dreamers. Pull up a seat and invent something for the menu — the Diner runs on community spirit and cosmic creativity.",
-    top: "55%", left: "25%", width: "50%", height: "25%",
+    top: "74%", left: "20%", width: "40%", height: "20%",
     indicatorPos: { top: "40%", left: "50%" },
     showsForm: true,
   },
   {
     id: "window",
     label: "Observation Window",
-    description: "Through the reinforced panoramic viewport, Saturn hangs in the velvet dark like a jeweled crown. The rings catch the sunlight at this angle, splitting it into bands of gold and ivory that stretch across the void. Regulars say the view is worth the trip alone — and they're not wrong. Sip your Lunar Lemonade and watch the cosmos put on a show.",
-    top: "5%", left: "70%", width: "28%", height: "35%",
+    description: "Through the reinforced viewport, Earth hangs close and blue, the clouds sliding over the oceans. Regulars say the view is worth the trip alone. Sip your Lunar Lemonade and watch home put on a show.",
+    top: "42%", left: "28%", width: "30%", height: "16%",
     indicatorPos: { top: "50%", left: "50%" },
   },
 ];
@@ -65,7 +68,7 @@ const houseMenu = [
 export default function Diner() {
   useMusic("hub");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
-  const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
+  const [discoveredItems, markDiscovered] = useDiscovered("diner");
 
   // Form state for community dish
   const { name, setName, resetName } = useCallsignName("Astro Diner");
@@ -73,25 +76,29 @@ export default function Diner() {
   const [description, setDescription] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const { data: communityItems = [] } = useQuery<MenuItem[]>({
+  const { data: communityItems = [], isError: menuError, refetch: refetchMenu } = useQuery<MenuItem[]>({
     queryKey: ["/api/menu-items"],
     refetchInterval: 5000,
   });
 
+  const draft = useRef({ name, dishName, description });
+  draft.current = { name, dishName, description };
   const submitDish = useMutation({
     mutationFn: async () => {
+      const sent = { name, dishName, description };
       const res = await apiRequest("POST", "/api/menu-items", {
-        visitorName: name,
-        dishName,
-        description,
+        visitorName: sent.name,
+        dishName: sent.dishName,
+        description: sent.description,
       });
-      return res.json();
+      await res.json();
+      return sent;
     },
-    onSuccess: () => {
+    onSuccess: (sent) => {
       queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
-      setDishName("");
-      setDescription("");
-      resetName();
+      setDishName((now) => keepDraft(sent.dishName, now));
+      setDescription((now) => keepDraft(sent.description, now));
+      if (draft.current.name === sent.name) resetName();
       setShowSuccess(true);
     },
   });
@@ -103,6 +110,8 @@ export default function Diner() {
   }, [showSuccess]);
 
   const [votedIds, setVotedIds] = useState(() => getVotedIds("menuItem"));
+  const [pendingVotes, setPendingVotes] = useState<Set<number>>(() => new Set());
+  const [voteErrors, setVoteErrors] = useState<Record<number, string>>({});
   const markVoted = (id: number) => {
     rememberVote("menuItem", id);
     setVotedIds(prev => new Set(prev).add(id));
@@ -113,20 +122,38 @@ export default function Diner() {
       const res = await apiRequest("POST", `/api/menu-items/${id}/vote`);
       return res.json();
     },
+    onMutate: (id) => {
+      setPendingVotes((current) => trackVote(current, id, true));
+      setVoteErrors((current) => {
+        if (!(id in current)) return current;
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+    },
     onSuccess: (_data, id) => {
       markVoted(id);
       queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
     },
     onError: (err, id) => {
       // 409 = the server already has this visitor's vote
-      if (err.message.startsWith("409")) markVoted(id);
+      if (err instanceof Error && err.message.startsWith("409")) {
+        markVoted(id);
+        return;
+      }
+      setVoteErrors((current) => ({ ...current, [id]: `${errorMessage(err)} Try again.` }));
+    },
+    onSettled: (_data, _err, id) => {
+      setPendingVotes((current) => trackVote(current, id, false));
     },
   });
 
   const handleHotspotClick = useCallback((id: string) => {
-    setDiscoveredItems(prev => new Set(prev).add(id));
+    markDiscovered(id);
     setActiveHotspot(prev => prev === id ? null : id);
-  }, []);
+  }, [markDiscovered]);
+
+  const closePanel = useRestoreFocus(activeHotspot, setActiveHotspot);
 
   const activeData = hotspots.find(h => h.id === activeHotspot);
 
@@ -148,7 +175,6 @@ export default function Diner() {
           </div>
         </div>
       </header>
-
       {/* Scene illustration with hotspot overlays */}
       <div className="max-w-5xl mx-auto px-4 pt-4">
         <div className="bleed rise-in">
@@ -167,10 +193,12 @@ export default function Diner() {
               data-unfound={!discoveredItems.has(hs.id)}
               data-testid={`hotspot-${hs.id}`}
             >
-              <div
-                className="hotspot-indicator"
-                style={{ top: hs.indicatorPos.top, left: hs.indicatorPos.left, transform: "translate(-50%, -50%)" }}
-              />
+              {!discoveredItems.has(hs.id) && (
+                <div
+                  className="hotspot-indicator"
+                  style={{ top: hs.indicatorPos.top, left: hs.indicatorPos.left, transform: "translate(-50%, -50%)" }}
+                />
+              )}
             </button>
           ))}
           </Scene>
@@ -191,8 +219,9 @@ export default function Diner() {
             <div className="discovery-panel-header">
               <span>{activeData.label}</span>
               <button
-                onClick={() => setActiveHotspot(null)}
-                className="text-[hsl(40,40%,95%)] hover:text-white text-lg leading-none"
+                onClick={closePanel}
+                className="panel-close text-[hsl(40,40%,95%)] hover:text-white text-lg leading-none"
+                aria-label="Close"
                 data-testid="button-close-panel"
               >
                 ✕
@@ -202,6 +231,9 @@ export default function Diner() {
               <p className="text-sm text-[hsl(25,40%,20%)] leading-relaxed mb-4">
                 {activeData.description}
               </p>
+              {(activeData.id === "jukebox" || activeData.id === "counter" || activeData.id === "robot-waiter") && (
+                <ContractLink bountyId="heart-of-luna" />
+              )}
 
               {/* Menu Board hotspot reveals the house menu */}
               {activeData.showsMenu && (
@@ -229,21 +261,27 @@ export default function Diner() {
                   <input
                     placeholder="Your name (Chef, Space Cook...)"
                     value={name}
+                    maxLength={50}
                     onChange={(e) => setName(e.target.value)}
+                    disabled={submitDish.isPending}
                     className="w-full px-3 py-2 text-sm bg-[hsl(38,30%,85%)] text-[hsl(25,40%,15%)] border-2 border-[hsl(30,20%,68%)] rounded focus:border-[hsl(0,72%,48%)] focus:outline-none"
                     data-testid="input-dish-chef"
                   />
                   <input
                     placeholder="Dish name (e.g., Supernova Spaghetti)"
                     value={dishName}
+                    maxLength={100}
                     onChange={(e) => setDishName(e.target.value)}
+                    disabled={submitDish.isPending}
                     className="w-full px-3 py-2 text-sm bg-[hsl(38,30%,85%)] text-[hsl(25,40%,15%)] border-2 border-[hsl(30,20%,68%)] rounded focus:border-[hsl(0,72%,48%)] focus:outline-none"
                     data-testid="input-dish-name"
                   />
                   <textarea
                     placeholder="Describe your creation..."
                     value={description}
+                    maxLength={500}
                     onChange={(e) => setDescription(e.target.value)}
+                    disabled={submitDish.isPending}
                     rows={2}
                     className="w-full px-3 py-2 text-sm bg-[hsl(38,30%,85%)] border-2 border-[hsl(30,20%,68%)] rounded focus:border-[hsl(0,72%,48%)] focus:outline-none resize-none"
                     data-testid="input-dish-desc"
@@ -256,6 +294,9 @@ export default function Diner() {
                   >
                     {submitDish.isPending ? "Adding..." : "★ Add to Menu"}
                   </button>
+                  {submitDish.isError && (
+                    <p className="text-xs text-[hsl(0,65%,40%)]" role="alert">{errorMessage(submitDish.error)} Try again.</p>
+                  )}
 
                   {showSuccess && (
                     <div className="text-center py-2 animate-fade-in">
@@ -266,6 +307,11 @@ export default function Diner() {
                   )}
 
                   {/* Community dishes */}
+                  {showEmptyError(menuError, communityItems.length) && (
+                    <p className="text-xs text-[hsl(0,65%,40%)]" role="alert" data-testid="text-feed-error">
+                      Couldn't load these. <button className="underline" onClick={() => refetchMenu()}>Try again</button>
+                    </p>
+                  )}
                   {communityItems.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <h4 className="pulp-title text-xs text-[hsl(195,65%,38%)] tracking-wider">
@@ -275,8 +321,9 @@ export default function Diner() {
                         <div key={item.id} className="comic-panel p-3 bg-[hsl(38,35%,88%)] flex items-start gap-3" data-testid={`card-menu-${item.id}`}>
                           <button
                             onClick={() => voteMutation.mutate(item.id)}
-                            disabled={voteMutation.isPending || votedIds.has(item.id)}
-                            className="flex flex-col items-center gap-0.5 shrink-0 mt-0.5 hover:scale-110 transition-transform"
+                            disabled={votedIds.has(item.id) || pendingVotes.has(item.id)}
+                            className="flex flex-col items-center justify-center gap-0.5 shrink-0 mt-0.5 hover:scale-110 transition-transform min-h-11 min-w-11"
+                            aria-label={`Vote for ${item.visitorName}'s dish`}
                             data-testid={`button-vote-dish-${item.id}`}
                           >
                             <span className="text-lg">👍</span>
@@ -286,6 +333,9 @@ export default function Diner() {
                             <span className="pulp-title text-xs text-[hsl(25,40%,15%)]">{item.dishName}</span>
                             <p className="text-xs text-[hsl(25,20%,40%)] mt-0.5">{item.description}</p>
                             <p className="text-xs text-[hsl(25,15%,55%)] mt-1">— Chef {item.visitorName}</p>
+                            {voteErrors[item.id] && (
+                              <p className="text-xs text-[hsl(0,65%,40%)] mt-1" role="alert" data-testid="text-vote-error">{voteErrors[item.id]}</p>
+                            )}
                           </div>
                         </div>
                       ))}

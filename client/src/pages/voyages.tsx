@@ -1,20 +1,25 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { ContractLink } from "@/components/ContractLink";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
-import { useCallsignName } from "@/lib/game";
+import { errorMessage, useCallsignName } from "@/lib/game";
+import { keepDraft, showEmptyError } from "@/lib/votes";
+import { useDiscovered, useRestoreFocus } from "@/lib/discovered";
 import type { Postcard } from "@shared/schema";
 import { HotspotHint } from "@/components/HotspotHint";
 import { Scene } from "@/components/Scene";
 import { SceneBackdrop } from "@/components/SceneBackdrop";
 import { useMusic } from "@/lib/sound";
 
-const destinations = [
-  { name: "Mars", tagline: "The Red Frontier", desc: "Rust-colored canyons and the tallest volcano in the system." },
+const destinations: { name: string; tagline: string; desc: string; bountyId?: string }[] = [
+  { name: "Mars", tagline: "The Red Frontier", desc: "Rust-colored canyons and the tallest volcano in the system.", bountyId: "red-sands" },
+  { name: "Venus Cloud City", tagline: "Floating Above Fire", desc: "Habitats suspended 50km high in pleasant temperature zones.", bountyId: "venus-fog" },
+  { name: "Saturn", tagline: "Rings at Sunset", desc: "A liner on the ring tour, and a contract pinned under the poster.", bountyId: "saturn-orrery" },
+  { name: "Neptune", tagline: "The Deep Crossing", desc: "Black water past the last gas giant. A contract is tacked to the frame.", bountyId: "neptune-deep" },
+  { name: "Lunar Resort", tagline: "The Classic Getaway", desc: "Low-gravity spas and Earthrise views since 1962.", bountyId: "heart-of-luna" },
   { name: "Europa", tagline: "Ocean Under Ice", desc: "Beneath its icy crust lies an ocean deeper than Earth's." },
   { name: "Titan", tagline: "Lakes of Methane", desc: "The only moon with a thick atmosphere and liquid on its surface." },
-  { name: "Venus Cloud City", tagline: "Floating Above Fire", desc: "Habitats suspended 50km high in pleasant temperature zones." },
-  { name: "Lunar Resort", tagline: "The Classic Getaway", desc: "Low-gravity spas and Earthrise views since 1962." },
   { name: "Asteroid Belt Cruise", tagline: "Rock Hopping Deluxe", desc: "Drift among ancient space rocks in a luxury cruiser." },
 ];
 
@@ -24,7 +29,7 @@ const hotspots = [
     id: "posters",
     label: "Travel Posters",
     description: "A riot of color blazes across the far wall — hand-painted travel posters in the grand tradition, each one a promise written in chrome and starlight. Mars glows crimson beneath a sky of butterscotch dust; Venus floats in her cloud-palace like a pearl suspended in amber. They make the impossible feel like a weekend getaway.",
-    top: "5%", left: "2%", width: "28%", height: "52%",
+    top: "5%", left: "3%", width: "28%", height: "52%",
     indicatorPos: { top: "30%", left: "50%" },
     showsDestinations: true,
   },
@@ -47,7 +52,7 @@ const hotspots = [
     id: "rocket-window",
     label: "Launch Window",
     description: "Through the reinforced duralloy observation port, a gleaming chrome rocket stands fueled and ready on the launch pad, her swept-back fins catching the morning sun like polished silver. Wisps of liquid oxygen curl from the booster vents in the pre-dawn chill. Next departure: 0600 hours sharp — don't be late, the cosmos waits for no one.",
-    top: "5%", left: "60%", width: "38%", height: "50%",
+    top: "5%", left: "60%", width: "37%", height: "50%",
     indicatorPos: { top: "40%", left: "50%" },
   },
   {
@@ -64,7 +69,7 @@ const hotspots = [
 export default function Voyages() {
   useMusic("hub");
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
-  const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
+  const [discoveredItems, markDiscovered] = useDiscovered("voyages");
 
   // Postcard form
   const [selectedDest, setSelectedDest] = useState<string | null>(null);
@@ -72,25 +77,29 @@ export default function Voyages() {
   const [message, setMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const { data: postcards = [] } = useQuery<Postcard[]>({
+  const { data: postcards = [], isError: postcardsError, refetch: refetchPostcards } = useQuery<Postcard[]>({
     queryKey: ["/api/postcards"],
     refetchInterval: 5000,
   });
 
+  const draft = useRef({ name, message, selectedDest });
+  draft.current = { name, message, selectedDest };
   const sendPostcard = useMutation({
     mutationFn: async () => {
+      const sent = { name, message, selectedDest };
       const res = await apiRequest("POST", "/api/postcards", {
-        visitorName: name,
-        destination: selectedDest,
-        message,
+        visitorName: sent.name,
+        destination: sent.selectedDest,
+        message: sent.message,
       });
-      return res.json();
+      await res.json();
+      return sent;
     },
-    onSuccess: () => {
+    onSuccess: (sent) => {
       queryClient.invalidateQueries({ queryKey: ["/api/postcards"] });
-      setMessage("");
-      resetName();
-      setSelectedDest(null);
+      setMessage((now) => keepDraft(sent.message, now));
+      if (draft.current.name === sent.name) resetName();
+      setSelectedDest((now) => now === sent.selectedDest ? null : now);
       setShowSuccess(true);
     },
   });
@@ -102,9 +111,11 @@ export default function Voyages() {
   }, [showSuccess]);
 
   const handleHotspotClick = useCallback((id: string) => {
-    setDiscoveredItems(prev => new Set(prev).add(id));
+    markDiscovered(id);
     setActiveHotspot(prev => prev === id ? null : id);
-  }, []);
+  }, [markDiscovered]);
+
+  const closePanel = useRestoreFocus(activeHotspot, setActiveHotspot);
 
   const activeData = hotspots.find(h => h.id === activeHotspot);
 
@@ -145,10 +156,12 @@ export default function Voyages() {
               data-unfound={!discoveredItems.has(hs.id)}
               data-testid={`hotspot-${hs.id}`}
             >
-              <div
-                className="hotspot-indicator"
-                style={{ top: hs.indicatorPos.top, left: hs.indicatorPos.left, transform: "translate(-50%, -50%)" }}
-              />
+              {!discoveredItems.has(hs.id) && (
+                <div
+                  className="hotspot-indicator"
+                  style={{ top: hs.indicatorPos.top, left: hs.indicatorPos.left, transform: "translate(-50%, -50%)" }}
+                />
+              )}
             </button>
           ))}
           </Scene>
@@ -168,8 +181,9 @@ export default function Voyages() {
             <div className="discovery-panel-header" style={{ background: "hsl(195, 65%, 38%)" }}>
               <span>{activeData.label}</span>
               <button
-                onClick={() => setActiveHotspot(null)}
-                className="text-[hsl(40,40%,95%)] hover:text-white text-lg leading-none"
+                onClick={closePanel}
+                className="panel-close text-[hsl(40,40%,95%)] hover:text-white text-lg leading-none"
+                aria-label="Close"
                 data-testid="button-close-panel"
               >
                 ✕
@@ -190,6 +204,7 @@ export default function Voyages() {
                         <span className="pulp-title text-xs text-[hsl(25,40%,15%)]">{dest.name}</span>
                         <span className="block text-xs text-[hsl(195,65%,38%)] font-bold mt-0.5">{dest.tagline}</span>
                         <p className="text-xs text-[hsl(25,20%,40%)] mt-1">{dest.desc}</p>
+                        {dest.bountyId && <ContractLink bountyId={dest.bountyId} />}
                       </div>
                     ))}
                   </div>
@@ -205,6 +220,7 @@ export default function Voyages() {
                       <button
                         key={dest.name}
                         onClick={() => setSelectedDest(dest.name)}
+                        disabled={sendPostcard.isPending}
                         className={`text-xs px-3 py-1.5 rounded border-2 transition-all pulp-title tracking-wide ${
                           selectedDest === dest.name
                             ? "border-[hsl(195,65%,38%)] bg-[hsl(195,65%,38%)] text-white"
@@ -221,14 +237,18 @@ export default function Voyages() {
                       <input
                         placeholder="Your name (Commander, Cosmonaut...)"
                         value={name}
+                        maxLength={50}
                         onChange={(e) => setName(e.target.value)}
+                        disabled={sendPostcard.isPending}
                         className="w-full px-3 py-2 text-sm bg-[hsl(38,30%,85%)] text-[hsl(25,40%,15%)] border-2 border-[hsl(30,20%,68%)] rounded focus:border-[hsl(195,65%,38%)] focus:outline-none"
                         data-testid="input-postcard-name"
                       />
                       <textarea
                         placeholder={`Greetings from ${selectedDest}! Wish you were here...`}
                         value={message}
+                        maxLength={500}
                         onChange={(e) => setMessage(e.target.value)}
+                        disabled={sendPostcard.isPending}
                         rows={3}
                         className="w-full px-3 py-2 text-sm bg-[hsl(38,30%,85%)] border-2 border-[hsl(30,20%,68%)] rounded focus:border-[hsl(195,65%,38%)] focus:outline-none resize-none"
                         data-testid="input-postcard-message"
@@ -241,6 +261,9 @@ export default function Voyages() {
                       >
                         {sendPostcard.isPending ? "Sending..." : "★ Send Postcard"}
                       </button>
+                      {sendPostcard.isError && (
+                        <p className="text-xs text-[hsl(0,65%,40%)]" role="alert">{errorMessage(sendPostcard.error)} Try again.</p>
+                      )}
                     </>
                   )}
 
@@ -253,6 +276,11 @@ export default function Voyages() {
                   )}
 
                   {/* Postcard wall */}
+                  {showEmptyError(postcardsError, postcards.length) && (
+                    <p className="text-xs text-[hsl(0,65%,40%)]" role="alert" data-testid="text-feed-error">
+                      Couldn't load these. <button className="underline" onClick={() => refetchPostcards()}>Try again</button>
+                    </p>
+                  )}
                   {postcards.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <h4 className="pulp-title text-xs text-[hsl(0,72%,48%)] tracking-wider">

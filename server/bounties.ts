@@ -4,7 +4,7 @@ import { shiftLetters, type CaseSolution } from "../shared/game.js";
 // The showdown/outro name the culprit, so they're only sent after a correct accusation.
 // `proof`: the found clues (or caught lies) that back up naming the culprit; an
 // accusation needs the right suspect AND one of these.
-export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly string[] } & CaseSolution> = {
+export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly string[]; beforeAccusation?: readonly string[] } & CaseSolution> = {
   "heart-of-luna": {
     suspect: "cookie",
     // Every clue but the videophone log (Madame Vela's alibi) points at Cookie: the malt
@@ -19,7 +19,11 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly
   },
   "saturn-orrery": {
     suspect: "tuttle",
-    proof: ["luggage", "breakthrough-2"],
+    // The locked case, the caught lie, and the two clues that break his alibi:
+    // the telescope log and the cocoa that came back because he was not there.
+    // Naming him also takes his own caught lie. Lady Ashgrove's lie does not stand in for it.
+    proof: ["luggage", "breakthrough-2", "telescope", "galley", "guestbook"],
+    beforeAccusation: ["breakthrough-2"],
     outro: "The Saturn Gear clicks back onto its spindle and the Sterling Orrery chimes again. Professor Tuttle will be lecturing on Titan after all, from the inside of the Titan lock-up.",
     showdown: {
       opponent: "Professor Orson Tuttle",
@@ -30,7 +34,9 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly
   },
   "venus-fog": {
     suspect: "vance",
-    proof: ["locker"],
+    // The signed log names him. So do the wet footprints toward the gondola dock,
+    // and the fog log signed "Dock Control."
+    proof: ["locker", "orchids", "fog-machine"],
     outro: "The Star of Venus is back around its owner's neck, the fog show runs on schedule again, and Captain Vance is taking the long gondola ride down to the Venus lock-up.",
     showdown: {
       opponent: "Captain Teddy Vance",
@@ -54,7 +60,9 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly
   },
   "red-sands": {
     suspect: "quill",
-    proof: ["crates", "telegram"],
+    // The crates and the telegram signed "Q." name the freight clerk. So do the
+    // monorail freight-dolly tracks leaving the empty pad.
+    proof: ["crates", "telegram", "pad"],
     outro: "The Rain-Makers are back on their pads, the Ares Valley crops are drinking again, and Rigby Quill is filing his own paperwork in the Phobos lock-up.",
     showdown: {
       opponent: "Rigby Quill",
@@ -83,7 +91,7 @@ export const CLUES: Record<string, Record<string, { text: string; key?: number; 
   "saturn-orrery": {
     orrery: { text: "The Sterling Orrery stands frozen, its little planets stopped mid-orbit. Where the Saturn Gear should turn there's an empty brass spindle. The gear came off cleanly, with no scratches: someone opened the case with the orrery's own key." },
     telescope: { text: "The telescope log, in Professor Tuttle's neat hand: \"Ring storm approaching. Dome SHUT 9:05 PM. Reopened 12:40 AM.\" The lens cap is frosted with ring ice that never melted. Nobody looked through this telescope last night." },
-    guestbook: { text: "Last night's entries: \"Lady V. Ashgrove, 8:30 PM. A divine little machine!\" and \"P. Kettleby, porter, 10:15 PM. Cocoa for the Professor. Nobody here, left it on the bench.\" Tucked between the pages: a pawn ticket from a Titan clock dealer, made out to V. Ashgrove." },
+    guestbook: { text: "Last night's entries: \"Lady V. Ashgrove, 8:30 PM. A divine little machine!\" and \"P. Kettleby, porter, 10:15 PM. Cocoa for the Professor. Nobody here. Brought it back.\" Tucked between the pages: a pawn ticket from a Titan clock dealer, made out to V. Ashgrove." },
     table: { text: "Lady Ashgrove's table, still set for one. Her dinner check: the seven-course Ring Tasting, ordered at 9:00 PM, signed at 11:50. The waiter robot confirms it. \"Madam never left her seat. Not even for the flambé. She was most insistent.\"" },
     galley: { text: "In the galley sits Pip's cocoa tray with one cold, untouched cup. His order slip reads: \"Observatory, 10:15, for Prof. Tuttle. Nobody there. Brought it back.\"" },
     luggage: { text: "In the rack above the Professor's seat: a long velvet case with a claim tag for the Titan Transfer, where the train stops tomorrow. It's locked, and the lining bulges around something round and heavy." },

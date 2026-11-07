@@ -18,6 +18,7 @@ export function aureliaFor(
   completedBounties: readonly string[],
   hasDecoderRing: boolean = false,
   cleanBounties: readonly string[] = [],
+  hasOrreryKey: boolean = false,
 ): AureliaLocation[] {
   const rank = hunterRank(completedBounties.length).title;
   const trophies = completedBounties.flatMap((id) =>
@@ -34,13 +35,13 @@ export function aureliaFor(
           id: "statue",
           label: "The Spirit of Aurelia",
           text: "Cast in solid Venus gold, the Spirit of Aurelia holds up a ring of the planets. The plaque at her feet reads \"Built for the bold.\" Guests toss coins into her fountain for luck before a night at the Stardust Ballroom.",
-          top: "5%", left: "2%", width: "20%", height: "50%",
+          top: "5%", left: "3%", width: "20%", height: "50%",
         },
         {
           id: "searchlights",
           label: "The Searchlights",
           text: "Every searchlight in Aurelia points up. It's written into the city charter: Aurora Sterling wanted her city always looking toward the stars.",
-          top: "2%", left: "28%", width: "15%", height: "33%",
+          top: "3%", left: "28%", width: "15%", height: "33%",
         },
         {
           id: "tower",
@@ -52,7 +53,7 @@ export function aureliaFor(
           id: "staircase",
           label: "The Grand Staircase",
           text: `Three hundred steps and no escalator, on purpose. "In Aurelia," the doorman robots like to say, "one arrives." Tonight's crowd is climbing toward the Stardust Ballroom, and for once a bounty hunter, ${callsign}, is climbing with them.`,
-          top: "60%", left: "20%", width: "30%", height: "38%",
+          top: "60%", left: "20%", width: "30%", height: "37%",
         },
       ],
     },
@@ -64,20 +65,22 @@ export function aureliaFor(
         {
           id: "board",
           label: "The Contracts Board",
-          text: "The great board clatters as its brass tiles flip. Every bounty in the solar system is posted here first, long before it reaches frontier offices like yours. Tonight the tiles are blank. \"New contracts arriving soon,\" a clerk murmurs.",
+          text: hasOrreryKey
+            ? "The great board clatters as its brass tiles flip. You turn the Brass Orrery Key in the clerk's receipt lock. One blank tile turns over: \"TITAN TRANSFER — CHARTER SEALED BY STERLING ATOMIC.\" The clerk nods. \"That key is your receipt. The charter stays sealed.\""
+            : "The great board clatters as its brass tiles flip. Every bounty in the solar system is posted here first, long before it reaches frontier offices like yours. Tonight the outer-world tiles are blank brass. A receipt lock waits beside them.",
           top: "25%", left: "31%", width: "37%", height: "37%",
         },
         {
           id: "registrar",
           label: "The Registrar's Desk",
           text: `The Registrar opens the file marked ${callsign}, ${rank}, every closed case stamped in gold, and slides an embossed Guild card across the desk. "Welcome to the inner circle. Not many frontier hunters ever see this room."`,
-          top: "48%", left: "2%", width: "34%", height: "40%",
+          top: "48%", left: "3%", width: "27%", height: "40%",
         },
         {
           id: "trophies",
           label: "The Trophy Case",
           text: `Behind the glass: ${trophyList}. Each brass plate reads "Recovered by ${callsign}."`,
-          top: "50%", left: "77%", width: "21%", height: "30%",
+          top: "50%", left: "77%", width: "20%", height: "30%",
         },
         {
           // Depends on the hunter's satchel, so it has no shared voice line (see script/audio/voices.ts).
