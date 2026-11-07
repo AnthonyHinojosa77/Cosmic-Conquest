@@ -215,7 +215,11 @@ async function addFound(bountyId: string, clueId: string, text: string, caught?:
     const found = { ...(p?.found ?? {}), [clueId]: text };
     const ready = readyWithoutInterview(BOUNTIES.find((b) => b.id === bountyId), found);
     const canAccuse = ready === null ? (p?.canAccuse ?? false) : ready;
-    const next: BountyProgress = { ...(p ?? { found, canAccuse, needsLie: false }), found, canAccuse, needsLie: p?.needsLie ?? false };
+    // A new scene clue always counts toward naming; whether a caught lie counts waits for the server.
+    const scene = BOUNTIES.find((b) => b.id === bountyId)?.locations?.some((l) => l.clues.some((c) => c.id === clueId)) ?? false;
+    const fresh = p?.found[clueId] === undefined;
+    const counted = p?.counted !== undefined && scene && fresh ? p.counted + 1 : p?.counted;
+    const next: BountyProgress = { ...(p ?? { found, canAccuse, needsLie: false }), found, canAccuse, needsLie: p?.needsLie ?? false, counted };
     return caught ? withCaught(next, caught.suspect, caught.topic, clueId) : next;
   });
   queryClient.invalidateQueries({ queryKey: key });

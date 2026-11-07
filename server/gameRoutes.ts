@@ -122,11 +122,13 @@ async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProg
   const accused = (await showdownStartedAt(visitorId, bounty.id)) !== null;
   const replayDuel = accused && await replayDuelOpen(visitorId, bounty.id);
   const needsLie = (solution?.beforeAccusation ?? []).some((id) => !ids.includes(id));
-  const canAccuse = accusationCount(bounty, ids, solution?.beforeAccusation) >= cluesNeeded(bounty) && !needsLie;
+  const counted = accusationCount(bounty, ids, solution?.beforeAccusation);
+  const canAccuse = counted >= cluesNeeded(bounty) && !needsLie;
   return {
     found,
     canAccuse,
     needsLie,
+    counted,
     replayDuel,
     ...(Object.keys(caught).length ? { caught } : {}),
     ...(accused && solution

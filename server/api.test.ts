@@ -1514,6 +1514,9 @@ test("game: an optional red-herring lie never stands in for a scene clue or the 
   assert.equal((await (await post("/api/bounties/neptune-deep/suspects/brine/ask/night/present", { clue: "beacon" }, cookie)).json()).correct, true);
   const progress = await (await fetch(`${base}/api/bounties/neptune-deep/progress`, { headers: { Cookie: cookie } })).json();
   assert.equal(progress.canAccuse, false); // the chart is still unopened
+  assert.equal(progress.counted, 6); // five scene clues and Coralie's lie; Brine's doesn't count
+  const { accuseLabel } = await import("../shared/game.js");
+  assert.equal(accuseLabel({ interviews: true, canAccuse: false, needsLie: false, foundCount: progress.counted, needed: 7 }), "Find 1 more clue");
   assert.equal((await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door" }, cookie)).status, 409);
   assert.equal((await (await post("/api/bounties/neptune-deep/clues/chart/unlock", { code: "C3" }, cookie)).json()).correct, true);
   assert.equal((await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door" }, cookie)).json()).correct, true);

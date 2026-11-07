@@ -1007,6 +1007,9 @@ export interface BountyProgress {
   replayDuel?: boolean;
   // A required interview is still open. Does not name the speaker.
   needsLie: boolean;
+  // How many finds count toward naming someone (scene clues plus required lies; optional
+  // lies don't count). Only the server knows which lies are required.
+  counted?: number;
 }
 
 // Remember a correct accusation in the notebook the case file already has open.

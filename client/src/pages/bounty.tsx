@@ -3,6 +3,7 @@ import { Link, useParams } from "wouter";
 import { HeroArt, heroSrc, preloadHeroPoses, type HeroPose } from "@/components/HeroArt";
 import { usePlayer, useProgress, accuse, claimBounty, openDraw, landShot, replayBounty, searchClue, decodeClue, unlockClue, askSuspect, presentClue, errorMessage, heardFor, keepLine, type ClaimOutcome } from "@/lib/game";
 import {
+  accusationCount,
   bountyById,
   bandanaSteadies,
   drawWindowMs,
@@ -573,6 +574,7 @@ function Investigation({
   caughtTopics,
   canAccuse,
   needsLie,
+  counted: serverCounted,
   onReady,
   onScene,
   onBriefing,
@@ -582,6 +584,7 @@ function Investigation({
   caughtTopics: Record<string, string>;
   canAccuse: boolean;
   needsLie: boolean;
+  counted?: number;
   onReady: () => void;
   // The picture on screen, so the page behind can take its colours
   onScene: (src: string) => void;
@@ -600,7 +603,8 @@ function Investigation({
   const { data: player } = usePlayer();
   const allClues = locations.flatMap((l) => l.clues);
   useVoice(openClue && found[openClue.id] !== undefined ? `clue/${bounty.id}/${openClue.id}` : null);
-  const foundCount = allClues.filter((c) => found[c.id] !== undefined).length + breakthroughs.length;
+  // The server's count skips optional lies; before it answers, count scene clues only.
+  const foundCount = serverCounted ?? accusationCount(bounty, Object.keys(found));
   const needed = cluesNeeded(bounty);
   const counted = foundCount >= needed;
   const ready = canAccuse && counted;
@@ -1273,6 +1277,7 @@ export default function BountyPage() {
             caughtTopics={progress?.caught ?? {}}
             canAccuse={progress?.canAccuse ?? false}
             needsLie={progress?.needsLie ?? false}
+            counted={progress?.counted}
             onReady={() => setStage("accuse")}
             onScene={setSceneSrc}
             onBriefing={() => setStage("briefing")}
