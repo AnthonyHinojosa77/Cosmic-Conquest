@@ -154,12 +154,11 @@ export default function Hub() {
         <p className="marker-text text-[hsl(38,30%,75%)] text-sm md:text-base mt-1 tracking-wide">
           Take a bounty. Name the culprit. Draw.
         </p>
-        {visitorsError && !recentVisitors ? (
+        {!(visitorsError && !recentVisitors && !wire?.length) && <VisitorTicker visitors={recentVisitors ?? []} wire={wire ?? []} />}
+        {visitorsError && !recentVisitors && (
           <p className="text-xs text-[hsl(0,65%,65%)] mt-2" role="alert" data-testid="text-feed-error">
             Couldn't load the arrivals. <button className="underline" onClick={() => refetchVisitors()}>Try again</button>
           </p>
-        ) : (
-          <VisitorTicker visitors={recentVisitors ?? []} wire={wire ?? []} />
         )}
       </header>
 

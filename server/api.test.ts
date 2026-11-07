@@ -1487,6 +1487,36 @@ test("game: a replay moves the Venus combination and the Neptune hiding place, a
   const found = await (await dive("C5")).json();
   assert.equal(found.correct, true);
   assert.match(found.text, /square C5/);
+
+  // The second replay moves on again (C1, by the Aquadome), then the variant run is played to the claim.
+  resetLimits();
+  await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "chart" }, neptune);
+  await replay("neptune-deep", neptune);
+  for (const c of ["berth", "chamber", "sonar", "beacon", "stage-door"]) await post(`/api/bounties/neptune-deep/clues/${c}/search`, {}, neptune);
+  assert.deepEqual(await (await dive("C5")).json(), { correct: false });
+  const dome = await (await dive("C1")).json();
+  assert.equal(dome.correct, true);
+  assert.match(dome.text, /shadow of the Aquadome/);
+  await post("/api/bounties/neptune-deep/suspects/coralie/ask/night/present", { clue: "stage-door" }, neptune);
+  const named = await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "chart" }, neptune)).json();
+  assert.equal(named.correct, true);
+  await winDuel("neptune-deep", neptune);
+  const claim = await post("/api/bounties/neptune-deep/claim", { suspect: "coralie" }, neptune);
+  assert.equal(claim.status, 409); // a replay never pays again
+  assert.equal((await claim.json()).error, "Bounty already collected");
+});
+
+test("game: an optional red-herring lie never stands in for a scene clue or the puzzle", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  await unlock("neptune-deep", cookie);
+  for (const c of ["berth", "chamber", "sonar", "beacon", "stage-door"]) await post(`/api/bounties/neptune-deep/clues/${c}/search`, {}, cookie);
+  assert.equal((await (await post("/api/bounties/neptune-deep/suspects/coralie/ask/night/present", { clue: "stage-door" }, cookie)).json()).correct, true);
+  assert.equal((await (await post("/api/bounties/neptune-deep/suspects/brine/ask/night/present", { clue: "beacon" }, cookie)).json()).correct, true);
+  const progress = await (await fetch(`${base}/api/bounties/neptune-deep/progress`, { headers: { Cookie: cookie } })).json();
+  assert.equal(progress.canAccuse, false); // the chart is still unopened
+  assert.equal((await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door" }, cookie)).status, 409);
+  assert.equal((await (await post("/api/bounties/neptune-deep/clues/chart/unlock", { code: "C3" }, cookie)).json()).correct, true);
+  assert.equal((await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door" }, cookie)).json()).correct, true);
 });
 
 test("game: the Kelp Forest variant has exactly one answer on the harbor chart", () => {

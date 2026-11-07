@@ -4,6 +4,7 @@ import { updatePlayerSchema } from "../shared/schema.js";
 import {
   bountyById,
   cluesNeeded,
+  accusationCount,
   shiftLetters,
   invitedToAurelia,
   fragmentsFor,
@@ -121,7 +122,7 @@ async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProg
   const accused = (await showdownStartedAt(visitorId, bounty.id)) !== null;
   const replayDuel = accused && await replayDuelOpen(visitorId, bounty.id);
   const needsLie = (solution?.beforeAccusation ?? []).some((id) => !ids.includes(id));
-  const canAccuse = ids.length >= cluesNeeded(bounty) && !needsLie;
+  const canAccuse = accusationCount(bounty, ids, solution?.beforeAccusation) >= cluesNeeded(bounty) && !needsLie;
   return {
     found,
     canAccuse,
@@ -264,7 +265,7 @@ export function registerGameRoutes(app: Express) {
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const found = await foundClues(req.visitorId!, bounty.id);
     const solution = BOUNTY_SOLUTIONS[bounty.id];
-    const ready = found.length >= cluesNeeded(bounty)
+    const ready = accusationCount(bounty, found, solution?.beforeAccusation) >= cluesNeeded(bounty)
       && (solution?.beforeAccusation ?? []).every((id) => found.includes(id));
     if (!ready) {
       return res.status(409).json({ error: "Find more clues before you name anyone" });

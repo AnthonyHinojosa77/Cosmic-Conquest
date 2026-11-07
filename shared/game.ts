@@ -460,7 +460,7 @@ export const BOUNTIES: Bounty[] = [
     available: true,
     requires: ["heart-of-luna"],
     music: "venus",
-    replayNote: "The Phantom tears a fresh note on every replay: new scraps, new combination.",
+    replayNote: "Each replay, the Phantom tears a fresh note: new scraps, and a different combination from your last run.",
     teaser: "A masked thief lifted the Star of Venus during the sky-resort's fog show.",
     briefing:
       "High above the fog seas of Venus floats the Aphrodite Sky Resort, Sterling Atomic's most glamorous address. Last night, during the fog show, a masked figure the guests are calling the Fog Phantom lifted the Star of Venus, the most famous necklace in the solar system, right off a starlet's table. The resort is paying 1,200 credits for the Phantom. Search the Grand Lounge and the Orchid Conservatory, then unmask your thief.",
@@ -643,9 +643,9 @@ export const BOUNTIES: Bounty[] = [
     reward: 2000,
     available: true,
     requires: ["saturn-orrery"],
-    replayNote: "The thief picks a new hiding place on every replay. Read the sonar tape again.",
-    // All six scene clues plus the thief's lie. Captain Brine's tall tale is there to
-    // catch too, and it is not required.
+    replayNote: "Each replay, the thief hides somewhere other than your last run. Read the sonar tape again.",
+    // All six scene clues (the chart included) plus the thief's lie. Captain Brine's
+    // tall tale is there to catch too; it is not required and does not count.
     cluesNeeded: 7,
     breakthroughs: ["breakthrough-1", "breakthrough-2"],
     interviews: [
@@ -910,13 +910,18 @@ export function cluesNeeded(bounty: Bounty): number {
   return bounty.cluesNeeded ?? (bounty.locations ?? []).reduce((n, l) => n + l.clues.length, 0) + (bounty.breakthroughs?.length ?? 0);
 }
 
+// What counts toward naming someone: scene clues, plus the lies the case requires.
+// An optional lie (a red herring) never stands in for a scene clue or a puzzle.
+export function accusationCount(bounty: Bounty, found: readonly string[], requiredLies: readonly string[] = []): number {
+  const scene = new Set((bounty.locations ?? []).flatMap((l) => l.clues).map((c) => c.id));
+  return found.filter((id) => scene.has(id) || requiredLies.includes(id)).length;
+}
+
 // Cases with no interviews can be named as soon as the count is met.
 // A case with interviews stays on the server's canAccuse, so a lie is never treated as already caught.
 export function readyWithoutInterview(bounty: Bounty | undefined, found: Record<string, string>): boolean | null {
   if (!bounty || bounty.interviews) return null;
-  const scene = (bounty.locations ?? []).flatMap((l) => l.clues).filter((c) => found[c.id] !== undefined).length;
-  const breaks = (bounty.breakthroughs ?? []).filter((id) => found[id] !== undefined).length;
-  return scene + breaks >= cluesNeeded(bounty);
+  return accusationCount(bounty, Object.keys(found)) >= cluesNeeded(bounty);
 }
 
 // The accuse button. The lie line names no one, and it only shows once a required interview is still open.

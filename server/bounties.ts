@@ -150,9 +150,20 @@ const NEPTUNE_KELP: Record<string, Partial<ClueSecret>> = {
   chart: { text: CLUES["neptune-deep"].chart.text.replace("square C3", "square C5"), code: "C5" },
 };
 
+// C1 is the only deep square on the Aquadome's row (the Beacon's light never reaches row 1).
+const NEPTUNE_DOME: Record<string, Partial<ClueSecret>> = {
+  sonar: { text: CLUES["neptune-deep"].sonar.text.replace("due east of the Coral Arch", "due west of the Aquadome") },
+  chart: {
+    text: CLUES["neptune-deep"].chart.text
+      .replace("square C3", "square C1")
+      .replace("parked in the Deep just beyond the Beacon's light", "parked in the Deep in the shadow of the Aquadome"),
+    code: "C1",
+  },
+};
+
 export const VARIANTS: Record<string, Record<string, Partial<ClueSecret>>[]> = {
   "venus-fog": [{}, venusScraps(7, 3, 5), venusScraps(2, 9, 6)],
-  "neptune-deep": [{}, NEPTUNE_KELP],
+  "neptune-deep": [{}, NEPTUNE_KELP, NEPTUNE_DOME],
 };
 
 export function variantIndex(bountyId: string, run: number): number {
