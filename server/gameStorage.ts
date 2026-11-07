@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { and, eq, desc, sql, inArray } from "drizzle-orm";
-import { players, bountyClaims, playerItems, clueFinds, showdowns, type Player } from "../shared/schema.js";
+import { players, bountyClaims, playerItems, clueFinds, showdowns, bountyAttempts, type Player } from "../shared/schema.js";
 import {
   DEFAULT_SUIT,
   ownsSuit,
@@ -8,6 +8,8 @@ import {
   suitForItem,
   BOUNTIES,
   STAR_MAP_SIZE,
+  isBountyUnlocked,
+  type Bounty,
   type PlayerProfile,
   type LeaderboardEntry,
   type StarMapStatus,
@@ -42,12 +44,45 @@ async function completedBounties(visitorId: string, q: Db = db): Promise<string[
   return rows.map((r) => r.bountyId);
 }
 
-async function itemsOf(visitorId: string, q: Db = db): Promise<ItemId[]> {
+// Bounties with any recorded progress: a clue found, a showdown started or a claim.
+async function startedBounties(visitorId: string, q: Db = db): Promise<string[]> {
+  const ids = new Set<string>();
+  for (const table of [clueFinds, showdowns, bountyClaims]) {
+    const rows = await q.selectDistinct({ bountyId: table.bountyId }).from(table).where(eq(table.visitorId, visitorId)).all();
+    for (const r of rows) ids.add(r.bountyId);
+  }
+  return Array.from(ids);
+}
+
+async function cleanBounties(visitorId: string, q: Db = db): Promise<string[]> {
+  const rows = await q.select({ bountyId: bountyAttempts.bountyId })
+    .from(bountyAttempts)
+    .where(and(eq(bountyAttempts.visitorId, visitorId), eq(bountyAttempts.cleanClaimed, 1)))
+    .all();
+  return rows.map((r) => r.bountyId);
+}
+
+// The satchel. Closing the Saturn case always leaves the Brass Orrery Key in it,
+// including for hunters who collected that bounty before the key existed.
+async function itemsOf(visitorId: string, q: Db = db, completed?: readonly string[]): Promise<ItemId[]> {
   const rows = await q.select({ itemId: playerItems.itemId })
     .from(playerItems)
     .where(eq(playerItems.visitorId, visitorId))
     .all();
-  return rows.map((r) => r.itemId as ItemId);
+  const items = rows.map((r) => r.itemId as ItemId);
+  const done = completed ?? (await completedBounties(visitorId, q));
+  if (done.includes("saturn-orrery") && !items.includes("orrery-key")) items.push("orrery-key");
+  return items;
+}
+
+async function progressFields(visitorId: string, q: Db = db) {
+  const completed = await completedBounties(visitorId, q);
+  return {
+    completedBounties: completed,
+    startedBounties: await startedBounties(visitorId, q),
+    cleanBounties: await cleanBounties(visitorId, q),
+    items: await itemsOf(visitorId, q, completed),
+  };
 }
 
 async function toProfile(player: Player, q: Db = db): Promise<PlayerProfile> {
@@ -56,8 +91,7 @@ async function toProfile(player: Player, q: Db = db): Promise<PlayerProfile> {
     credits: player.credits,
     suit: player.suit as SuitId,
     owned: parseOwned(player.owned),
-    completedBounties: await completedBounties(player.visitorId, q),
-    items: await itemsOf(player.visitorId, q),
+    ...(await progressFields(player.visitorId, q)),
   };
 }
 
@@ -80,7 +114,13 @@ async function ensurePlayer(visitorId: string, q: Db = db): Promise<Player> {
 export async function getProfile(visitorId: string): Promise<PlayerProfile> {
   const player = await findPlayer(visitorId);
   if (player) return toProfile(player);
-  return { callsign: defaultCallsign(visitorId), credits: 0, suit: DEFAULT_SUIT, owned: [], completedBounties: [], items: await itemsOf(visitorId) };
+  return { callsign: defaultCallsign(visitorId), credits: 0, suit: DEFAULT_SUIT, owned: [], ...(await progressFields(visitorId)) };
+}
+
+// Contracts open in order; a bounty already started or collected stays open.
+export async function canAccessBounty(visitorId: string, bounty: Bounty): Promise<boolean> {
+  if (!bounty.requires?.length) return true;
+  return isBountyUnlocked(bounty, await completedBounties(visitorId), await startedBounties(visitorId));
 }
 
 export type UpdateResult = { status: "ok"; profile: PlayerProfile } | { status: "suit_not_owned" };
@@ -110,7 +150,18 @@ export function claimBounty(visitorId: string, bountyId: string, reward: number)
   return db.transaction(async (tx) => {
     const player = await ensurePlayer(visitorId, tx);
     if ((await completedBounties(visitorId, tx)).includes(bountyId)) return { status: "already_claimed" as const };
-    await tx.insert(bountyClaims).values({ visitorId, bountyId, reward, createdAt: new Date().toISOString() }).run();
+    const now = new Date().toISOString();
+    await tx.insert(bountyClaims).values({ visitorId, bountyId, reward, createdAt: now }).run();
+    // Clean Case: collected without a single wrong accusation. Settled once, here.
+    const wrong = (await tx.select({ n: bountyAttempts.wrongAccusations })
+      .from(bountyAttempts)
+      .where(and(eq(bountyAttempts.visitorId, visitorId), eq(bountyAttempts.bountyId, bountyId)))
+      .get())?.n ?? 0;
+    const cleanClaimed = wrong === 0 ? 1 : 0;
+    await tx.insert(bountyAttempts)
+      .values({ visitorId, bountyId, wrongAccusations: wrong, cleanClaimed, updatedAt: now })
+      .onConflictDoUpdate({ target: [bountyAttempts.visitorId, bountyAttempts.bountyId], set: { cleanClaimed, updatedAt: now } })
+      .run();
     const updated = await tx.update(players)
       .set({ credits: sql`${players.credits} + ${reward}` })
       .where(eq(players.id, player.id))
@@ -149,20 +200,44 @@ export async function buyItem(visitorId: string, itemId: string): Promise<BuyRes
   });
 }
 
+// A wrong accusation before the bounty is collected costs the Clean Case seal.
+export async function recordWrongAccusation(visitorId: string, bountyId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    if ((await completedBounties(visitorId, tx)).includes(bountyId)) return;
+    const now = new Date().toISOString();
+    await tx.insert(bountyAttempts)
+      .values({ visitorId, bountyId, wrongAccusations: 1, updatedAt: now })
+      .onConflictDoUpdate({
+        target: [bountyAttempts.visitorId, bountyAttempts.bountyId],
+        set: { wrongAccusations: sql`${bountyAttempts.wrongAccusations} + 1`, updatedAt: now },
+      })
+      .run();
+  });
+}
+
 export async function getLeaderboard(limit = 10): Promise<LeaderboardEntry[]> {
+  // Clean cases come from a correlated subquery so the claims join (and its sum) isn't multiplied.
+  const cleanCount = sql<number>`(select count(*) from ${bountyAttempts} where ${bountyAttempts.visitorId} = ${players.visitorId} and ${bountyAttempts.cleanClaimed} = 1)`;
   const rows = await db.select({
     callsign: players.callsign,
+    owned: players.owned,
     earned: sql<number>`sum(${bountyClaims.reward})`,
     bounties: sql<number>`count(${bountyClaims.id})`,
-    firstClaim: sql<string>`min(${bountyClaims.createdAt})`,
+    cleanCount,
   })
     .from(bountyClaims)
     .innerJoin(players, eq(players.visitorId, bountyClaims.visitorId))
     .groupBy(players.id)
-    .orderBy(desc(sql`sum(${bountyClaims.reward})`), sql`min(${bountyClaims.createdAt})`)
+    .orderBy(desc(sql`sum(${bountyClaims.reward})`), desc(cleanCount), sql`min(${bountyClaims.createdAt})`)
     .limit(limit)
     .all();
-  return rows.map(({ callsign, earned, bounties }) => ({ callsign, earned, bounties }));
+  return rows.map(({ callsign, owned, earned, bounties, cleanCount }) => ({
+    callsign,
+    earned,
+    bounties,
+    cleanCount,
+    starred: parseOwned(owned).includes("guild-star"),
+  }));
 }
 
 export async function getStarMap(): Promise<StarMapStatus> {

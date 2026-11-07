@@ -59,7 +59,7 @@ export const db: LibSQLDatabase = new Proxy({} as LibSQLDatabase, {
   },
 });
 // A query runner: the database itself, or the transaction a caller is already in.
-export type Db = Pick<LibSQLDatabase, "select" | "insert" | "update" | "delete">;
+export type Db = Pick<LibSQLDatabase, "select" | "selectDistinct" | "insert" | "update" | "delete">;
 
 // Create any missing tables on first use so databases created before a schema
 // addition (e.g. `votes`) keep working without a manual `npm run db:push`.
@@ -142,6 +142,15 @@ const SCHEMA = `
     \`started_at\` text NOT NULL
   );
   CREATE UNIQUE INDEX IF NOT EXISTS \`showdowns_visitor_bounty_unique\` ON \`showdowns\` (\`visitor_id\`,\`bounty_id\`);
+  CREATE TABLE IF NOT EXISTS \`bounty_attempts\` (
+    \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+    \`visitor_id\` text NOT NULL,
+    \`bounty_id\` text NOT NULL,
+    \`wrong_accusations\` integer DEFAULT 0 NOT NULL,
+    \`clean_claimed\` integer,
+    \`updated_at\` text NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS \`bounty_attempts_visitor_bounty_unique\` ON \`bounty_attempts\` (\`visitor_id\`,\`bounty_id\`);
 `;
 
 let ready: Promise<void> | undefined;

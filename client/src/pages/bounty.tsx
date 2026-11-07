@@ -4,8 +4,9 @@ import { HeroArt, heroSrc, preloadHeroPoses, type HeroPose } from "@/components/
 import { usePlayer, useProgress, accuse, claimBounty, searchClue, decodeClue, unlockClue, askSuspect, presentClue, errorMessage, type ClaimOutcome } from "@/lib/game";
 import {
   bountyById,
-  DRAW_WINDOW_MS,
-  DRAW_WINDOW_RAYGUN_MS,
+  drawWindowMs,
+  isBountyUnlocked,
+  lockedLabel,
   type Bounty,
   type CaseSolution,
   type Clue,
@@ -33,6 +34,69 @@ import { loadArt, prefetchArt } from "@/lib/art";
 
 const INK = "hsl(25,40%,15%)";
 type Stage = "briefing" | "investigate" | "accuse" | "showdown" | "done";
+
+// "Breakthrough: Professor Orson Tuttle — Where were you last night?", from what the
+// server says was caught (shared data only holds bare breakthrough ids).
+function breakthroughLabel(bounty: Bounty, caughtTopics: Record<string, string>, id: string): string {
+  const key = Object.keys(caughtTopics).find((k) => caughtTopics[k] === id);
+  if (!key) return "★ Breakthrough";
+  const [suspectId, topicId] = key.split("/");
+  const suspect = bounty.suspects?.find((s) => s.id === suspectId);
+  const topic = bounty.interviews?.find((i) => i.suspect === suspectId)?.topics.find((t) => t.id === topicId);
+  return suspect && topic ? `Breakthrough: ${suspect.name} — ${topic.label}` : "★ Breakthrough";
+}
+
+// Everything in the notebook, in order: found clues, then caught lies.
+function notebookEntries(bounty: Bounty, found: Record<string, string>, caughtTopics: Record<string, string>) {
+  const clues = (bounty.locations ?? []).flatMap((l) => l.clues)
+    .filter((c) => found[c.id] !== undefined)
+    .map((c) => ({ id: c.id, label: c.label, text: found[c.id] }));
+  const caught = (bounty.breakthroughs ?? [])
+    .filter((id) => found[id] !== undefined)
+    .map((id) => ({ id, label: breakthroughLabel(bounty, caughtTopics, id), text: found[id] }));
+  return [...clues, ...caught];
+}
+
+function Notebook({
+  bounty,
+  found,
+  caughtTopics,
+  ready,
+  children,
+}: {
+  bounty: Bounty;
+  found: Record<string, string>;
+  caughtTopics: Record<string, string>;
+  ready: boolean;
+  children?: React.ReactNode;
+}) {
+  const tap = useTapWord();
+  const entries = notebookEntries(bounty, found, caughtTopics);
+  const allClues = (bounty.locations ?? []).flatMap((l) => l.clues);
+  const totalCount = allClues.length + (bounty.breakthroughs?.length ?? 0);
+  return (
+    <section className="notebook max-w-2xl mx-auto" data-testid="panel-notebook">
+      <div className="flex justify-between items-baseline">
+        <h2 className="pulp-title text-lg" style={{ color: INK }}>Hunter's Notebook</h2>
+        <span className="pulp-title text-sm" style={{ color: ready ? "hsl(120,50%,32%)" : INK }}>
+          {entries.length}/{totalCount} clues
+        </span>
+      </div>
+      {entries.length === 0 ? (
+        <p className="text-sm text-[hsl(25,15%,42%)] marker-text mt-2">
+          {tap} the twinkling spots in each place to search. Stuck? 🔍 Look closer.
+        </p>
+      ) : (
+        <ul className="mt-2 space-y-2 text-sm text-[hsl(25,30%,22%)] list-disc pl-5">
+          {entries.map((e) => (
+            <li key={e.id} className="animate-fade-in"><strong>{e.label}:</strong> {e.text}</li>
+          ))}
+        </ul>
+      )}
+      {children}
+    </section>
+  );
+}
 
 
 function Panel({ title, children, testId }: { title: string; children: React.ReactNode; testId?: string }) {
@@ -478,11 +542,9 @@ function Investigation({
   const questioning = locationId === "interviews" && bounty.interviews !== undefined;
   const breakthroughs = (bounty.breakthroughs ?? []).filter((id) => found[id] !== undefined);
   const { data: player } = usePlayer();
-  const tap = useTapWord();
   const allClues = locations.flatMap((l) => l.clues);
   useVoice(openClue && found[openClue.id] !== undefined ? `clue/${bounty.id}/${openClue.id}` : null);
   const foundCount = allClues.filter((c) => found[c.id] !== undefined).length + breakthroughs.length;
-  const totalCount = allClues.length + (bounty.breakthroughs?.length ?? 0);
   const needed = cluesNeeded(bounty);
   const ready = foundCount >= needed;
 
@@ -618,27 +680,7 @@ function Investigation({
         </Sheet>
       )}
 
-      <section className="notebook max-w-2xl mx-auto" data-testid="panel-notebook">
-        <div className="flex justify-between items-baseline">
-          <h2 className="pulp-title text-lg" style={{ color: INK }}>Hunter's Notebook</h2>
-          <span className="pulp-title text-sm" style={{ color: ready ? "hsl(120,50%,32%)" : INK }}>
-            {foundCount}/{totalCount} clues
-          </span>
-        </div>
-        {foundCount === 0 ? (
-          <p className="text-sm text-[hsl(25,15%,42%)] marker-text mt-2">
-            {tap} the twinkling spots in each place to search. Stuck? 🔍 Look closer.
-          </p>
-        ) : (
-          <ul className="mt-2 space-y-2 text-sm text-[hsl(25,30%,22%)] list-disc pl-5">
-            {allClues.filter((c) => found[c.id] !== undefined).map((c) => (
-              <li key={c.id} className="animate-fade-in"><strong>{c.label}:</strong> {found[c.id]}</li>
-            ))}
-            {breakthroughs.map((id) => (
-              <li key={id} className="animate-fade-in"><strong>★ Breakthrough:</strong> {found[id]}</li>
-            ))}
-          </ul>
-        )}
+      <Notebook bounty={bounty} found={found} caughtTopics={caughtTopics} ready={ready}>
         <button
           className={`retro-btn mt-4 disabled:opacity-50 disabled:cursor-not-allowed ${ready ? "is-ready" : ""}`}
           disabled={!ready}
@@ -647,7 +689,7 @@ function Investigation({
         >
           {ready ? "★ Name your suspect" : `Find ${needed - foundCount} more clue${needed - foundCount === 1 ? "" : "s"}`}
         </button>
-      </section>
+      </Notebook>
     </div>
   );
 }
@@ -656,40 +698,58 @@ function Investigation({
 
 function Accusation({
   bounty,
+  found,
+  caughtTopics,
+  onBack,
   onCorrect,
 }: {
   bounty: Bounty;
+  found: Record<string, string>;
+  caughtTopics: Record<string, string>;
+  onBack: () => void;
   onCorrect: (suspectId: string, solution: CaseSolution) => void;
 }) {
-  const [pending, setPending] = useState<string | null>(null);
+  const [suspectId, setSuspectId] = useState<string | null>(null);
+  const [proof, setProof] = useState("");
+  const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const entries = notebookEntries(bounty, found, caughtTopics);
+  const suspect = bounty.suspects?.find((s) => s.id === suspectId);
 
-  const choose = async (suspectId: string, name: string) => {
-    setPending(suspectId);
+  const submit = async () => {
+    if (!suspect || !proof) return;
+    setPending(true);
     setMessage(null);
     try {
-      const solution = await accuse(bounty.id, suspectId);
-      if (solution) onCorrect(suspectId, solution);
-      else setMessage(`${name} has an airtight alibi. The sheriff laughs you out of the room — check your notebook.`);
+      const solution = await accuse(bounty.id, suspect.id, proof);
+      if (solution) onCorrect(suspect.id, solution);
+      else setMessage(`The sheriff isn't buying it: that evidence doesn't put ${suspect.name} behind this. Check your notebook and try again.`);
     } catch (err) {
       setMessage(errorMessage(err));
     } finally {
-      setPending(null);
+      setPending(false);
     }
   };
 
   return (
-    <div className="space-y-4 max-w-3xl mx-auto pt-2">
+    <div className="space-y-4 max-w-3xl mx-auto pt-2" data-testid="panel-accusation">
       <h2 className="pulp-title text-3xl text-center text-[hsl(45,80%,58%)] tracking-wider drop-shadow-lg">{bounty.accusePrompt ?? "Who did it?"}</h2>
+      <p className="text-center marker-text text-sm text-[hsl(38,40%,80%)]">
+        Pick your suspect, then the clue from your notebook that proves it. Crack the case on your first try to earn a ★ Clean Case seal. A wrong guess never costs you credits.
+      </p>
       <p className="text-center marker-text text-xs text-[hsl(38,30%,75%)] sm:hidden">Swipe through the suspects, then tap your culprit</p>
       <div className="poster-rail">
         {(bounty.suspects ?? []).map((s, i) => (
           <button
             key={s.id}
-            className="wanted-poster comic-panel bg-[hsl(38,35%,88%)] p-4 text-left flex flex-col justify-start disabled:opacity-60 rise-in"
+            className={`wanted-poster comic-panel bg-[hsl(38,35%,88%)] p-4 text-left flex flex-col justify-start disabled:opacity-60 rise-in ${s.id === suspectId ? "ring-4 ring-[hsl(45,80%,55%)]" : ""}`}
             style={{ animationDelay: `${i * 90}ms` }}
-            disabled={pending !== null}
-            onClick={() => choose(s.id, s.name)}
+            disabled={pending}
+            onClick={() => {
+              setSuspectId(s.id);
+              setMessage(null);
+            }}
+            aria-pressed={s.id === suspectId}
             data-testid={`button-suspect-${s.id}`}
           >
             <p className="pulp-title text-center text-[hsl(0,72%,42%)] tracking-widest text-sm">WANTED?</p>
@@ -706,11 +766,49 @@ function Accusation({
           </button>
         ))}
       </div>
-      {message && (
-        <p className="text-center text-sm text-[hsl(38,40%,80%)] marker-text animate-fade-in" role="status" data-testid="text-accuse-result">
-          {message}
-        </p>
-      )}
+
+      <div className="comic-panel bg-[hsl(38,35%,88%)] p-4 max-w-2xl mx-auto space-y-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs pulp-title" htmlFor="proof" style={{ color: INK }}>
+            {suspect ? `Your proof against ${suspect.name}:` : "Your proof:"}
+          </label>
+          <select
+            id="proof"
+            value={proof}
+            onChange={(e) => {
+              setProof(e.target.value);
+              setMessage(null);
+            }}
+            className="text-sm px-2 py-1 bg-[hsl(38,30%,90%)] border-2 border-[hsl(30,20%,68%)] rounded max-w-full"
+            data-testid="select-proof"
+          >
+            <option value="">Pick a clue from your notebook…</option>
+            {entries.map((e) => (
+              <option key={e.id} value={e.id}>{e.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button className="retro-btn teal text-sm" onClick={onBack} disabled={pending} data-testid="button-back-investigation">
+            ← Back to Investigation
+          </button>
+          <button
+            className="retro-btn gold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={submit}
+            disabled={!suspect || !proof || pending}
+            data-testid="button-accuse"
+          >
+            {pending ? "Making your case…" : "Accuse with this evidence"}
+          </button>
+        </div>
+        {message && (
+          <p className="text-sm animate-fade-in" role="status" data-testid="text-accuse-result">
+            {message}
+          </p>
+        )}
+      </div>
+
+      <Notebook bounty={bounty} found={found} caughtTopics={caughtTopics} ready />
     </div>
   );
 }
@@ -719,14 +817,23 @@ function Accusation({
 
 type DrawState = "idle" | "waiting" | "draw" | "early" | "slow" | "won";
 
+// "your Lucky Ray-Gun and Hair-Trigger Holster", for the showdown footnote
+function gearNames(owned: readonly string[]): string | null {
+  const names = [owned.includes("raygun") && "Lucky Ray-Gun", owned.includes("holster") && "Hair-Trigger Holster"].filter(Boolean);
+  return names.length ? `your ${names.join(" and ")}` : null;
+}
+
 function Showdown({
   showdown,
   windowMs,
+  gear,
   suit,
   onWin,
 }: {
   showdown: CaseSolution["showdown"];
   windowMs: number;
+  // Owned gear that widens the draw window, by name (null if none)
+  gear: string | null;
   suit: SuitId;
   onWin: () => void;
 }) {
@@ -847,7 +954,7 @@ function Showdown({
       </div>
       <p className="text-xs text-center text-[hsl(38,20%,65%)] mt-3 pl-4 pr-16 sm:px-4">
         {isTouch ? "Tap the button" : "Click (or press Space)"} the instant you see DRAW! You have {windowMs} ms
-        {windowMs > DRAW_WINDOW_MS ? " thanks to your Lucky Ray-Gun." : ". A better blaster from the Outfitters buys you more time."}
+        {gear ? ` thanks to ${gear}.` : ". Gear from the Outfitters buys you more time."}
       </p>
     </div>
   );
@@ -860,7 +967,9 @@ export default function BountyPage() {
   const bounty = bountyById(params.id);
   const { data: player } = usePlayer();
   const [stage, setStage] = useState<Stage>("briefing");
-  const { data: progress } = useProgress(bounty?.available ? bounty.id : null);
+  // Contracts open in order (the server enforces it too); wait for the profile to know.
+  const unlocked = !!bounty && !!player && isBountyUnlocked(bounty, player.completedBounties, player.startedBounties);
+  const { data: progress } = useProgress(bounty?.available && unlocked ? bounty.id : null);
   const [suspect, setSuspect] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<ClaimOutcome | null>(null);
   const [solution, setSolution] = useState<CaseSolution | null>(null);
@@ -871,11 +980,11 @@ export default function BountyPage() {
 
   useEffect(() => () => clearTimeout(doneTimer.current), []);
 
-  // Venus gets its own lounge music; every duel gets the showdown theme.
-  useMusic(!bounty?.available ? null : stage === "showdown" ? "showdown" : bounty.id === "venus-fog" ? "venus" : "investigate");
+  // Each case can have its own music (Venus's lounge); every duel gets the showdown theme.
+  useMusic(!bounty?.available ? null : stage === "showdown" ? "showdown" : (bounty.music ?? "investigate"));
   useVoice(
     !bounty?.available ? null
-      : stage === "briefing" ? `briefing/${bounty.id}`
+      : stage === "briefing" ? (unlocked ? `briefing/${bounty.id}` : null)
       : stage === "showdown" && solution ? `taunt/${bounty.id}`
       : stage === "done" && outcome === "paid" ? `outro/${bounty.id}`
       : null,
@@ -897,7 +1006,8 @@ export default function BountyPage() {
 
   if (!bounty?.available) return <NotFound />;
 
-  const windowMs = player?.owned.includes("raygun") ? DRAW_WINDOW_RAYGUN_MS : DRAW_WINDOW_MS;
+  const owned = player?.owned ?? [];
+  const windowMs = drawWindowMs(owned);
   const firstPlace = bounty.locations?.[0];
   const backdrop = stage === "showdown" || stage === "done" ? solution?.showdown.scene ?? sceneSrc : sceneSrc;
 
@@ -932,9 +1042,15 @@ export default function BountyPage() {
           <Panel title={`Case File — ${bounty.planet}`} testId="panel-briefing">
             <p className="text-sm leading-relaxed">{bounty.briefing}</p>
             <div className="flex flex-wrap gap-3 mt-4">
-              <button className="retro-btn gold" onClick={() => setStage("investigate")} data-testid="button-start-investigation">
-                ★ Take the job
-              </button>
+              {!player ? null : unlocked ? (
+                <button className="retro-btn gold" onClick={() => setStage("investigate")} data-testid="button-start-investigation">
+                  ★ Take the job
+                </button>
+              ) : (
+                <span className="pulp-title text-sm self-center" style={{ color: INK }} data-testid="text-bounty-locked">
+                  {lockedLabel(bounty)}
+                </span>
+              )}
               {progress?.accused && (
                 // Named the culprit before a refresh: go straight back to the duel
                 <button
@@ -968,6 +1084,9 @@ export default function BountyPage() {
         {stage === "accuse" && (
           <Accusation
             bounty={bounty}
+            found={progress?.found ?? {}}
+            caughtTopics={progress?.caught ?? {}}
+            onBack={() => setStage("investigate")}
             onCorrect={(id, sol) => {
               setSuspect(id);
               setSolution(sol);
@@ -978,7 +1097,7 @@ export default function BountyPage() {
 
         {stage === "showdown" && solution && (
           <>
-            <Showdown showdown={solution.showdown} windowMs={windowMs} suit={player?.suit ?? DEFAULT_SUIT} onWin={collect} />
+            <Showdown showdown={solution.showdown} windowMs={windowMs} gear={gearNames(owned)} suit={player?.suit ?? DEFAULT_SUIT} onWin={collect} />
             {claimError && (
               <div className="text-center mt-3 space-y-2" role="alert">
                 <p className="text-sm text-[hsl(0,65%,65%)]">Couldn't collect the bounty: {claimError}</p>
@@ -996,11 +1115,18 @@ export default function BountyPage() {
               <div className="starburst-badge shrink-0" style={{ width: 80, height: 80, fontSize: "0.8rem" }}>
                 {outcome === "paid" ? <>+{bounty.reward}<br />CR</> : <>CASE<br />CLOSED</>}
               </div>
+              <div>
+              {player?.cleanBounties.includes(bounty.id) && (
+                <p className="pulp-title text-base text-[hsl(45,80%,35%)]" data-testid="text-clean-case">
+                  ★ Clean Case: solved on your first accusation
+                </p>
+              )}
               <p className="text-sm leading-relaxed">
                 {outcome === "paid"
                   ? `${solution?.outro ?? "Case closed."} ${bounty.reward} credits are yours — spend them at the Outfitters.`
                   : "Nice shooting — but you already collected this bounty. Each bounty only pays once per hunter."}
               </p>
+              </div>
             </div>
             {bounty.fragment && (
               <div className="mt-4 pt-3 border-t-2 border-dashed border-[hsl(30,20%,68%)]" data-testid="panel-fragment">

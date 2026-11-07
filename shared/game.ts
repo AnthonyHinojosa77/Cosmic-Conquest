@@ -2,7 +2,7 @@
 // Solutions are NOT here — they live server-side in server/bounties.ts.
 
 export type SuitId = "silver" | "red" | "teal" | "gold";
-export type GearId = "raygun";
+export type GearId = "raygun" | "holster" | "guild-star";
 export type ShopItemId = `suit-${Exclude<SuitId, "silver">}` | GearId;
 
 export const SUITS: Record<SuitId, { name: string; color: string; trim: string }> = {
@@ -30,6 +30,8 @@ export interface ShopItem {
 
 export const SHOP_ITEMS: ShopItem[] = [
   { id: "raygun", name: "Lucky Ray-Gun", price: 300, description: "A pearl-handled blaster that clears leather fast. Gives you more time to draw in showdowns." },
+  { id: "guild-star", name: "Guild Gold Star", price: 1200, description: "Solid Venusian gold. Pins a Guild star beside your callsign on your Hunter card and the Bounty Office leaderboard." },
+  { id: "holster", name: "Hair-Trigger Holster", price: 2000, description: "Custom balance-weighted leather. Adds an extra 150 ms to your quick-draw window (stacks with the Lucky Ray-Gun)." },
   { id: "suit-red", name: "Pulp Red Suit", price: 150, description: "Loud, proud, and visible from orbit." },
   { id: "suit-teal", name: "Atomic Teal Suit", price: 150, description: "Cool as the far side of the Moon." },
   { id: "suit-gold", name: "Gold Rush Suit", price: 250, description: "For hunters who want the whole saloon to know they've arrived." },
@@ -44,17 +46,28 @@ export function suitForItem(id: ShopItemId): SuitId | null {
   return id.startsWith("suit-") ? (id.slice(5) as SuitId) : null;
 }
 
-// Quick-draw reaction window in ms; the Lucky Ray-Gun widens it.
+// Quick-draw reaction window in ms; the Lucky Ray-Gun and the Hair-Trigger Holster widen it.
 export const DRAW_WINDOW_MS = 500;
-export const DRAW_WINDOW_RAYGUN_MS = 750;
+export const DRAW_WINDOW_RAYGUN_BONUS_MS = 250;
+export const DRAW_WINDOW_HOLSTER_BONUS_MS = 150;
+
+export function drawWindowMs(owned: readonly string[]): number {
+  return DRAW_WINDOW_MS
+    + (owned.includes("raygun") ? DRAW_WINDOW_RAYGUN_BONUS_MS : 0)
+    + (owned.includes("holster") ? DRAW_WINDOW_HOLSTER_BONUS_MS : 0);
+}
 
 // Items found during bounties stay in the hunter's satchel for later jobs.
-export type ItemId = "decoder-ring";
+export type ItemId = "decoder-ring" | "orrery-key";
 
 export const ITEMS: Record<ItemId, { name: string; description: string }> = {
   "decoder-ring": {
     name: "Junior Ranger Decoder Ring",
     description: "Brass, Sterling Atomic issue. Engraved inside: \"Set your key to the number of moons of your world.\"",
+  },
+  "orrery-key": {
+    name: "Brass Orrery Key",
+    description: "Master clockwork key from the Ring Line Express. Engraved with the star-crest of Sterling Atomic.",
   },
 };
 
@@ -165,6 +178,10 @@ export interface Bounty {
   // Ids of the lies to catch while questioning (each counts like a clue). Only ids:
   // who lies, and which clue catches them, stays server-side.
   breakthroughs?: string[];
+  // Bounties that must be collected before this one can be taken
+  requires?: readonly string[];
+  // Investigation music (defaults to "investigate")
+  music?: "investigate" | "venus";
 }
 
 export const BOUNTIES: Bounty[] = [
@@ -261,6 +278,7 @@ export const BOUNTIES: Bounty[] = [
     planet: "Mars",
     reward: 800,
     available: true,
+    requires: ["heart-of-luna"],
     teaser: "Chrome Rain-Makers are vanishing from the Ares Valley dome farms, one Friday night at a time.",
     briefing:
       "Out in Mars's Ares Valley, Sterling Atomic's glass-domed farms turn red dust into green fields, thanks to towering chrome Rain-Makers that pull water right out of the thin Martian air. Someone's been rustling them: three towers gone in three weeks. The Valley Growers' Cooperative is paying 800 credits to whoever stops it. Search the Hydro-Dome and the Red Sands freight depot, then name your rustler.",
@@ -350,6 +368,8 @@ export const BOUNTIES: Bounty[] = [
     planet: "Venus",
     reward: 1200,
     available: true,
+    requires: ["heart-of-luna"],
+    music: "venus",
     teaser: "A masked thief lifted the Star of Venus during the sky-resort's fog show.",
     briefing:
       "High above the fog seas of Venus floats the Aphrodite Sky Resort, Sterling Atomic's most glamorous address. Last night, during the fog show, a masked figure the guests are calling the Fog Phantom lifted the Star of Venus, the most famous necklace in the solar system, right off a starlet's table. The resort is paying 1,200 credits for the Phantom. Search the Grand Lounge and the Orchid Conservatory, then unmask your thief.",
@@ -413,6 +433,7 @@ export const BOUNTIES: Bounty[] = [
     planet: "Saturn",
     reward: 1600,
     available: true,
+    requires: ["red-sands", "venus-fog"],
     teaser: "The golden orrery aboard the Ring Line Express stopped mid-journey, and its master gear is gone.",
     briefing:
       "The Ring Line Express glides around Saturn on a track laid across the rings themselves, and its pride is the Sterling Orrery: a golden clockwork model of the solar system that Aurora Sterling gave to the Saturn colonies. Last night, somewhere between the Cassini Gap and the Titan Transfer, it stopped. Its master gear, the Saturn Gear, is missing. The Ring Line is paying 1,600 credits to get it back. Search the Observatory Car and the Dining Car, question the three passengers who were awake that night, and catch whoever is lying.",
@@ -423,7 +444,7 @@ export const BOUNTIES: Bounty[] = [
         name: "Observatory Car",
         image: "./scenes/saturn-observatory.webp",
         clues: [
-          { id: "orrery", label: "The Sterling Orrery", top: "18%", left: "38%", width: "42%", height: "62%" },
+          { id: "orrery", label: "The Sterling Orrery", grants: "orrery-key", top: "18%", left: "38%", width: "42%", height: "62%" },
           { id: "telescope", label: "The Great Telescope", top: "5%", left: "74%", width: "25%", height: "42%" },
           { id: "guestbook", label: "Observatory Guestbook", top: "60%", left: "2%", width: "30%", height: "22%" },
         ],
@@ -502,6 +523,7 @@ export const BOUNTIES: Bounty[] = [
     planet: "Neptune",
     reward: 2000,
     available: true,
+    requires: ["saturn-orrery"],
     teaser: "Aurora Sterling's own golden submarine vanished from its berth, deep beneath Neptune's sea.",
     briefing:
       "On the floor of Neptune's blue sea sits the Aquadome, a glass city of promenades, coral gardens and the famous Aquacade. Its pride is the Tomorrow, the golden submarine Aurora Sterling piloted herself. Last night it slipped out of the Sterling Submarine Pen and vanished into the deep. The Aquadome is paying 2,000 credits to get it back. Search the Submarine Pen and the Glass Promenade, work out on the harbor chart where the thief hid her, send down the diving bell, then name your culprit.",
@@ -579,6 +601,24 @@ export const BOUNTIES: Bounty[] = [
 
 export function bountyById(id: string): Bounty | undefined {
   return BOUNTIES.find((b) => b.id === id);
+}
+
+// Contracts open in order. A bounty the hunter already started or collected stays open
+// (so hunters who played before the order existed keep their place).
+export function isBountyUnlocked(
+  bounty: Bounty,
+  completedBounties: readonly string[],
+  startedBounties: readonly string[] = [],
+): boolean {
+  return completedBounties.includes(bounty.id)
+    || startedBounties.includes(bounty.id)
+    || (bounty.requires ?? []).every((id) => completedBounties.includes(id));
+}
+
+// "🔒 Complete The Heart of Luna Heist first", shown instead of "Take the job".
+export function lockedLabel(bounty: Bounty): string {
+  const titles = (bounty.requires ?? []).map((id) => bountyById(id)?.title ?? id);
+  return `🔒 Complete ${titles.join(" and ")} first`;
 }
 
 const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI"];
@@ -686,6 +726,10 @@ export interface PlayerProfile {
   suit: SuitId;
   owned: ShopItemId[];
   completedBounties: string[];
+  // Bounties with any recorded progress (clues, a showdown or a claim)
+  startedBounties: string[];
+  // Bounties collected without a single wrong accusation
+  cleanBounties: string[];
   items: ItemId[];
 }
 
@@ -693,4 +737,6 @@ export interface LeaderboardEntry {
   callsign: string;
   earned: number;
   bounties: number;
+  cleanCount: number;
+  starred: boolean;
 }

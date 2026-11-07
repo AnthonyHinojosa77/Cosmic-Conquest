@@ -75,11 +75,12 @@ function lines(): Line[] {
       out.push({ file: `outro/${b.id}/line.mp3`, role: "narrator", text: sol.outro });
     }
   }
-  // Aurelia: only the lines that are the same for every hunter (the rest name the player).
+  // Aurelia: only the lines that are the same for every hunter (the rest name the player,
+  // or, like the Outer Rim Dispatch, depend on what's in their satchel).
   const MARK = "HUNTERNAME";
   for (const loc of aureliaFor(MARK, [])) {
     for (const spot of loc.spots) {
-      if (spot.text.includes(MARK) || /first case file|Recovered by/.test(spot.text)) continue;
+      if (spot.id === "dispatch" || spot.text.includes(MARK) || /first case file|Recovered by/.test(spot.text)) continue;
       out.push({ file: `aurelia/${loc.id}/${spot.id}.mp3`, role: "narrator", text: spot.text });
     }
   }

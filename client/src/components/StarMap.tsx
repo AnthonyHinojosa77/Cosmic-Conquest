@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { usePlayer, useStarMap } from "@/lib/game";
-import { MAP_FRAGMENTS, STAR_MAP_SIZE, fragmentsFor, numeral, type MapFragment } from "@shared/game";
+import { BOUNTIES, MAP_FRAGMENTS, STAR_MAP_SIZE, fragmentsFor, numeral, type MapFragment } from "@shared/game";
 
 const NIGHT = "hsl(220,45%,13%)";
+
+// Fragments a live contract can turn up today; the sectors past them are still uncharted.
+const LIVE_FRAGMENT_COUNT = BOUNTIES.filter((b) => b.available && b.fragment).length;
 
 // Sterling's star map: the player's own fragments plus how far the whole community has got.
 export function StarMap() {
@@ -59,7 +62,8 @@ export function StarMap() {
               >
                 <span className="pulp-title text-lg text-[hsl(210,25%,62%)] leading-none">{numeral(n)}</span>
                 <span className="text-[10px] leading-tight text-[hsl(210,25%,70%)]">
-                  {count > 0 ? `Recovered by ${count} hunter${count === 1 ? "" : "s"}` : "Lost among the stars"}
+                  {n <= LIVE_FRAGMENT_COUNT ? "Undiscovered — take a contract at the Bounty Office" : "Uncharted sector — future contracts"}
+                  {count > 0 && <span className="block mt-1">Recovered by {count} hunter{count === 1 ? "" : "s"}</span>}
                 </span>
               </div>
             );

@@ -6,6 +6,35 @@ import { useMusic } from "@/lib/sound";
 import { useTapWord } from "@/lib/device";
 import { Scene } from "@/components/Scene";
 import { SceneBackdrop } from "@/components/SceneBackdrop";
+import { usePlayer } from "@/lib/game";
+import { fragmentsFor, hunterRank, STAR_MAP_SIZE } from "@shared/game";
+
+// The Bounty Office entrance, with the hunter's standing once they've started playing.
+function HunterDispatch() {
+  const { data: player } = usePlayer();
+  const playing = !!player && (player.startedBounties.length > 0 || player.owned.length > 0);
+  return (
+    <div className="comic-panel bg-[hsl(0,45%,18%)] border-[hsl(45,80%,48%)] p-3 mb-4 flex flex-col sm:flex-row sm:items-center gap-3" data-testid="panel-hunter-dispatch">
+      <p className="flex-1 min-w-0 text-sm text-[hsl(38,30%,85%)]" data-testid="text-hunter-status">
+        {playing ? (
+          <>
+            <span className="pulp-title text-[hsl(45,80%,60%)]">{player.callsign}</span>
+            {" · "}{hunterRank(player.completedBounties.length).title}
+            {" · "}💰 {player.credits.toLocaleString()} CR
+            {" · "}★ {fragmentsFor(player.completedBounties).length}/{STAR_MAP_SIZE} map fragments
+          </>
+        ) : (
+          <span className="marker-text">Aurora Sterling's fortune is out there among the stars. The Bounty Office is hiring.</span>
+        )}
+      </p>
+      <Link href="/bounties">
+        <button className="retro-btn gold w-full sm:w-auto py-3 text-base md:text-lg" data-testid="button-enter-bounties">
+          ★ Bounty Office — Take a job, hunter ★
+        </button>
+      </Link>
+    </div>
+  );
+}
 
 function VisitorTicker({ visitors }: { visitors: Visitor[] }) {
   const recent = useMemo(() => visitors.slice(0, 5), [visitors]);
@@ -107,6 +136,7 @@ export default function Hub() {
 
       {/* Magazine cover illustration with clickable panels */}
       <main className="w-full max-w-4xl mx-auto px-4 pb-8 relative z-10">
+        <HunterDispatch />
         <div className="bleed rise-in relative">
           <Scene src="./scenes/hub-cover.webp" alt="A pulp science fiction magazine cover with three illustrated panels" testId="scene-hub-cover" fit maxHeight={Math.max(560, window.innerHeight - 170)}>
 
@@ -168,16 +198,6 @@ export default function Hub() {
             </Link>
           ))}
         </div>
-
-        {/* Bounty Hunter game entry */}
-        <Link href="/bounties">
-          <button
-            className="retro-btn gold w-full mt-4 py-4 text-lg md:text-xl"
-            data-testid="button-enter-bounties"
-          >
-            ★ Bounty Office — Take a job, hunter ★
-          </button>
-        </Link>
 
         {/* Footer tagline */}
         <p className="text-center text-[hsl(38,20%,45%)] text-xs tracking-widest uppercase mt-6 marker-text">

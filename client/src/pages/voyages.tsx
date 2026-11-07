@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
-import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
+import { useCallsignName } from "@/lib/game";
 import type { Postcard } from "@shared/schema";
 import { HotspotHint } from "@/components/HotspotHint";
 import { Scene } from "@/components/Scene";
@@ -66,18 +66,9 @@ export default function Voyages() {
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
   const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (!shouldLogVisit("Cosmic Voyages")) return;
-    apiRequest("POST", "/api/visitors", {
-      visitorName: getVisitorName(),
-      world: "Cosmic Voyages",
-      action: "arrived at",
-    }).catch(() => {});
-  }, []);
-
   // Postcard form
   const [selectedDest, setSelectedDest] = useState<string | null>(null);
-  const [name, setName] = useState("");
+  const { name, setName, resetName } = useCallsignName("Cosmic Voyages");
   const [message, setMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -98,7 +89,7 @@ export default function Voyages() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/postcards"] });
       setMessage("");
-      setName("");
+      resetName();
       setSelectedDest(null);
       setShowSuccess(true);
     },

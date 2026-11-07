@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getVisitorName, shouldLogVisit } from "@/lib/visitor";
 import type { PlayerProfile, LeaderboardEntry, SuitId, CaseSolution, StarMapStatus, BountyProgress, ClueSearch, AureliaLocation } from "@shared/game";
 
 export const PLAYER_KEY = ["/api/player"];
@@ -9,6 +11,38 @@ export const AURELIA_KEY = ["/api/aurelia"];
 
 export function usePlayer() {
   return useQuery<PlayerProfile>({ queryKey: PLAYER_KEY });
+}
+
+// The social worlds use the hunter's callsign as their name: it signs the arrival log
+// (once the profile has loaded) and pre-fills the form until the visitor types their own.
+export function useCallsignName(world: string) {
+  const { data: player, isLoading } = usePlayer();
+  const [name, setNameState] = useState("");
+  const edited = useRef(false);
+
+  useEffect(() => {
+    if (isLoading || !shouldLogVisit(world)) return;
+    apiRequest("POST", "/api/visitors", {
+      visitorName: player?.callsign || getVisitorName(),
+      world,
+      action: "arrived at",
+    }).catch(() => {});
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (!edited.current && player?.callsign) setNameState(player.callsign);
+  }, [player?.callsign]);
+
+  const setName = (value: string) => {
+    edited.current = true;
+    setNameState(value);
+  };
+  // After a successful submission
+  const resetName = () => {
+    edited.current = false;
+    setNameState(player?.callsign ?? "");
+  };
+  return { name, setName, resetName };
 }
 
 export function useLeaderboard() {
@@ -59,9 +93,10 @@ export function useBuyItem() {
   });
 }
 
-// Returns the case solution (showdown + outro) when the accusation is right, else null.
-export async function accuse(bountyId: string, suspect: string): Promise<CaseSolution | null> {
-  const res = await apiRequest("POST", `/api/bounties/${bountyId}/accuse`, { suspect });
+// Name a suspect with a found clue as proof. Returns the case solution (showdown + outro)
+// when both are right, else null (a wrong guess costs the Clean Case seal, never credits).
+export async function accuse(bountyId: string, suspect: string, proof: string): Promise<CaseSolution | null> {
+  const res = await apiRequest("POST", `/api/bounties/${bountyId}/accuse`, { suspect, proof });
   const body = await res.json();
   return body.correct ? { showdown: body.showdown, outro: body.outro } : null;
 }

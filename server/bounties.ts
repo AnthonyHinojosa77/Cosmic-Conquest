@@ -2,9 +2,14 @@ import { shiftLetters, type CaseSolution } from "../shared/game.js";
 
 // Server-only bounty solutions — kept out of shared/ so they don't ship to the browser.
 // The showdown/outro name the culprit, so they're only sent after a correct accusation.
-export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution> = {
+// `proof`: the found clues (or caught lies) that back up naming the culprit; an
+// accusation needs the right suspect AND one of these.
+export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly string[] } & CaseSolution> = {
   "heart-of-luna": {
     suspect: "cookie",
+    // Every clue but the videophone log (Madame Vela's alibi) points at Cookie: the malt
+    // syrup and moon dust, the diner cap and fry oil, the clogged mixer, Servo, the cap.
+    proof: ["dome", "robot", "mixer", "servo", "jukebox"],
     outro: "The Heart of Luna is back under the Expo dome, and Cookie is cooling off in the Lunar lock-up.",
     showdown: {
       opponent: "\"Cookie\" Carmichael",
@@ -14,6 +19,7 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
   },
   "saturn-orrery": {
     suspect: "tuttle",
+    proof: ["luggage", "breakthrough-2"],
     outro: "The Saturn Gear clicks back onto its spindle and the Sterling Orrery chimes again. Professor Tuttle will be lecturing on Titan after all, from the inside of the Titan lock-up.",
     showdown: {
       opponent: "Professor Orson Tuttle",
@@ -24,6 +30,7 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
   },
   "venus-fog": {
     suspect: "vance",
+    proof: ["locker"],
     outro: "The Star of Venus is back around its owner's neck, the fog show runs on schedule again, and Captain Vance is taking the long gondola ride down to the Venus lock-up.",
     showdown: {
       opponent: "Captain Teddy Vance",
@@ -34,6 +41,9 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
   },
   "neptune-deep": {
     suspect: "coralie",
+    // Her stage-door log and dripping tail missing its scales, and the "C.F." note and
+    // sequinned mask left aboard the Tomorrow. The berth's lone sequin alone names no one.
+    proof: ["stage-door", "chart"],
     outro: "The Tomorrow is back in her berth, polished and gleaming, and the Aquacade is holding auditions for a new mermaid. Coralie Finn is practicing her breath-holding in the Triton lock-up.",
     showdown: {
       opponent: "Coralie Finn",
@@ -44,6 +54,7 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string } & CaseSolution
   },
   "red-sands": {
     suspect: "quill",
+    proof: ["crates", "telegram"],
     outro: "The Rain-Makers are back on their pads, the Ares Valley crops are drinking again, and Rigby Quill is filing his own paperwork in the Phobos lock-up.",
     showdown: {
       opponent: "Rigby Quill",

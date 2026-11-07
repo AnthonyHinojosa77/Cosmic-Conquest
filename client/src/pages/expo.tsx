@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
+import { getVotedIds, rememberVote } from "@/lib/visitor";
+import { useCallsignName } from "@/lib/game";
 import { BackButton } from "@/components/BackButton";
 import type { Prediction } from "@shared/schema";
 import { HotspotHint } from "@/components/HotspotHint";
@@ -67,17 +68,8 @@ export default function Expo() {
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
   const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (!shouldLogVisit("The Atomic Expo")) return;
-    apiRequest("POST", "/api/visitors", {
-      visitorName: getVisitorName(),
-      world: "The Atomic Expo",
-      action: "arrived at",
-    }).catch(() => {});
-  }, []);
-
   // Prediction form
-  const [name, setName] = useState("");
+  const { name, setName, resetName } = useCallsignName("The Atomic Expo");
   const [prediction, setPrediction] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -97,7 +89,7 @@ export default function Expo() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/predictions"] });
       setPrediction("");
-      setName("");
+      resetName();
       setShowSuccess(true);
     },
   });

@@ -10,9 +10,25 @@ import { InstallHint } from "@/components/InstallHint";
 import { useMusic } from "@/lib/sound";
 import { SterlingBroadcast, hasHeardBroadcast, markBroadcastHeard } from "@/components/SterlingBroadcast";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
-import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ITEMS, ownsSuit, hunterRank, fragmentsFor, AURELIA_INVITE_FRAGMENTS } from "@shared/game";
+import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ITEMS, ownsSuit, hunterRank, fragmentsFor, isBountyUnlocked, lockedLabel, AURELIA_INVITE_FRAGMENTS } from "@shared/game";
 
 const INK = "hsl(25,40%,15%)";
+const GOLD = "hsl(45,80%,42%)";
+
+// The Guild Gold Star and Clean Case count shown beside a hunter's callsign.
+function HunterHonors({ starred, cleanCount }: { starred: boolean; cleanCount: number }) {
+  if (!starred && cleanCount === 0) return null;
+  return (
+    <>
+      {starred && <span className="ml-1" style={{ color: GOLD }} title="Guild Gold Star" aria-label="Guild Gold Star" data-testid="icon-guild-star">★</span>}
+      {cleanCount > 0 && (
+        <span className="text-[10px] ml-1 pulp-title" style={{ color: GOLD }} title={`${cleanCount} Clean Case${cleanCount === 1 ? "" : "s"}`}>
+          {cleanCount}× Clean
+        </span>
+      )}
+    </>
+  );
+}
 
 function CreditsBadge({ credits }: { credits: number }) {
   return (
@@ -44,9 +60,16 @@ function HeroCard() {
   return (
     <section className="comic-panel bg-[hsl(38,35%,88%)] p-4 flex flex-col items-center" data-testid="panel-hero">
       <HeroArt pose="standing" suit={player.suit} className="w-36 h-auto drop-shadow-lg" />
+      <p className="pulp-title text-lg mt-1 text-center" style={{ color: INK }} data-testid="text-hero-callsign">
+        {player.callsign}
+        <HunterHonors starred={player.owned.includes("guild-star")} cleanCount={player.cleanBounties.length} />
+      </p>
       <RankBadge bounties={player.completedBounties.length} />
       {player.owned.includes("raygun") && (
         <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Packing the Lucky Ray-Gun</p>
+      )}
+      {player.owned.includes("holster") && (
+        <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Hair-Trigger Holster on the hip</p>
       )}
 
       {ownedSuits.length > 1 && (
@@ -142,6 +165,7 @@ function BountyBoard() {
       <h2 className="pulp-title text-2xl text-[hsl(45,80%,55%)] tracking-wider">Wanted</h2>
       {BOUNTIES.map((b) => {
         const done = player?.completedBounties.includes(b.id);
+        const open = !player || isBountyUnlocked(b, player.completedBounties, player.startedBounties);
         return (
           <div
             key={b.id}
@@ -159,6 +183,10 @@ function BountyBoard() {
               <div className="mt-3">
                 {!b.available ? (
                   <span className="marker-text text-xs text-[hsl(25,15%,42%)]">Coming soon</span>
+                ) : !open ? (
+                  <span className="pulp-title text-sm text-[hsl(25,15%,42%)]" data-testid={`text-locked-${b.id}`}>
+                    {lockedLabel(b)}
+                  </span>
                 ) : (
                   <Link href={`/bounty/${b.id}`}>
                     <button className={`retro-btn text-sm ${done ? "teal" : ""}`} data-testid={`button-take-${b.id}`}>
@@ -266,6 +294,7 @@ function Leaderboard() {
             <li key={`${e.callsign}-${i}`} className="flex justify-between text-sm" style={{ color: INK }}>
               <span>
                 <span className="pulp-title mr-2">{i + 1}.</span>{e.callsign}
+                <HunterHonors starred={e.starred} cleanCount={e.cleanCount} />
                 <span className="text-[10px] uppercase tracking-wider text-[hsl(25,15%,42%)] ml-1">{hunterRank(e.bounties).title}</span>
               </span>
               <span className="pulp-title">{e.earned.toLocaleString()} CR</span>

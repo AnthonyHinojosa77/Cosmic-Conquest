@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import { invitedToAurelia } from "../shared/game.js";
 import { liveBounty, clueOf } from "./gameRoutes.js";
-import { foundClues, showdownStartedAt, getProfile } from "./gameStorage.js";
+import { foundClues, showdownStartedAt, getProfile, canAccessBounty } from "./gameStorage.js";
 import { TESTIMONY } from "./bounties.js";
 
 // Voice lines are recordings of clue text, taunts and so on, so they give away as much
@@ -17,7 +17,8 @@ type Gate = (visitorId: string) => Promise<boolean>;
 function gateFor(scope: string, a: string, b?: string): Gate | null {
   if (scope === "aurora" && a === "broadcast" && !b) return async () => true;
   const bounty = liveBounty(a);
-  if (scope === "briefing" && bounty && !b) return async () => true;
+  // Contracts open in order: a locked bounty's briefing and testimony stay silent too.
+  if (scope === "briefing" && bounty && !b) return (v) => canAccessBounty(v, bounty);
   if (scope === "clue" && bounty && b && clueOf(bounty, b)) {
     return async (v) => (await foundClues(v, a)).includes(b);
   }
@@ -29,7 +30,8 @@ function gateFor(scope: string, a: string, b?: string): Gate | null {
     const [suspect, topicId] = b.split("--");
     const topic = bounty.interviews?.find((i) => i.suspect === suspect)?.topics.find((t) => t.id === topicId);
     if (!topic || !TESTIMONY[a]?.[suspect]?.[topicId]) return null;
-    return async (v) => topic.after === undefined || (await foundClues(v, a)).includes(topic.after);
+    return async (v) =>
+      (await canAccessBounty(v, bounty)) && (topic.after === undefined || (await foundClues(v, a)).includes(topic.after));
   }
   // A caught lie: once the hunter has caught it
   if (scope === "breakthrough" && bounty?.breakthroughs?.includes(b ?? "")) return async (v) => (await foundClues(v, a)).includes(b!);
@@ -46,6 +48,6 @@ export function registerVoiceRoutes(app: Express) {
     const file = path.join(AUDIO_DIR, scope, a, `${b ?? "line"}.mp3`);
     if (!fs.existsSync(file)) return res.status(404).end();
     res.setHeader("Cache-Control", "private, max-age=86400");
-    res.sendFile(file);
+    res.sendFile(path.relative(AUDIO_DIR, file), { root: AUDIO_DIR });
   });
 }

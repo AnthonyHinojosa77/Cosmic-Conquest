@@ -2,7 +2,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
-import { getVisitorName, shouldLogVisit, getVotedIds, rememberVote } from "@/lib/visitor";
+import { getVotedIds, rememberVote } from "@/lib/visitor";
+import { useCallsignName } from "@/lib/game";
 import type { MenuItem } from "@shared/schema";
 import { HotspotHint } from "@/components/HotspotHint";
 import { Scene } from "@/components/Scene";
@@ -66,17 +67,8 @@ export default function Diner() {
   const [activeHotspot, setActiveHotspot] = useState<string | null>(null);
   const [discoveredItems, setDiscoveredItems] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (!shouldLogVisit("Astro Diner")) return;
-    apiRequest("POST", "/api/visitors", {
-      visitorName: getVisitorName(),
-      world: "Astro Diner",
-      action: "arrived at",
-    }).catch(() => {});
-  }, []);
-
   // Form state for community dish
-  const [name, setName] = useState("");
+  const { name, setName, resetName } = useCallsignName("Astro Diner");
   const [dishName, setDishName] = useState("");
   const [description, setDescription] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
@@ -99,7 +91,7 @@ export default function Diner() {
       queryClient.invalidateQueries({ queryKey: ["/api/menu-items"] });
       setDishName("");
       setDescription("");
-      setName("");
+      resetName();
       setShowSuccess(true);
     },
   });

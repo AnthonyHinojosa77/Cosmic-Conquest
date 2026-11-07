@@ -154,3 +154,16 @@ export const showdowns = sqliteTable("showdowns", {
 }, (table) => [
   uniqueIndex("showdowns_visitor_bounty_unique").on(table.visitorId, table.bountyId),
 ]);
+
+// Wrong accusations per hunter per bounty, and whether the claim was a Clean Case
+// (collected with zero wrong accusations). clean_claimed is null until claimed.
+export const bountyAttempts = sqliteTable("bounty_attempts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  visitorId: text("visitor_id").notNull(),
+  bountyId: text("bounty_id").notNull(),
+  wrongAccusations: integer("wrong_accusations").notNull().default(0),
+  cleanClaimed: integer("clean_claimed"),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("bounty_attempts_visitor_bounty_unique").on(table.visitorId, table.bountyId),
+]);

@@ -2,7 +2,7 @@ import { hunterRank } from "../shared/game.js";
 import type { AureliaLocation } from "../shared/game.js";
 
 // What each solved case leaves in the Guild's trophy case.
-const TROPHIES: Record<string, string> = {
+export const TROPHIES: Record<string, string> = {
   "heart-of-luna": "a replica of the Heart of Luna",
   "red-sands": "a chrome fin from an Ares Valley Rain-Maker",
   "venus-fog": "a photograph of the Star of Venus",
@@ -13,9 +13,15 @@ const TROPHIES: Record<string, string> = {
 // Aurelia's text is served only to invited hunters (it isn't in the browser bundle).
 // The scene images are ordinary public files; only the words and the way in are gated.
 // Act I: wonder only. Aurora's disappearance is hinted at, never explained.
-export function aureliaFor(callsign: string, completedBounties: readonly string[]): AureliaLocation[] {
+export function aureliaFor(
+  callsign: string,
+  completedBounties: readonly string[],
+  hasDecoderRing: boolean = false,
+  cleanBounties: readonly string[] = [],
+): AureliaLocation[] {
   const rank = hunterRank(completedBounties.length).title;
-  const trophies = completedBounties.flatMap((id) => (TROPHIES[id] ? [TROPHIES[id]] : []));
+  const trophies = completedBounties.flatMap((id) =>
+    TROPHIES[id] ? [cleanBounties.includes(id) ? `${TROPHIES[id]} (★ Clean Case)` : TROPHIES[id]] : []);
   const trophyList =
     trophies.length > 1 ? `${trophies.slice(0, -1).join(", ")} and ${trophies[trophies.length - 1]}` : trophies[0] ?? "your first case file";
   return [
@@ -72,6 +78,15 @@ export function aureliaFor(callsign: string, completedBounties: readonly string[
           label: "The Trophy Case",
           text: `Behind the glass: ${trophyList}. Each brass plate reads "Recovered by ${callsign}."`,
           top: "50%", left: "77%", width: "21%", height: "30%",
+        },
+        {
+          // Depends on the hunter's satchel, so it has no shared voice line (see script/audio/voices.ts).
+          id: "dispatch",
+          label: "The Outer Rim Dispatch",
+          text: hasDecoderRing
+            ? "A brass ticker spools out a dispatch in shifting cipher. You turn your Sterling decoder ring until the letters settle: \"OUTER RIM EXPEDITION — TITAN & EUROPA CHARTERS SEALED BY ORDER OF STERLING ATOMIC.\""
+            : "A brass ticker spools out a dispatch in a shifting brass cipher. The letters won't hold still long enough to read. A clerk shrugs: \"Only a Sterling decoder ring can make sense of that one.\"",
+          top: "63%", left: "35%", width: "30%", height: "22%",
         },
         {
           id: "charter",

@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { updatePlayerSchema } from "../shared/schema.js";
 import {
@@ -29,9 +29,12 @@ import {
   foundClues,
   startShowdown,
   showdownStartedAt,
+  canAccessBounty,
+  recordWrongAccusation,
 } from "./gameStorage.js";
 
-const accusationSchema = z.object({ suspect: z.string().min(1).max(50) });
+const accusationSchema = z.object({ suspect: z.string().min(1).max(40), proof: z.string().min(1).max(40) });
+const claimSchema = z.object({ suspect: z.string().min(1).max(40) });
 const decodeSchema = z.object({ key: z.number().int().min(0).max(25) });
 // A lock's digits, or a square on a sea chart ("C3")
 const unlockSchema = z.object({ code: z.string().regex(/^[0-9]{1,6}$|^[A-Z][1-9][0-9]?$/) });
@@ -45,6 +48,20 @@ const SHOWDOWN_MIN_MS = Number.isFinite(envMin) && envMin >= 0 ? envMin : 1500;
 export function liveBounty(id: unknown): Bounty | undefined {
   const bounty = bountyById(String(id));
   return bounty?.available ? bounty : undefined;
+}
+
+// A live bounty this hunter may work on, or the error response is sent (404 / 403).
+async function openBounty(req: Request, res: Response, missing = "No such bounty"): Promise<Bounty | undefined> {
+  const bounty = liveBounty(req.params.id);
+  if (!bounty) {
+    res.status(404).json({ error: missing });
+    return undefined;
+  }
+  if (!(await canAccessBounty(req.visitorId!, bounty))) {
+    res.status(403).json({ error: "Complete earlier contracts first" });
+    return undefined;
+  }
+  return bounty;
 }
 
 export function clueOf(bounty: Bounty, clueId: string) {
@@ -112,16 +129,17 @@ export function registerGameRoutes(app: Express) {
 
   // What this hunter has found so far (survives a page refresh).
   app.get("/api/bounties/:id/progress", async (req, res) => {
-    const bounty = liveBounty(req.params.id);
-    if (!bounty) return res.status(404).json({ error: "No such bounty" });
+    const bounty = await openBounty(req, res);
+    if (!bounty) return;
     res.json(await progressOf(req.visitorId!, bounty));
   });
 
   // Search a spot: the server records the find and hands over the clue (and any item).
   app.post("/api/bounties/:id/clues/:clueId/search", clueLimiter, async (req, res) => {
-    const bounty = liveBounty(req.params.id);
-    const found = bounty && clueOf(bounty, String(req.params.clueId));
-    if (!bounty || !found) return res.status(404).json({ error: "Nothing to find there" });
+    const bounty = await openBounty(req, res, "Nothing to find there");
+    if (!bounty) return;
+    const found = clueOf(bounty, String(req.params.clueId));
+    if (!found) return res.status(404).json({ error: "Nothing to find there" });
     const { clue, secret } = found;
     if (clue.grants) await grantItem(req.visitorId!, clue.grants);
     if (clue.lock || secret.code !== undefined) {
@@ -141,9 +159,10 @@ export function registerGameRoutes(app: Express) {
 
   // Decode a coded clue: needs the right tool in the satchel and the right key.
   app.post("/api/bounties/:id/clues/:clueId/decode", clueLimiter, async (req, res) => {
-    const bounty = liveBounty(req.params.id);
-    const found = bounty && clueOf(bounty, String(req.params.clueId));
-    if (!bounty || !found || found.secret.key === undefined || !found.clue.cipher) {
+    const bounty = await openBounty(req, res, "Nothing to decode there");
+    if (!bounty) return;
+    const found = clueOf(bounty, String(req.params.clueId));
+    if (!found || found.secret.key === undefined || !found.clue.cipher) {
       return res.status(404).json({ error: "Nothing to decode there" });
     }
     const parsed = decodeSchema.safeParse(req.body);
@@ -159,10 +178,11 @@ export function registerGameRoutes(app: Express) {
   // Open a combination lock, or dive to a square on a sea chart: needs the clues that
   // reveal the answer, then the right code (a lock's digits, or the square).
   app.post("/api/bounties/:id/clues/:clueId/unlock", clueLimiter, async (req, res) => {
-    const bounty = liveBounty(req.params.id);
-    const found = bounty && clueOf(bounty, String(req.params.clueId));
+    const bounty = await openBounty(req, res, "Nothing to unlock there");
+    if (!bounty) return;
+    const found = clueOf(bounty, String(req.params.clueId));
     const { lock, chart } = found ? found.clue : {};
-    if (!bounty || !found || found.secret.code === undefined || !(lock || chart)) {
+    if (!found || found.secret.code === undefined || !(lock || chart)) {
       return res.status(404).json({ error: "Nothing to unlock there" });
     }
     const parsed = unlockSchema.safeParse(req.body);
@@ -185,8 +205,8 @@ export function registerGameRoutes(app: Express) {
 
   // Question a suspect about a topic.
   app.post("/api/bounties/:id/suspects/:suspect/ask/:topic", clueLimiter, async (req, res) => {
-    const bounty = liveBounty(req.params.id);
-    if (!bounty) return res.status(404).json({ error: "No such bounty" });
+    const bounty = await openBounty(req, res);
+    if (!bounty) return;
     const found = await foundClues(req.visitorId!, bounty.id);
     const t = topicOf(found, bounty, String(req.params.suspect), String(req.params.topic));
     if (t.status === "missing") return res.status(404).json({ error: "They have nothing to say about that" });
@@ -197,8 +217,8 @@ export function registerGameRoutes(app: Express) {
   // Present a found clue against what a suspect said. The right clue against a lie
   // is a breakthrough, recorded like a clue.
   app.post("/api/bounties/:id/suspects/:suspect/ask/:topic/present", clueLimiter, async (req, res) => {
-    const bounty = liveBounty(req.params.id);
-    if (!bounty) return res.status(404).json({ error: "No such bounty" });
+    const bounty = await openBounty(req, res);
+    if (!bounty) return;
     const parsed = presentSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const found = await foundClues(req.visitorId!, bounty.id);
@@ -214,32 +234,40 @@ export function registerGameRoutes(app: Express) {
     res.json({ correct: true, id: breakthrough.id, text: breakthrough.text });
   });
 
-  // Name a suspect. Needs enough clues on record; a correct guess starts the showdown clock.
+  // Name a suspect, backed by a found clue. Needs enough clues on record; the right suspect
+  // with real proof starts the showdown clock. Any wrong answer gets the same reply, so
+  // it never reveals whether the suspect or the proof was off.
   app.post("/api/bounties/:id/accuse", gameLimiter, async (req, res) => {
-    const bounty = liveBounty(req.params.id);
-    if (!bounty) return res.status(404).json({ error: "No such bounty" });
+    const bounty = await openBounty(req, res);
+    if (!bounty) return;
     const parsed = accusationSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    if ((await foundClues(req.visitorId!, bounty.id)).length < cluesNeeded(bounty)) {
+    const found = await foundClues(req.visitorId!, bounty.id);
+    if (found.length < cluesNeeded(bounty)) {
       return res.status(409).json({ error: "Find more clues before you name anyone" });
     }
+    if (!found.includes(parsed.data.proof)) return res.status(409).json({ error: "You haven't found that clue" });
     const solution = BOUNTY_SOLUTIONS[bounty.id];
-    if (solution?.suspect !== parsed.data.suspect) return res.json({ correct: false });
+    if (!solution || solution.suspect !== parsed.data.suspect || !solution.proof.includes(parsed.data.proof)) {
+      await recordWrongAccusation(req.visitorId!, bounty.id);
+      return res.json({ correct: false });
+    }
     await startShowdown(req.visitorId!, bounty.id);
     res.json({ correct: true, showdown: solution.showdown, outro: solution.outro });
   });
 
   // Pay out once per hunter, only after a correct accusation and a real showdown.
   app.post("/api/bounties/:id/claim", gameLimiter, async (req, res) => {
-    const bounty = liveBounty(req.params.id);
-    if (!bounty) return res.status(404).json({ error: "No such bounty" });
-    const parsed = accusationSchema.safeParse(req.body);
+    const bounty = await openBounty(req, res);
+    if (!bounty) return;
+    const parsed = claimSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+    // Checked before the suspect, so /claim can't be used to test guesses.
+    const started = await showdownStartedAt(req.visitorId!, bounty.id);
+    if (started === null) return res.status(409).json({ error: "Name the culprit before you collect" });
     if (BOUNTY_SOLUTIONS[bounty.id]?.suspect !== parsed.data.suspect) {
       return res.status(422).json({ error: "Wrong suspect" });
     }
-    const started = await showdownStartedAt(req.visitorId!, bounty.id);
-    if (started === null) return res.status(409).json({ error: "Name the culprit before you collect" });
     if (Date.now() - started < SHOWDOWN_MIN_MS) return res.status(409).json({ error: "Win the showdown first" });
     const result = await claimBounty(req.visitorId!, bounty.id, bounty.reward);
     if (result.status === "already_claimed") return res.status(409).json({ error: "Bounty already collected" });
@@ -268,7 +296,7 @@ export function registerGameRoutes(app: Express) {
         needed: AURELIA_INVITE_FRAGMENTS,
       });
     }
-    res.json(aureliaFor(profile.callsign, profile.completedBounties));
+    res.json(aureliaFor(profile.callsign, profile.completedBounties, profile.items.includes("decoder-ring"), profile.cleanBounties));
   });
 
   app.get("/api/star-map", async (_req, res) => {
