@@ -163,6 +163,16 @@ export const replayReceipts = sqliteTable("replay_receipts", {
   uniqueIndex("replay_receipts_visitor_bounty_unique").on(table.visitorId, table.bountyId),
 ]);
 
+// How many times a hunter has replayed a case. Each replay moves the case's puzzles to
+// their next variant (server/bounties.ts), so a replay is not the same answers again.
+export const caseRuns = sqliteTable("case_runs", {
+  visitorId: text("visitor_id").notNull(),
+  bountyId: text("bounty_id").notNull(),
+  runs: integer("runs").notNull().default(0),
+}, (table) => [
+  uniqueIndex("case_runs_visitor_bounty_unique").on(table.visitorId, table.bountyId),
+]);
+
 // When a hunter named the right suspect and stepped into the showdown
 export const showdowns = sqliteTable("showdowns", {
   id: integer("id").primaryKey({ autoIncrement: true }),

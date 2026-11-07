@@ -214,6 +214,8 @@ export interface Bounty {
   breakthroughs?: string[];
   // Bounties that must be collected before this one can be taken
   requires?: readonly string[];
+  // Shown before a replay when the case's puzzles change on each replay (answers stay server-side)
+  replayNote?: string;
   // Investigation music (defaults to "investigate")
   music?: "investigate" | "venus";
 }
@@ -228,7 +230,35 @@ export const BOUNTIES: Bounty[] = [
     teaser: "The Moon Colony model's glowing crystal core vanished from the Atomic Expo overnight.",
     briefing:
       "Last night someone lifted the Heart of Luna — the glowing crystal that powers the Moon Colony Alpha model — right out from under the Atomic Expo's dome. The Expo Committee is paying 500 credits to whoever brings the thief in. Search the Expo and the Astro Diner for clues, then name your suspect. Careful, hunter: the wrong accusation just gets you laughed out of town.",
+    // The first case teaches questioning: Cookie's lie is there to catch, and it counts
+    // as proof, but any four finds are still enough to name someone.
     cluesNeeded: 4,
+    breakthroughs: ["breakthrough-1"],
+    interviews: [
+      {
+        suspect: "gearhart",
+        topics: [
+          { id: "night", label: "Where were you last night?" },
+          { id: "robot", label: "Tell me about RB-9." },
+          { id: "dome", label: "Who could open the dome?", after: "dome" },
+        ],
+      },
+      {
+        suspect: "vela",
+        topics: [
+          { id: "night", label: "Where were you last night?" },
+          { id: "crystal", label: "What do you make of the Heart of Luna?" },
+        ],
+      },
+      {
+        suspect: "cookie",
+        topics: [
+          { id: "night", label: "How was your shift last night?" },
+          { id: "lunchbox", label: "What was in the lunchbox?", after: "servo" },
+          { id: "glitter", label: "Why is the mixer full of moon dust?", after: "mixer" },
+        ],
+      },
+    ],
     locations: [
       {
         id: "expo",
@@ -316,7 +346,33 @@ export const BOUNTIES: Bounty[] = [
     teaser: "Chrome Rain-Makers are vanishing from the Ares Valley dome farms, one Friday night at a time.",
     briefing:
       "Out in Mars's Ares Valley, Sterling Atomic's glass-domed farms turn red dust into green fields, thanks to towering chrome Rain-Makers that pull water right out of the thin Martian air. Someone's been rustling them: three towers gone in three weeks. The Valley Growers' Cooperative is paying 800 credits to whoever stops it. Search the Hydro-Dome and the Red Sands freight depot, then name your rustler.",
-    cluesNeeded: 6,
+    // All six scene clues plus the rustler's lie.
+    cluesNeeded: 7,
+    breakthroughs: ["breakthrough-1"],
+    interviews: [
+      {
+        suspect: "dusty",
+        topics: [
+          { id: "night", label: "Where were you last Friday night?" },
+          { id: "water", label: "What's your beef with the dome farms?" },
+        ],
+      },
+      {
+        suspect: "venn",
+        topics: [
+          { id: "night", label: "Where were you last Friday night?" },
+          { id: "rain-makers", label: "Why do you want the old Rain-Makers gone?" },
+        ],
+      },
+      {
+        suspect: "quill",
+        topics: [
+          { id: "night", label: "What ships out of the depot on a Friday?" },
+          { id: "crates", label: "Who sealed the Canned Sunshine crates?", after: "crates" },
+          { id: "rounds", label: "Folks say you've been buying rounds." },
+        ],
+      },
+    ],
     locations: [
       {
         id: "hydro-dome",
@@ -404,10 +460,36 @@ export const BOUNTIES: Bounty[] = [
     available: true,
     requires: ["heart-of-luna"],
     music: "venus",
+    replayNote: "The Phantom tears a fresh note on every replay: new scraps, new combination.",
     teaser: "A masked thief lifted the Star of Venus during the sky-resort's fog show.",
     briefing:
       "High above the fog seas of Venus floats the Aphrodite Sky Resort, Sterling Atomic's most glamorous address. Last night, during the fog show, a masked figure the guests are calling the Fog Phantom lifted the Star of Venus, the most famous necklace in the solar system, right off a starlet's table. The resort is paying 1,200 credits for the Phantom. Search the Grand Lounge and the Orchid Conservatory, then unmask your thief.",
-    cluesNeeded: 6,
+    // All six scene clues plus the Phantom's lie.
+    cluesNeeded: 7,
+    breakthroughs: ["breakthrough-1"],
+    interviews: [
+      {
+        suspect: "lune",
+        topics: [
+          { id: "night", label: "Where were you during the fog show?" },
+          { id: "star", label: "Did you see the Star of Venus last night?" },
+        ],
+      },
+      {
+        suspect: "fenwick",
+        topics: [
+          { id: "night", label: "Where were you during the fog show?" },
+          { id: "fog", label: "Who changed your fog schedule?", after: "fog-machine" },
+        ],
+      },
+      {
+        suspect: "vance",
+        topics: [
+          { id: "night", label: "Where were you during the fog show?" },
+          { id: "dock", label: "Who uses the name \"Dock Control\"?", after: "fog-machine" },
+        ],
+      },
+    ],
     locations: [
       {
         id: "lounge",
@@ -561,6 +643,36 @@ export const BOUNTIES: Bounty[] = [
     reward: 2000,
     available: true,
     requires: ["saturn-orrery"],
+    replayNote: "The thief picks a new hiding place on every replay. Read the sonar tape again.",
+    // All six scene clues plus the thief's lie. Captain Brine's tall tale is there to
+    // catch too, and it is not required.
+    cluesNeeded: 7,
+    breakthroughs: ["breakthrough-1", "breakthrough-2"],
+    interviews: [
+      {
+        suspect: "brine",
+        topics: [
+          { id: "night", label: "Where were you last night?" },
+          { id: "berth", label: "You wanted the Tomorrow's berth?" },
+          { id: "deep", label: "Did your tour go near the Deep?", after: "sonar" },
+        ],
+      },
+      {
+        suspect: "rusty",
+        topics: [
+          { id: "night", label: "Where were you last night?" },
+          { id: "gold", label: "Finders keepers?" },
+        ],
+      },
+      {
+        suspect: "coralie",
+        topics: [
+          { id: "night", label: "Where were you last night?" },
+          { id: "sequin", label: "Whose sequin is on the cleat?", after: "berth" },
+          { id: "book", label: "Reading up on Aurora's fortune?", after: "stage-door" },
+        ],
+      },
+    ],
     teaser: "Aurora Sterling's own golden submarine vanished from its berth, deep beneath Neptune's sea.",
     briefing:
       "On the floor of Neptune's blue sea sits the Aquadome, a glass city of promenades, coral gardens and the famous Aquacade. Its pride is the Tomorrow, the golden submarine Aurora Sterling piloted herself. Last night it slipped out of the Sterling Submarine Pen and vanished into the deep. The Aquadome is paying 2,000 credits to get it back. Search the Submarine Pen and the Glass Promenade, work out on the harbor chart where the thief hid her, send down the diving bell, then name your culprit.",
@@ -973,6 +1085,30 @@ export interface PlayerProfile {
   // Bounties collected without a single wrong accusation
   cleanBounties: string[];
   items: ItemId[];
+}
+
+// The Guild Wire: recent case closures, shown on the hub beside world arrivals.
+export interface WireEntry {
+  callsign: string;
+  bountyId: string;
+  clean: boolean;
+}
+
+export function wireLine(entry: WireEntry): string | null {
+  const bounty = bountyById(entry.bountyId);
+  if (!bounty) return null;
+  return `${entry.callsign} closed ${bounty.title}${entry.clean ? " ★ clean case" : ""}`;
+}
+
+// Closures first, then arrivals, alternating so neither crowds out the other.
+export function tickerLines(wire: readonly WireEntry[], arrivals: readonly string[], limit = 8): string[] {
+  const closed = wire.map(wireLine).filter((l): l is string => l !== null);
+  const out: string[] = [];
+  for (let i = 0; out.length < limit && (i < closed.length || i < arrivals.length); i++) {
+    if (i < closed.length) out.push(closed[i]);
+    if (i < arrivals.length && out.length < limit) out.push(arrivals[i]);
+  }
+  return out;
 }
 
 export interface LeaderboardEntry {

@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { and, eq, desc, sql, inArray } from "drizzle-orm";
-import { players, bountyClaims, playerItems, clueFinds, showdowns, replayReceipts, duelShots, bountyAttempts, type Player } from "../shared/schema.js";
+import { players, bountyClaims, playerItems, clueFinds, showdowns, replayReceipts, duelShots, bountyAttempts, caseRuns, type Player } from "../shared/schema.js";
 import {
   DEFAULT_SUIT,
   ownsSuit,
@@ -17,6 +17,7 @@ import {
   type ItemId,
   type ShopItemId,
   type SuitId,
+  type WireEntry,
 } from "../shared/game.js";
 import { db, type Db } from "./storage.js";
 
@@ -241,6 +242,19 @@ export async function getLeaderboard(limit = 10): Promise<LeaderboardEntry[]> {
   }));
 }
 
+// The latest case closures with the hunter's callsign (callsigns are already public on the leaderboard).
+export async function getWire(limit = 6): Promise<WireEntry[]> {
+  const clean = sql<number>`(select count(*) from ${bountyAttempts} where ${bountyAttempts.visitorId} = ${bountyClaims.visitorId} and ${bountyAttempts.bountyId} = ${bountyClaims.bountyId} and ${bountyAttempts.cleanClaimed} = 1)`;
+  const rows = await db.select({ callsign: players.callsign, bountyId: bountyClaims.bountyId, clean })
+    .from(bountyClaims)
+    .innerJoin(players, eq(players.visitorId, bountyClaims.visitorId))
+    .where(sql`${bountyClaims.reward} > 0`)
+    .orderBy(desc(bountyClaims.createdAt), desc(bountyClaims.id))
+    .limit(limit)
+    .all();
+  return rows.map((r) => ({ callsign: r.callsign, bountyId: r.bountyId, clean: r.clean > 0 }));
+}
+
 export async function getStarMap(): Promise<StarMapStatus> {
   const withFragment = BOUNTIES.filter((b) => b.fragment);
   const ids = withFragment.map((b) => b.id);
@@ -302,6 +316,10 @@ export async function replayInvestigation(visitorId: string, bountyId: string): 
       .run();
     await tx.delete(duelShots)
       .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
+      .run();
+    await tx.insert(caseRuns)
+      .values({ visitorId, bountyId, runs: 1 })
+      .onConflictDoUpdate({ target: [caseRuns.visitorId, caseRuns.bountyId], set: { runs: sql`${caseRuns.runs} + 1` } })
       .run();
     return true;
   });
@@ -394,6 +412,15 @@ export async function resolveShot(
     .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
     .run();
   return { won: false, elapsed };
+}
+
+// 0 for a hunter's first run of a case; one more for each replay.
+export async function caseRun(visitorId: string, bountyId: string): Promise<number> {
+  const row = await db.select({ runs: caseRuns.runs })
+    .from(caseRuns)
+    .where(and(eq(caseRuns.visitorId, visitorId), eq(caseRuns.bountyId, bountyId)))
+    .get();
+  return row?.runs ?? 0;
 }
 
 export async function hasReplayReceipt(visitorId: string, bountyId: string): Promise<boolean> {

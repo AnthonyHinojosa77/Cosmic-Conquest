@@ -9,7 +9,7 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly
     suspect: "cookie",
     // Every clue but the videophone log (Madame Vela's alibi) points at Cookie: the malt
     // syrup and moon dust, the diner cap and fry oil, the clogged mixer, Servo, the cap.
-    proof: ["dome", "robot", "mixer", "servo", "jukebox"],
+    proof: ["dome", "robot", "mixer", "servo", "jukebox", "breakthrough-1"],
     outro: "The Heart of Luna is back under the Expo dome, and Cookie is cooling off in the Lunar lock-up.",
     showdown: {
       opponent: "\"Cookie\" Carmichael",
@@ -36,7 +36,8 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly
     suspect: "vance",
     // The signed log names him. So do the wet footprints toward the gondola dock,
     // and the fog log signed "Dock Control."
-    proof: ["locker", "orchids", "fog-machine"],
+    proof: ["locker", "orchids", "fog-machine", "breakthrough-1"],
+    beforeAccusation: ["breakthrough-1"],
     outro: "The Star of Venus is back around its owner's neck, the fog show runs on schedule again, and Captain Vance is taking the long gondola ride down to the Venus lock-up.",
     showdown: {
       opponent: "Captain Teddy Vance",
@@ -49,7 +50,8 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly
     suspect: "coralie",
     // Her stage-door log and dripping tail missing its scales, and the "C.F." note and
     // sequinned mask left aboard the Tomorrow. The berth's lone sequin alone names no one.
-    proof: ["stage-door", "chart"],
+    proof: ["stage-door", "chart", "breakthrough-1"],
+    beforeAccusation: ["breakthrough-1"],
     outro: "The Tomorrow is back in her berth, polished and gleaming, and the Aquacade is holding auditions for a new mermaid. Coralie Finn is practicing her breath-holding in the Triton lock-up.",
     showdown: {
       opponent: "Coralie Finn",
@@ -62,7 +64,8 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly
     suspect: "quill",
     // The crates and the telegram signed "Q." name the freight clerk. So do the
     // monorail freight-dolly tracks leaving the empty pad.
-    proof: ["crates", "telegram", "pad"],
+    proof: ["crates", "telegram", "pad", "breakthrough-1"],
+    beforeAccusation: ["breakthrough-1"],
     outro: "The Rain-Makers are back on their pads, the Ares Valley crops are drinking again, and Rigby Quill is filing his own paperwork in the Phobos lock-up.",
     showdown: {
       opponent: "Rigby Quill",
@@ -126,6 +129,50 @@ export const CLUES: Record<string, Record<string, { text: string; key?: number; 
   },
 };
 
+type ClueSecret = { text: string; key?: number; code?: string; needs?: string[] };
+
+// Replays change the puzzles. Run 0 is the case as first played (and as voiced); each
+// replay moves on to the next variant, so the answer is never the one you remember.
+// A variant only overrides text or codes; which clues reveal the answer stays the same.
+function venusScraps(left: number, middle: number, right: number): Record<string, Partial<ClueSecret>> {
+  const v = CLUES["venus-fog"];
+  return {
+    case: { text: v.case.text.replace("the digit 4", `the digit ${left}`) },
+    keys: { text: v.keys.text.replace("the digit 1", `the digit ${middle}`) },
+    orchids: { text: v.orchids.text.replace("the digit 8", `the digit ${right}`) },
+    locker: { code: `${left}${middle}${right}` },
+  };
+}
+
+// On the harbor chart, C5 is the only deep, unlit square on the Kelp Forest's row.
+const NEPTUNE_KELP: Record<string, Partial<ClueSecret>> = {
+  sonar: { text: CLUES["neptune-deep"].sonar.text.replace("due east of the Coral Arch", "due east of the Kelp Forest") },
+  chart: { text: CLUES["neptune-deep"].chart.text.replace("square C3", "square C5"), code: "C5" },
+};
+
+export const VARIANTS: Record<string, Record<string, Partial<ClueSecret>>[]> = {
+  "venus-fog": [{}, venusScraps(7, 3, 5), venusScraps(2, 9, 6)],
+  "neptune-deep": [{}, NEPTUNE_KELP],
+};
+
+export function variantIndex(bountyId: string, run: number): number {
+  const variants = VARIANTS[bountyId];
+  return variants ? run % variants.length : 0;
+}
+
+// A clue's secret for this run of the case.
+export function secretFor(bountyId: string, clueId: string, run = 0): ClueSecret | undefined {
+  const base = CLUES[bountyId]?.[clueId];
+  if (!base) return undefined;
+  const over = VARIANTS[bountyId]?.[variantIndex(bountyId, run)]?.[clueId];
+  return over ? { ...base, ...over } : base;
+}
+
+// A recording speaks run 0's words. A clue whose words change in this run stays silent.
+export function voicedInRun(bountyId: string, clueId: string, run: number): boolean {
+  return VARIANTS[bountyId]?.[variantIndex(bountyId, run)]?.[clueId]?.text === undefined;
+}
+
 // What suspects say when questioned. A statement with `caughtBy` is a lie: presenting
 // one of those found clues is a breakthrough (recorded like a clue, with its own text).
 export const TESTIMONY: Record<string, Record<string, Record<string, {
@@ -133,6 +180,87 @@ export const TESTIMONY: Record<string, Record<string, Record<string, {
   caughtBy?: string[];
   breakthrough?: { id: string; text: string };
 }>>> = {
+  "heart-of-luna": {
+    gearhart: {
+      night: { text: "I locked the Expo at six sharp and went home to my workshop, where a man can think. RB-9 kept the doors. RB-9 always keeps the doors." },
+      robot: { text: "RB-9 remembers every face and every word, which is more than the Expo Committee can say. They gave my butler a corner. They gave a rock a dome." },
+      dome: { text: "The base panel comes off with an ordinary screwdriver. I told the Committee so in writing. Twice. Anyone with sticky fingers and ten minutes could have done it." },
+    },
+    vela: {
+      night: { text: "On the line to Mars, darling, from a quarter past ten until the small hours. My sister. The light delay makes every argument twice as long." },
+      crystal: { text: "Pretty, but it doesn't ring. Give me a videophone any day. Now, a little bird in a paper hat told me he was retiring somewhere shiny. Funny, isn't it?" },
+    },
+    cookie: {
+      night: {
+        text: "Worked my whole shift, start to close, flipping Rocket Burgers. Ask anybody. I never set foot outside the diner.",
+        caughtBy: ["servo", "robot"],
+        breakthrough: { id: "breakthrough-1", text: "Cookie wipes his hands on his apron, slowly. \"Okay, so I clocked out a little early. I had a delivery. A late milkshake, over to the Expo, for the night guard.\" The Expo has no night guard. RB-9 is the night guard." },
+      },
+      lunchbox: { text: "Meatloaf. Heavy meatloaf. My mother's recipe. You want a bite? No? Then quit looking at my lunchbox." },
+      glitter: { text: "Moon dust? In my mixer? Must've blown in off the Expo floor. It gets everywhere. It's the Moon." },
+    },
+  },
+  "red-sands": {
+    dusty: {
+      night: { text: "Racing! The Olympus Mons Rally, nine to dawn. I came second, which still stings. Check the results board if you don't believe me." },
+      water: { text: "Those domes drink half of Mars's water and give nothing back to the rest of us. But stealing a Rain-Maker? I couldn't tow one with my skiff. I tried. As a joke." },
+    },
+    venn: {
+      night: { text: "At my bench, all night, like every Friday. The night camera has a better view of my work than the Board of Directors ever will." },
+      "rain-makers": { text: "They're thirty years old and they leak. I want them scrapped and replaced with my design. A stolen tower just gets replaced with another old one. Theft doesn't help me at all." },
+    },
+    quill: {
+      night: {
+        text: "Nothing ships Fridays, sir. The depot shuts at six and nothing moves until Monday morning. Quiet as a tomb.",
+        caughtBy: ["sprinkles", "crates"],
+        breakthrough: { id: "breakthrough-1", text: "Quill's stamp hand freezes over his clipboard. \"The 2:10 to Phobos. Right. That one. I may have stayed late to see it off. Somebody has to sign the manifests.\" He looks at the crate of Canned Sunshine and doesn't look away fast enough." },
+      },
+      crates: { text: "Every crate I seal is checked twice and stamped once. That's the system. The system is never wrong." },
+      rounds: { text: "A man can't buy his friends a root beer? I came into a little money. An aunt. On Phobos. She was very old." },
+    },
+  },
+  "venus-fog": {
+    lune: {
+      night: { text: "On my bandstand, darling, from eleven until one, live on the radio for all of Venus. A conductor does not leave mid-number. The orchestra would fall apart." },
+      star: { text: "I saw it sparkle from the stage just before the fog rolled in. Then the lights dimmed, and when they came up, nothing. My trumpets played a very sad note." },
+    },
+    fenwick: {
+      night: { text: "The botanists' banquet in the Sun Room, until one. Forty witnesses and an extremely dry soufflé." },
+      fog: { text: "Not me. My show runs at midnight, gentle, for the orchids. And I sign my changes \"Dr. F.\", always. \"Dock Control\" is what the gondola pilots call their radio shack." },
+    },
+    vance: {
+      night: {
+        text: "Down at the gondola dock, sweetheart, the whole fog show. Pilots don't get to watch the pretty lights. I never came up to the terrace once.",
+        caughtBy: ["orchids"],
+        breakthrough: { id: "breakthrough-1", text: "The famous grin slips, just for a second. \"All right, I came up for the show. Every pilot sneaks up for the fog show, it's the best view on Venus. I was back at the dock before the lights came up.\" His boots are still damp." },
+      },
+      dock: { text: "Dock Control? That's just the radio shack at the gondola dock. Any pilot could walk in. Any guest, too, if they wanted to badly enough." },
+    },
+  },
+  "neptune-deep": {
+    brine: {
+      night: {
+        text: "Tour? Cancelled, too rough. I was tucked in my bunk by eleven, snoring like a whale. Didn't see a thing all night.",
+        caughtBy: ["beacon"],
+        breakthrough: { id: "breakthrough-2", text: "Brine scowls into his beard. \"Fine. I ran the moonlight tour. Off the books, cash only, twenty passengers who'd rather not be in your notebook. The harbor master needn't hear about it. But I never left the Beacon's light all night. Ask the keeper.\"" },
+      },
+      berth: { text: "That gold-plated bathtub hogs the best berth in the Pen. Sure, I wanted it. But I'd never take her. You can't sell a sub that famous, and you can't hide one that shiny." },
+      deep: { text: "That echo at 2:31? Not the Belle. My girl is lit up like a Christmas tree; the Beacon keeper would've seen her leave. Whoever went into the Deep went dark." },
+    },
+    rusty: {
+      night: { text: "Sealed in that tin can of a decompression chamber, eleven to seven, doc's orders. Ask the stamp. Ask my aching knees." },
+      gold: { text: "Finders keepers, sure, that's the law of the sea. But you've got to find it first, and I was busy finding my knees." },
+    },
+    coralie: {
+      night: {
+        text: "Asleep in my dressing room by midnight, darling. A mermaid needs her beauty rest. I didn't leave the Aquacade all night.",
+        caughtBy: ["stage-door"],
+        breakthrough: { id: "breakthrough-1", text: "Coralie's stage smile doesn't move, but her fingers tighten on her flowered swim cap. \"Fine. A midnight swim. I swim when I can't sleep. That isn't a crime on Neptune, is it?\" She doesn't say where she swam to, or when she came back." },
+      },
+      sequin: { text: "Sequins? Half the Aquacade sheds them. You'll find them in the soup. You'll find them in the Beacon keeper's beard." },
+      book: { text: "Every girl on Neptune has read that book. Aurora's fortune is the only story anybody tells down here. It doesn't mean anything." },
+    },
+  },
   "saturn-orrery": {
     ashgrove: {
       night: { text: "I dined, darling. Seven courses, each more divine than the last. I didn't leave the dining car from nine until nearly midnight." },

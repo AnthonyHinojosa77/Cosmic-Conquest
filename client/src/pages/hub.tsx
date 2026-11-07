@@ -7,7 +7,7 @@ import { useTapWord } from "@/lib/device";
 import { Scene } from "@/components/Scene";
 import { SceneBackdrop } from "@/components/SceneBackdrop";
 import { usePlayer } from "@/lib/game";
-import { BOUNTIES, chartLine, fragmentsFor, hunterRank, hubBadgeState } from "@shared/game";
+import { BOUNTIES, chartLine, fragmentsFor, hunterRank, hubBadgeState, tickerLines, type WireEntry } from "@shared/game";
 
 // The Bounty Office entrance, with the hunter's standing once they've started playing.
 function HunterDispatch() {
@@ -34,8 +34,12 @@ function HunterDispatch() {
   );
 }
 
-function VisitorTicker({ visitors }: { visitors: Visitor[] }) {
-  const recent = useMemo(() => visitors.slice(0, 5), [visitors]);
+// Arrivals in the worlds and case closures from the Guild Wire, in one ticker.
+function VisitorTicker({ visitors, wire }: { visitors: Visitor[]; wire: WireEntry[] }) {
+  const recent = useMemo(
+    () => tickerLines(wire, visitors.slice(0, 5).map((v) => `${v.visitorName} ${v.action} ${v.world}`)),
+    [visitors, wire],
+  );
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);
 
@@ -70,7 +74,7 @@ function VisitorTicker({ visitors }: { visitors: Visitor[] }) {
           opacity: visible ? 1 : 0,
         }}
       >
-        {v.visitorName} {v.action} {v.world}
+        {v}
       </span>
     </div>
   );
@@ -88,6 +92,8 @@ export default function Hub() {
     queryKey: ["/api/visitors"],
     refetchInterval: 8000,
   });
+  // A failed wire just leaves the arrivals; it is decoration, not a blocker.
+  const { data: wire } = useQuery<WireEntry[]>({ queryKey: ["/api/wire"], refetchInterval: 30000 });
 
   // World panel definitions — positioned over the magazine cover illustration
   const worlds = [
@@ -153,7 +159,7 @@ export default function Hub() {
             Couldn't load the arrivals. <button className="underline" onClick={() => refetchVisitors()}>Try again</button>
           </p>
         ) : (
-          <VisitorTicker visitors={recentVisitors ?? []} />
+          <VisitorTicker visitors={recentVisitors ?? []} wire={wire ?? []} />
         )}
       </header>
 

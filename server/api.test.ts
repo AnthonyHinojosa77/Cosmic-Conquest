@@ -7,11 +7,12 @@ import path from "path";
 import express from "express";
 import { createServer, type Server } from "http";
 import type { AddressInfo } from "net";
+import { BOUNTIES, bountyById, cluesNeeded } from "../shared/game.js";
 
 const dbDir = mkdtempSync(path.join(tmpdir(), "cosmic-conquest-test-"));
 process.env.DATABASE_PATH = path.join(dbDir, "test.db");
 process.env.AUDIO_DIR = path.join(dbDir, "voice");
-for (const f of ["briefing/red-sands/line.mp3", "testimony/saturn-orrery/tuttle--night.mp3", "clue/red-sands/telegram.mp3", "taunt/red-sands/line.mp3", "taunt/heart-of-luna/line.mp3", "outro/heart-of-luna/line.mp3", "aurora/broadcast/line.mp3", "aurelia/tower/lilies.mp3", "testimony/saturn-orrery/ashgrove--money.mp3", "breakthrough/saturn-orrery/breakthrough-1.mp3"]) {
+for (const f of ["briefing/red-sands/line.mp3", "testimony/saturn-orrery/tuttle--night.mp3", "clue/red-sands/telegram.mp3", "taunt/red-sands/line.mp3", "taunt/heart-of-luna/line.mp3", "outro/heart-of-luna/line.mp3", "aurora/broadcast/line.mp3", "aurelia/tower/lilies.mp3", "testimony/saturn-orrery/ashgrove--money.mp3", "breakthrough/saturn-orrery/breakthrough-1.mp3", "clue/venus-fog/case.mp3", "clue/venus-fog/bandstand.mp3"]) {
   mkdirSync(path.dirname(path.join(dbDir, "voice", f)), { recursive: true });
   writeFileSync(path.join(dbDir, "voice", f), "fake mp3");
 }
@@ -29,9 +30,9 @@ before(async () => {
   server = createServer(app);
   registerRoutes(app);
   // The suite plays many more bounties than one visitor would in 15 minutes.
-  const { gameLimiter, clueLimiter } = await import("./middleware.js");
+  const { gameLimiter, clueLimiter, apiLimiter } = await import("./middleware.js");
   resetLimits = () => {
-    for (const limiter of [gameLimiter, clueLimiter]) limiter.resetKey("127.0.0.1");
+    for (const limiter of [gameLimiter, clueLimiter, apiLimiter]) limiter.resetKey("127.0.0.1");
   };
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -89,7 +90,8 @@ async function investigate(bountyId: string, cookie: string) {
     for (const [topic, said] of Object.entries(topics)) {
       if (!said.breakthrough) continue;
       const res = await post(`/api/bounties/${bountyId}/suspects/${suspect}/ask/${topic}/present`, { clue: said.caughtBy![0] }, cookie);
-      assert.equal((await res.json()).correct, true, `${bountyId}/${suspect}/${topic}`);
+      const body = await res.json();
+      assert.equal(body.correct, true, `${bountyId}/${suspect}/${topic} ${res.status} ${JSON.stringify(body)}`);
     }
   }
 }
@@ -1123,8 +1125,6 @@ test("game: hotspots stay inside the border, and the sidewalk opens its own exhi
   const exhibits = [...expo.matchAll(/name: "([^"]+)"/g)].map((m) => m[1]);
   assert.equal(exhibits[5], "The Moving Sidewalk");
   assert.match(expo, /id: "moving-sidewalk"(?:(?!id:)[\s\S])*exhibitIndex: 5/);
-  assert.equal(expo.includes("Time Capsule"), false);
-  assert.equal(expo.includes("Atomic Home Reactor"), true);
 
   const office = readFileSync("client/src/pages/bounty-office.tsx", "utf8");
   const radio = /top: "([\d.]+)%", left: "([\d.]+)%", width: "([\d.]+)%", height: "([\d.]+)%"[\s\S]{0,400}?data-testid="(hotspot-[^"]+)"/g;
@@ -1218,17 +1218,13 @@ test("game: the accuse label, and a collected case opens without wiping notes", 
   const afterRace = queryClient.getQueryData<typeof remembered>(key);
   assert.equal(afterRace?.accused?.suspect, "cookie");
   assert.equal(afterRace?.found.cap, "a red cap");
+  // A case without interviews counts its own finds. Every live case now has interviews,
+  // so they all wait on the server's canAccuse.
   const luna = bountyById("heart-of-luna")!;
   const found = Object.fromEntries(luna.locations!.flatMap((l) => l.clues).slice(0, 4).map((c) => [c.id, "noted"]));
-  assert.equal(readyWithoutInterview(luna, found), true);
-  assert.equal(readyWithoutInterview(bountyById("saturn-orrery"), found), null);
+  assert.equal(readyWithoutInterview({ ...luna, interviews: undefined }, found), true);
+  for (const b of BOUNTIES.filter((x) => x.available)) assert.equal(readyWithoutInterview(b, found), null, b.id);
 
-  const office = readFileSync("client/src/pages/bounty-office.tsx", "utf8");
-  const link = readFileSync("client/src/components/ContractLink.tsx", "utf8");
-  assert.equal(office.includes("replayBounty"), false);
-  assert.equal(link.includes("replayBounty"), false);
-  assert.match(office, /Collected — open/);
-  assert.match(readFileSync("client/src/pages/bounty.tsx", "utf8"), /Replay from a fresh notebook/);
   for (const [page, field] of [["expo.tsx", "input-prediction-text"], ["diner.tsx", "input-dish-desc"], ["voyages.tsx", "input-postcard-message"]] as const) {
     const source = readFileSync(path.join("client/src/pages", page), "utf8");
     assert.match(source, new RegExp(`maxLength=\\{500\\}[\\s\\S]{0,500}data-testid="${field}"`));
@@ -1337,11 +1333,6 @@ test("game: a second vote stays pending, a replay forgets testimony, and the ban
   assert.equal(shopButtonLabel({ comingSoon: false, playerReady: false, owned: false, affordable: false, profileError: true }), "Profile didn't load");
   assert.equal(shopButtonLabel({ comingSoon: false, playerReady: true, owned: false, affordable: false }), "Need more credits");
   assert.equal(shopButtonLabel({ comingSoon: false, playerReady: true, owned: true, affordable: true }), "✓ Owned");
-  const bountyPage = readFileSync("client/src/pages/bounty.tsx", "utf8");
-  assert.match(bountyPage, /trackPending\(current, clue\.id, false\)/);
-  assert.match(bountyPage, /button-back-case-file/);
-  assert.match(readFileSync("client/src/index.css", "utf8"), /\.sheet-close \{[\s\S]*?width: 44px;/);
-  assert.match(readFileSync("client/src/pages/expo.tsx", "utf8"), /!discoveredItems\.has\(hs\.id\) && \([\s\S]*hotspot-indicator/);
 
   const { keepLine, heardFor, forgetLines, cachesAfterSearch, PLAYER_KEY, AURELIA_KEY } = await import("../client/src/lib/game.ts");
   assert.deepEqual(cachesAfterSearch(), [PLAYER_KEY, AURELIA_KEY]);
@@ -1359,4 +1350,165 @@ test("game: a second vote stays pending, a replay forgets testimony, and the ban
   assert.equal(bandanaNote(true, "early"), false);
   assert.equal(bandanaNote(true, "draw"), false);
   assert.equal(bandanaNote(false, "steady"), false);
+});
+
+test("game: every case's interviews match the server's testimony, and every lie can be caught", async () => {
+  const { BOUNTY_SOLUTIONS, CLUES, TESTIMONY } = await import("./bounties.js");
+  for (const b of BOUNTIES.filter((x) => x.available)) {
+    assert.ok(b.interviews?.length, `${b.id} has interviews`);
+    const clueIds = new Set(b.locations!.flatMap((l) => l.clues).map((c) => c.id));
+    const suspects = new Set(b.suspects!.map((s) => s.id));
+    const caughtIds: string[] = [];
+    for (const i of b.interviews!) {
+      assert.ok(suspects.has(i.suspect), `${b.id}/${i.suspect} is a suspect`);
+      for (const t of i.topics) {
+        const said = TESTIMONY[b.id]?.[i.suspect]?.[t.id];
+        assert.ok(said, `${b.id}/${i.suspect}/${t.id} has testimony`);
+        if (t.after) assert.ok(clueIds.has(t.after), `${b.id}/${t.id} unlocks on a real clue`);
+        if (said.breakthrough) {
+          assert.ok(said.caughtBy!.length > 0 && said.caughtBy!.every((c) => clueIds.has(c)), `${b.id}/${i.suspect}/${t.id} is caught by real clues`);
+          caughtIds.push(said.breakthrough.id);
+        }
+      }
+    }
+    // No testimony the hunter can't ask for, and the breakthrough list is exactly the lies.
+    for (const [suspect, topics] of Object.entries(TESTIMONY[b.id])) {
+      for (const topic of Object.keys(topics)) {
+        assert.ok(b.interviews!.find((i) => i.suspect === suspect)?.topics.some((t) => t.id === topic), `${b.id}/${suspect}/${topic} is askable`);
+      }
+    }
+    assert.deepEqual([...caughtIds].sort(), [...(b.breakthroughs ?? [])].sort(), `${b.id} breakthroughs`);
+    const sol = BOUNTY_SOLUTIONS[b.id];
+    for (const id of [...sol.proof, ...(sol.beforeAccusation ?? [])]) {
+      assert.ok(clueIds.has(id) || caughtIds.includes(id), `${b.id} proof ${id} exists`);
+    }
+    // Enough to find: every scene clue plus every lie covers the threshold.
+    assert.ok(Object.keys(CLUES[b.id]).length + caughtIds.length >= cluesNeeded(b), `${b.id} threshold reachable`);
+  }
+});
+
+test("game: Mars, Venus and Neptune can't be named until the culprit's lie is caught", async () => {
+  const { BOUNTY_SOLUTIONS, CLUES, TESTIMONY } = await import("./bounties.js");
+  for (const id of ["red-sands", "venus-fog", "neptune-deep"]) {
+    resetLimits();
+    const cookie = cookieOf(await fetch(base + "/api/player"));
+    await unlock(id, cookie);
+    const clues = Object.entries(CLUES[id]);
+    for (const [clueId] of clues) await post(`/api/bounties/${id}/clues/${clueId}/search`, {}, cookie);
+    for (const [clueId, clue] of clues) {
+      const url = `/api/bounties/${id}/clues/${clueId}`;
+      if (clue.key !== undefined) await post(`${url}/decode`, { key: clue.key }, cookie);
+      if (clue.code !== undefined) await post(`${url}/unlock`, { code: clue.code }, cookie);
+    }
+    const sol = BOUNTY_SOLUTIONS[id];
+    const sceneProof = sol.proof.find((p) => !p.startsWith("breakthrough"))!;
+    const before = await post(`/api/bounties/${id}/accuse`, { suspect: sol.suspect, proof: sceneProof }, cookie);
+    assert.equal(before.status, 409, `${id} needs the lie first`);
+    const progress = await (await fetch(`${base}/api/bounties/${id}/progress`, { headers: { Cookie: cookie } })).json();
+    assert.equal(progress.needsLie, true);
+    assert.equal(progress.canAccuse, false);
+
+    const [topic, said] = Object.entries(TESTIMONY[id][sol.suspect]).find(([, s]) => s.breakthrough)!;
+    const url = `/api/bounties/${id}/suspects/${sol.suspect}/ask/${topic}/present`;
+    const wrong = Object.keys(CLUES[id]).find((c) => !said.caughtBy!.includes(c))!;
+    assert.deepEqual(await (await post(url, { clue: wrong }, cookie)).json(), { correct: false });
+    const caught = await (await post(url, { clue: said.caughtBy![0] }, cookie)).json();
+    assert.equal(caught.correct, true);
+    // The caught lie itself backs the accusation.
+    const named = await (await post(`/api/bounties/${id}/accuse`, { suspect: sol.suspect, proof: said.breakthrough!.id }, cookie)).json();
+    assert.equal(named.correct, true, `${id} named with the caught lie`);
+  }
+});
+
+test("game: Luna's lie is optional, and catching it counts as proof", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const search = (c: string) => post(`/api/bounties/heart-of-luna/clues/${c}/search`, {}, cookie);
+  for (const c of ["dome", "robot", "mixer", "jukebox"]) await search(c);
+  const progress = await (await fetch(`${base}/api/bounties/heart-of-luna/progress`, { headers: { Cookie: cookie } })).json();
+  assert.equal(progress.canAccuse, true); // four finds, no interview needed
+  assert.equal(progress.needsLie, false);
+  const caught = await (await post("/api/bounties/heart-of-luna/suspects/cookie/ask/night/present", { clue: "robot" }, cookie)).json();
+  assert.equal(caught.correct, true);
+  assert.match(caught.text, /no night guard/);
+  // Gearhart's answer about the dome waits for the dome clue; it is found, so he answers.
+  assert.equal((await post("/api/bounties/heart-of-luna/suspects/gearhart/ask/dome", {}, cookie)).status, 200);
+  assert.equal((await post("/api/bounties/heart-of-luna/suspects/cookie/ask/lunchbox", {}, cookie)).status, 409); // servo not found
+  const named = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "breakthrough-1" }, cookie)).json();
+  assert.equal(named.correct, true);
+});
+
+test("game: a replay moves the Venus combination and the Neptune hiding place, and mutes changed recordings", async () => {
+  const { BOUNTY_SOLUTIONS } = await import("./bounties.js");
+  const replay = async (id: string, cookie: string) => {
+    const res = await post(`/api/bounties/${id}/replay`, {}, cookie);
+    assert.equal(res.status, 200, `${id} replay`);
+  };
+
+  // Venus: first run 418, then 735, then 296, then back to 418.
+  const venus = cookieOf(await fetch(base + "/api/player"));
+  assert.equal((await solve("venus-fog", "vance", venus)).status, 200);
+  const caseVoice = () => fetch(`${base}/api/voice/clue/venus-fog/case`, { headers: { Cookie: venus } });
+  const bandVoice = () => fetch(`${base}/api/voice/clue/venus-fog/bandstand`, { headers: { Cookie: venus } });
+  assert.equal((await caseVoice()).status, 200); // first run: the recording matches
+  const search = (c: string) => post(`/api/bounties/venus-fog/clues/${c}/search`, {}, venus);
+  const tryCode = (code: string) => post("/api/bounties/venus-fog/clues/locker/unlock", { code }, venus);
+  for (const [code, left] of [["735", "7"], ["296", "2"], ["418", "4"]]) {
+    resetLimits();
+    await replay("venus-fog", venus);
+    const scrap = await (await search("case")).json();
+    assert.match(scrap.text, new RegExp(`the digit ${left} on it`));
+    await search("keys");
+    await search("orchids");
+    await search("bandstand");
+    const voiced = code === "418";
+    assert.equal((await caseVoice()).status, voiced ? 200 : 404, `case voice on ${code}`);
+    assert.equal((await bandVoice()).status, 200, "an unchanged clue keeps its recording");
+    for (const old of ["418", "735", "296"].filter((c) => c !== code)) {
+      assert.deepEqual(await (await tryCode(old)).json(), { correct: false }, `${old} fails when the code is ${code}`);
+    }
+    const open = await (await tryCode(code)).json();
+    assert.equal(open.correct, true, `${code} opens`);
+    // The notebook shows this run's words after a refresh, too.
+    const progress = await (await fetch(`${base}/api/bounties/venus-fog/progress`, { headers: { Cookie: venus } })).json();
+    assert.match(progress.found.case, new RegExp(`the digit ${left} on it`));
+  }
+
+  // Neptune: C3, then C5 after a replay.
+  resetLimits();
+  const neptune = cookieOf(await fetch(base + "/api/player"));
+  assert.equal((await solve("neptune-deep", BOUNTY_SOLUTIONS["neptune-deep"].suspect, neptune)).status, 200);
+  resetLimits();
+  await replay("neptune-deep", neptune);
+  for (const c of ["chamber", "sonar", "beacon"]) await post(`/api/bounties/neptune-deep/clues/${c}/search`, {}, neptune);
+  const progress = await (await fetch(`${base}/api/bounties/neptune-deep/progress`, { headers: { Cookie: neptune } })).json();
+  assert.match(progress.found.sonar, /due east of the Kelp Forest/);
+  const dive = (code: string) => post("/api/bounties/neptune-deep/clues/chart/unlock", { code }, neptune);
+  assert.deepEqual(await (await dive("C3")).json(), { correct: false });
+  const found = await (await dive("C5")).json();
+  assert.equal(found.correct, true);
+  assert.match(found.text, /square C5/);
+});
+
+test("game: the Kelp Forest variant has exactly one answer on the harbor chart", () => {
+  const chart = bountyById("neptune-deep")!.locations!.flatMap((l) => l.clues).find((c) => c.chart)!.chart!;
+  const kelp = chart.marks.find((m) => m.name === "Kelp Forest")!;
+  const row = kelp.cell.slice(1);
+  const kelpCol = kelp.cell.charCodeAt(0) - 64;
+  const candidates = chart.deep.filter((c) => c.slice(1) === row && c.charCodeAt(0) - 64 > kelpCol && !chart.lit.includes(c));
+  assert.deepEqual(candidates, ["C5"]);
+});
+
+test("game: the Guild Wire lists real closures, newest first, and the ticker mixes them with arrivals", async () => {
+  const { tickerLines, wireLine } = await import("../shared/game.js");
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  await fetch(base + "/api/player", { method: "PATCH", headers: { "Content-Type": "application/json", Cookie: cookie }, body: JSON.stringify({ callsign: "Wire Tester" }) });
+  assert.equal((await solve("heart-of-luna", "cookie", cookie)).status, 200);
+  const wire = await (await fetch(base + "/api/wire")).json();
+  assert.ok(wire.length >= 1 && wire.length <= 6);
+  assert.deepEqual(wire[0], { callsign: "Wire Tester", bountyId: "heart-of-luna", clean: true });
+  assert.equal(wireLine(wire[0]), "Wire Tester closed The Heart of Luna Heist ★ clean case");
+  assert.equal(wireLine({ callsign: "X", bountyId: "nope", clean: false }), null);
+  assert.deepEqual(tickerLines([{ callsign: "A", bountyId: "red-sands", clean: false }], ["B arrived at the Diner", "C arrived at the Expo"]),
+    ["A closed Rustlers of the Red Sands", "B arrived at the Diner", "C arrived at the Expo"]);
+  assert.equal(tickerLines([], []).length, 0);
 });

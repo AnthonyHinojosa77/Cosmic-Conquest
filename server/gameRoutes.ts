@@ -17,7 +17,7 @@ import {
 } from "../shared/game.js";
 import { aureliaFor } from "./aurelia.js";
 import { gameLimiter, clueLimiter } from "./middleware.js";
-import { BOUNTY_SOLUTIONS, CLUES, TESTIMONY } from "./bounties.js";
+import { BOUNTY_SOLUTIONS, TESTIMONY, secretFor } from "./bounties.js";
 import {
   getProfile,
   updateProfile,
@@ -25,6 +25,7 @@ import {
   buyItem,
   getLeaderboard,
   getStarMap,
+  getWire,
   grantItem,
   hasItem,
   recordClue,
@@ -40,6 +41,7 @@ import {
   beginDraw,
   showdownWon,
   resolveShot,
+  caseRun,
 } from "./gameStorage.js";
 
 const accusationSchema = z.object({ suspect: z.string().min(1).max(40), proof: z.string().min(1).max(40) });
@@ -74,9 +76,10 @@ async function openBounty(req: Request, res: Response, missing = "No such bounty
   return bounty;
 }
 
-export function clueOf(bounty: Bounty, clueId: string) {
+// A clue and its secret for this run of the case (replays move puzzles to new answers).
+export function clueOf(bounty: Bounty, clueId: string, run = 0) {
   const clue = bounty.locations?.flatMap((l) => l.clues).find((c) => c.id === clueId);
-  const secret = CLUES[bounty.id]?.[clueId];
+  const secret = secretFor(bounty.id, clueId, run);
   return clue && secret ? { clue, secret } : undefined;
 }
 
@@ -90,8 +93,8 @@ function topicOf(found: string[], bounty: Bounty, suspect: string, topicId: stri
 }
 
 // Text for everything a hunter has found: clues and breakthroughs (caught lies).
-function textOf(bountyId: string, id: string): string | undefined {
-  const clue = CLUES[bountyId]?.[id]?.text;
+function textOf(bountyId: string, id: string, run: number): string | undefined {
+  const clue = secretFor(bountyId, id, run)?.text;
   if (clue) return clue;
   for (const topics of Object.values(TESTIMONY[bountyId] ?? {})) {
     for (const said of Object.values(topics)) if (said.breakthrough?.id === id) return said.breakthrough.text;
@@ -102,8 +105,9 @@ function textOf(bountyId: string, id: string): string | undefined {
 async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProgress> {
   const found: Record<string, string> = {};
   const ids = await foundClues(visitorId, bounty.id);
+  const run = await caseRun(visitorId, bounty.id);
   for (const id of ids) {
-    const text = textOf(bounty.id, id);
+    const text = textOf(bounty.id, id, run);
     if (text) found[id] = text;
   }
   // Which statements were caught (only once caught, so this reveals nothing new)
@@ -154,7 +158,7 @@ export function registerGameRoutes(app: Express) {
   app.post("/api/bounties/:id/clues/:clueId/search", clueLimiter, async (req, res) => {
     const bounty = await openBounty(req, res, "Nothing to find there");
     if (!bounty) return;
-    const found = clueOf(bounty, String(req.params.clueId));
+    const found = clueOf(bounty, String(req.params.clueId), await caseRun(req.visitorId!, bounty.id));
     if (!found) return res.status(404).json({ error: "Nothing to find there" });
     const { clue, secret } = found;
     if (clue.grants) await grantItem(req.visitorId!, clue.grants);
@@ -177,7 +181,7 @@ export function registerGameRoutes(app: Express) {
   app.post("/api/bounties/:id/clues/:clueId/decode", clueLimiter, async (req, res) => {
     const bounty = await openBounty(req, res, "Nothing to decode there");
     if (!bounty) return;
-    const found = clueOf(bounty, String(req.params.clueId));
+    const found = clueOf(bounty, String(req.params.clueId), await caseRun(req.visitorId!, bounty.id));
     if (!found || found.secret.key === undefined || !found.clue.cipher) {
       return res.status(404).json({ error: "Nothing to decode there" });
     }
@@ -196,7 +200,7 @@ export function registerGameRoutes(app: Express) {
   app.post("/api/bounties/:id/clues/:clueId/unlock", clueLimiter, async (req, res) => {
     const bounty = await openBounty(req, res, "Nothing to unlock there");
     if (!bounty) return;
-    const found = clueOf(bounty, String(req.params.clueId));
+    const found = clueOf(bounty, String(req.params.clueId), await caseRun(req.visitorId!, bounty.id));
     const { lock, chart } = found ? found.clue : {};
     if (!found || found.secret.code === undefined || !(lock || chart)) {
       return res.status(404).json({ error: "Nothing to unlock there" });
@@ -361,6 +365,10 @@ export function registerGameRoutes(app: Express) {
       profile.cleanBounties,
       profile.items.includes("orrery-key"),
     ));
+  });
+
+  app.get("/api/wire", async (_req, res) => {
+    res.json(await getWire());
   });
 
   app.get("/api/star-map", async (_req, res) => {

@@ -1234,6 +1234,9 @@ export default function BountyPage() {
                   {replaying ? "Clearing the notebook…" : confirmReplay ? "Yes, clear the notebook" : "Replay from a fresh notebook"}
                 </button>
               )}
+              {confirmReplay && bounty.replayNote && (
+                <p className="text-sm w-full" role="status" data-testid="text-replay-note">{bounty.replayNote}</p>
+              )}
               {showResume(player?.completedBounties.includes(bounty.id) ?? false, progress?.accused !== undefined, progress?.replayDuel === true) && progress?.accused && (
                 // Named the culprit before a refresh: go straight back to the duel.
                 // A collected case stays closed unless this duel started after the claim.

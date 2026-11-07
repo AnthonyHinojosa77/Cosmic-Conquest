@@ -3,8 +3,8 @@ import path from "path";
 import fs from "fs";
 import { invitedToAurelia } from "../shared/game.js";
 import { liveBounty, clueOf } from "./gameRoutes.js";
-import { foundClues, showdownStartedAt, getProfile, canAccessBounty } from "./gameStorage.js";
-import { TESTIMONY } from "./bounties.js";
+import { foundClues, showdownStartedAt, getProfile, canAccessBounty, caseRun } from "./gameStorage.js";
+import { TESTIMONY, voicedInRun } from "./bounties.js";
 
 // Voice lines are recordings of clue text, taunts and so on, so they give away as much
 // as the words do. They live outside the public folder and are only served when the
@@ -22,7 +22,8 @@ function gateFor(scope: string, a: string, b?: string): Gate | null {
   // The guestbook recording still says the old line. Stay silent until it is re-recorded.
   if (scope === "clue" && a === "saturn-orrery" && b === "guestbook") return null;
   if (scope === "clue" && bounty && b && clueOf(bounty, b)) {
-    return async (v) => (await foundClues(v, a)).includes(b);
+    // A replay that changed this clue's words has no recording of them.
+    return async (v) => (await foundClues(v, a)).includes(b) && voicedInRun(a, b, await caseRun(v, a));
   }
   if (scope === "taunt" && bounty && !b) {
     return async (v) => (await showdownStartedAt(v, a)) !== null;
