@@ -59,7 +59,8 @@ export function registerVoiceRoutes(app: Express) {
     if (!gate || !(await gate(req.visitorId!))) return res.status(404).end();
     const file = path.join(AUDIO_DIR, scope, a, `${b ?? "line"}.mp3`);
     if (!fs.existsSync(file)) return res.status(404).end();
-    res.setHeader("Cache-Control", "private, max-age=86400");
+    // Revalidate every play: a replay can change a clue's words, and the gate must decide again.
+    res.setHeader("Cache-Control", "private, no-cache");
     res.sendFile(path.relative(AUDIO_DIR, file), { root: AUDIO_DIR });
   });
 }

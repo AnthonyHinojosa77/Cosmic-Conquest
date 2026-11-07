@@ -1097,6 +1097,9 @@ export default function BountyPage() {
   const [outcome, setOutcome] = useState<ClaimOutcome | null>(null);
   const [solution, setSolution] = useState<CaseSolution | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
+  // The server didn't record the winning shot (lost request or too slow): redraw, don't re-claim.
+  const [shotError, setShotError] = useState<string | null>(null);
+  const [duelRound, setDuelRound] = useState(0);
   const [confirmReplay, setConfirmReplay] = useState(false);
   const [replaying, setReplaying] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -1294,6 +1297,7 @@ export default function BountyPage() {
         {stage === "showdown" && solution && (
           <>
             <Showdown
+              key={duelRound}
               showdown={solution.showdown}
               windowMs={windowMs}
               gear={gearNames(owned)}
@@ -1309,12 +1313,28 @@ export default function BountyPage() {
                 })();
               }}
               onWin={() => {
+                setShotError(null);
                 void drawGate.current
                   .then(() => landShot(bounty.id))
-                  .then((shot) => { if (shot.won) collect(); else setClaimError("Win the showdown first"); })
-                  .catch((err) => setClaimError(errorMessage(err)));
+                  .then((shot) => { if (shot.won) collect(); else setShotError("The shot didn't land in time."); })
+                  .catch((err) => setShotError(`The shot didn't reach the sheriff: ${errorMessage(err)}`));
               }}
             />
+            {shotError && (
+              <div className="text-center mt-3 space-y-2" role="alert">
+                <p className="text-sm text-[hsl(0,65%,65%)]">{shotError}</p>
+                <button
+                  className="retro-btn gold text-sm"
+                  onClick={() => {
+                    setShotError(null);
+                    setDuelRound((n) => n + 1);
+                  }}
+                  data-testid="button-redraw"
+                >
+                  Draw again
+                </button>
+              </div>
+            )}
             {claimError && (
               <div className="text-center mt-3 space-y-2" role="alert">
                 <p className="text-sm text-[hsl(0,65%,65%)]">Couldn't collect the bounty: {claimError}</p>

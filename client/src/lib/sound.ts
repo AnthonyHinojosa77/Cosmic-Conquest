@@ -231,7 +231,8 @@ export function stopVoice() {
 export function playVoice(path: string) {
   if (!enabled) return;
   stopVoice();
-  const el = new Audio(`${API_BASE}/api/voice/${path}`);
+  // "?v=2" skips recordings cached for a day by older builds; the server now revalidates each play.
+  const el = new Audio(`${API_BASE}/api/voice/${path}?v=2`);
   voice = el;
   const done = () => {
     if (voice === el) stopVoice();

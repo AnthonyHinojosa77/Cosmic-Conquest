@@ -230,9 +230,9 @@ export const TESTIMONY: Record<string, Record<string, Record<string, {
     },
     vance: {
       night: {
-        text: "Down at the gondola dock, sweetheart, the whole fog show. Pilots don't get to watch the pretty lights. I never came up to the terrace once.",
+        text: "Down at the gondola dock, sweetheart, the whole fog show. Quiet as a church. Nobody came down from the terrace and nobody went up. I'd have seen them.",
         caughtBy: ["orchids"],
-        breakthrough: { id: "breakthrough-1", text: "The famous grin slips, just for a second. \"All right, I came up for the show. Every pilot sneaks up for the fog show, it's the best view on Venus. I was back at the dock before the lights came up.\" His boots are still damp." },
+        breakthrough: { id: "breakthrough-1", text: "The famous grin slips, just for a second. \"All right, somebody came down from the terrace in the fog. Me. Every pilot sneaks up for the fog show, it's the best view on Venus. I was back at the dock before the lights came up.\" His boots are still damp." },
       },
       dock: { text: "Dock Control? That's just the radio shack at the gondola dock. Any pilot could walk in. Any guest, too, if they wanted to badly enough." },
     },

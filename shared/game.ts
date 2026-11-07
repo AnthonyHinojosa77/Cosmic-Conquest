@@ -244,18 +244,18 @@ export const BOUNTIES: Bounty[] = [
         ],
       },
       {
-        suspect: "vela",
-        topics: [
-          { id: "night", label: "Where were you last night?" },
-          { id: "crystal", label: "What do you make of the Heart of Luna?" },
-        ],
-      },
-      {
         suspect: "cookie",
         topics: [
           { id: "night", label: "How was your shift last night?" },
           { id: "lunchbox", label: "What was in the lunchbox?", after: "servo" },
           { id: "glitter", label: "Why is the mixer full of moon dust?", after: "mixer" },
+        ],
+      },
+      {
+        suspect: "vela",
+        topics: [
+          { id: "night", label: "Where were you last night?" },
+          { id: "crystal", label: "What do you make of the Heart of Luna?" },
         ],
       },
     ],
@@ -314,18 +314,18 @@ export const BOUNTIES: Bounty[] = [
         description: "Brilliant, cranky, and furious his robot got less press than the Moon model.",
       },
       {
-        id: "vela",
-        name: "Madame Vela Quasar",
-        title: "Videophone Saleswoman",
-        portrait: "./game/suspect-vela.webp",
-        description: "Sells the future one long-distance call at a time. Always on the line.",
-      },
-      {
         id: "cookie",
         name: "\"Cookie\" Carmichael",
         title: "Astro Diner Fry Cook",
         portrait: "./game/suspect-cookie.webp",
         description: "Flips a mean Rocket Burger. Talks a lot about 'retiring somewhere shiny.'",
+      },
+      {
+        id: "vela",
+        name: "Madame Vela Quasar",
+        title: "Videophone Saleswoman",
+        portrait: "./game/suspect-vela.webp",
+        description: "Sells the future one long-distance call at a time. Always on the line.",
       },
     ],
     accusePrompt: "Who took the Heart of Luna?",
@@ -351,6 +351,14 @@ export const BOUNTIES: Bounty[] = [
     breakthroughs: ["breakthrough-1"],
     interviews: [
       {
+        suspect: "quill",
+        topics: [
+          { id: "night", label: "What ships out of the depot on a Friday?" },
+          { id: "crates", label: "Who sealed the Canned Sunshine crates?", after: "crates" },
+          { id: "rounds", label: "Folks say you've been buying rounds." },
+        ],
+      },
+      {
         suspect: "dusty",
         topics: [
           { id: "night", label: "Where were you last Friday night?" },
@@ -362,14 +370,6 @@ export const BOUNTIES: Bounty[] = [
         topics: [
           { id: "night", label: "Where were you last Friday night?" },
           { id: "rain-makers", label: "Why do you want the old Rain-Makers gone?" },
-        ],
-      },
-      {
-        suspect: "quill",
-        topics: [
-          { id: "night", label: "What ships out of the depot on a Friday?" },
-          { id: "crates", label: "Who sealed the Canned Sunshine crates?", after: "crates" },
-          { id: "rounds", label: "Folks say you've been buying rounds." },
         ],
       },
     ],
@@ -423,6 +423,13 @@ export const BOUNTIES: Bounty[] = [
     ],
     suspects: [
       {
+        id: "quill",
+        name: "Rigby Quill",
+        title: "Monorail Freight Clerk",
+        portrait: "./game/suspect-quill.webp",
+        description: "Knows every crate that leaves the Red Sands depot. Lately he's been buying rounds.",
+      },
+      {
         id: "dusty",
         name: "\"Dusty\" Dunmore",
         title: "Sand-Skiff Racer",
@@ -435,13 +442,6 @@ export const BOUNTIES: Bounty[] = [
         title: "Sterling Atomic Hydrologist",
         portrait: "./game/suspect-venn.webp",
         description: "Designed a better Rain-Maker and makes no secret she wanted the old ones gone.",
-      },
-      {
-        id: "quill",
-        name: "Rigby Quill",
-        title: "Monorail Freight Clerk",
-        portrait: "./game/suspect-quill.webp",
-        description: "Knows every crate that leaves the Red Sands depot. Lately he's been buying rounds.",
       },
     ],
     accusePrompt: "Who's rustling the Rain-Makers?",
@@ -589,19 +589,19 @@ export const BOUNTIES: Bounty[] = [
         ],
       },
       {
-        suspect: "pip",
-        topics: [
-          { id: "night", label: "What did you do last night?" },
-          { id: "tuttle", label: "Tell me about the Professor." },
-          { id: "chime", label: "Anything odd about the orrery?" },
-        ],
-      },
-      {
         suspect: "tuttle",
         topics: [
           { id: "night", label: "Where were you last night?" },
           { id: "the-key", label: "Who can open the orrery?" },
           { id: "case", label: "What's in your velvet case?", after: "luggage" },
+        ],
+      },
+      {
+        suspect: "pip",
+        topics: [
+          { id: "night", label: "What did you do last night?" },
+          { id: "tuttle", label: "Tell me about the Professor." },
+          { id: "chime", label: "Anything odd about the orrery?" },
         ],
       },
     ],
@@ -614,18 +614,18 @@ export const BOUNTIES: Bounty[] = [
         description: "Collects antique clocks, and makes sure everyone knows it.",
       },
       {
-        id: "pip",
-        name: "Pip Kettleby",
-        title: "Ring Line Porter",
-        portrait: "./game/suspect-pip.webp",
-        description: "Knows every cabin on the train. Runs on cocoa and good intentions.",
-      },
-      {
         id: "tuttle",
         name: "Professor Orson Tuttle",
         title: "Keeper of the Orrery",
         portrait: "./game/suspect-tuttle.webp",
         description: "Has tended the Sterling Orrery for thirty years. Very calm about all this.",
+      },
+      {
+        id: "pip",
+        name: "Pip Kettleby",
+        title: "Ring Line Porter",
+        portrait: "./game/suspect-pip.webp",
+        description: "Knows every cabin on the train. Runs on cocoa and good intentions.",
       },
     ],
     accusePrompt: "Who took the Saturn Gear?",
@@ -650,6 +650,14 @@ export const BOUNTIES: Bounty[] = [
     breakthroughs: ["breakthrough-1", "breakthrough-2"],
     interviews: [
       {
+        suspect: "coralie",
+        topics: [
+          { id: "night", label: "Where were you last night?" },
+          { id: "sequin", label: "Whose sequin is on the cleat?", after: "berth" },
+          { id: "book", label: "Reading up on Aurora's fortune?", after: "stage-door" },
+        ],
+      },
+      {
         suspect: "brine",
         topics: [
           { id: "night", label: "Where were you last night?" },
@@ -662,14 +670,6 @@ export const BOUNTIES: Bounty[] = [
         topics: [
           { id: "night", label: "Where were you last night?" },
           { id: "gold", label: "Finders keepers?" },
-        ],
-      },
-      {
-        suspect: "coralie",
-        topics: [
-          { id: "night", label: "Where were you last night?" },
-          { id: "sequin", label: "Whose sequin is on the cleat?", after: "berth" },
-          { id: "book", label: "Reading up on Aurora's fortune?", after: "stage-door" },
         ],
       },
     ],
@@ -717,6 +717,13 @@ export const BOUNTIES: Bounty[] = [
     ],
     suspects: [
       {
+        id: "coralie",
+        name: "Coralie Finn",
+        title: "Star of the Aquacade",
+        portrait: "./game/suspect-coralie.webp",
+        description: "The Mermaid of Neptune. Holds her breath for four minutes, and her audience for two hours.",
+      },
+      {
         id: "brine",
         name: "Captain Silas Brine",
         title: "Tour Submarine Skipper",
@@ -729,13 +736,6 @@ export const BOUNTIES: Bounty[] = [
         title: "Salvage Diver",
         portrait: "./game/suspect-rusty.webp",
         description: "Says anything that sinks is finders-keepers. Has strong opinions about gold.",
-      },
-      {
-        id: "coralie",
-        name: "Coralie Finn",
-        title: "Star of the Aquacade",
-        portrait: "./game/suspect-coralie.webp",
-        description: "The Mermaid of Neptune. Holds her breath for four minutes, and her audience for two hours.",
       },
     ],
     accusePrompt: "Who took the Tomorrow?",

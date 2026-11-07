@@ -1512,3 +1512,13 @@ test("game: the Guild Wire lists real closures, newest first, and the ticker mix
     ["A closed Rustlers of the Red Sands", "B arrived at the Diner", "C arrived at the Expo"]);
   assert.equal(tickerLines([], []).length, 0);
 });
+
+test("game: voice lines revalidate every play, and the culprit isn't always in the same slot", async () => {
+  const { BOUNTY_SOLUTIONS } = await import("./bounties.js");
+  const res = await fetch(base + "/api/voice/aurora/broadcast");
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("cache-control"), "private, no-cache");
+  const slots = BOUNTIES.filter((b) => b.available).map((b) => b.suspects!.findIndex((s) => s.id === BOUNTY_SOLUTIONS[b.id].suspect));
+  assert.ok(slots.every((i) => i >= 0));
+  assert.ok(new Set(slots).size >= 3, `culprit slots ${slots}`);
+});
