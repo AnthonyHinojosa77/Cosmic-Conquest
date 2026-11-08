@@ -319,7 +319,7 @@ export async function replayInvestigation(visitorId: string, bountyId: string): 
       .run();
     await tx.insert(caseRuns)
       .values({ visitorId, bountyId, runs: 1 })
-      .onConflictDoUpdate({ target: [caseRuns.visitorId, caseRuns.bountyId], set: { runs: sql`${caseRuns.runs} + 1` } })
+      .onConflictDoUpdate({ target: [caseRuns.visitorId, caseRuns.bountyId], set: { runs: sql`${caseRuns.runs} + 1`, strikes: 0 } })
       .run();
     return true;
   });
@@ -393,6 +393,7 @@ export async function resolveShot(
   bountyId: string,
   windowMs: number,
   graceMs: number,
+  floorMs = 0,
 ): Promise<{ won: boolean; elapsed: number | null }> {
   const row = await db.select({ drawAt: duelShots.drawAt, won: duelShots.won })
     .from(duelShots)
@@ -401,7 +402,7 @@ export async function resolveShot(
   if (!row) return { won: false, elapsed: null };
   if (row.won === 1) return { won: true, elapsed: null };
   const elapsed = Date.now() - Date.parse(row.drawAt);
-  if (shotLands(elapsed, windowMs, graceMs)) {
+  if (shotLands(elapsed, windowMs, graceMs, floorMs)) {
     await db.update(duelShots)
       .set({ won: 1 })
       .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
@@ -412,6 +413,16 @@ export async function resolveShot(
     .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
     .run();
   return { won: false, elapsed };
+}
+
+// A wrong name on a replay. Returns the strikes so far in this run.
+export async function recordReplayStrike(visitorId: string, bountyId: string): Promise<number> {
+  const row = await db.insert(caseRuns)
+    .values({ visitorId, bountyId, runs: 0, strikes: 1 })
+    .onConflictDoUpdate({ target: [caseRuns.visitorId, caseRuns.bountyId], set: { strikes: sql`${caseRuns.strikes} + 1` } })
+    .returning({ strikes: caseRuns.strikes })
+    .get();
+  return row.strikes;
 }
 
 // 0 for a hunter's first run of a case; one more for each replay.

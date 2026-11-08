@@ -143,9 +143,18 @@ export async function replayBounty(bountyId: string): Promise<void> {
 
 // Name a suspect with a found clue as proof. Returns the case solution (showdown + outro)
 // when both are right, else null (a wrong guess costs the Clean Case seal, never credits).
-export async function accuse(bountyId: string, suspect: string, proof: string, proof2?: string): Promise<CaseSolution | null> {
+// On a replay, the third wrong name tears up the notebook: "reset", with the cache emptied.
+export async function accuse(bountyId: string, suspect: string, proof: string, proof2?: string): Promise<CaseSolution | "reset" | null> {
   const res = await apiRequest("POST", `/api/bounties/${bountyId}/accuse`, { suspect, proof, ...(proof2 ? { proof2 } : {}) });
   const body = await res.json();
+  if (body.reset) {
+    forgetLines(bountyId);
+    const key = progressKey(bountyId);
+    await queryClient.cancelQueries({ queryKey: key });
+    queryClient.setQueryData<BountyProgress>(key, { found: {}, canAccuse: false, needsLie: false });
+    queryClient.invalidateQueries({ queryKey: key });
+    return "reset";
+  }
   if (!body.correct) return null;
   const solution: CaseSolution = { showdown: body.showdown, outro: body.outro };
   await rememberAccusation(bountyId, suspect, solution);

@@ -157,7 +157,8 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS \`case_runs\` (
     \`visitor_id\` text NOT NULL,
     \`bounty_id\` text NOT NULL,
-    \`runs\` integer DEFAULT 0 NOT NULL
+    \`runs\` integer DEFAULT 0 NOT NULL,
+    \`strikes\` integer DEFAULT 0 NOT NULL
   );
   CREATE UNIQUE INDEX IF NOT EXISTS \`case_runs_visitor_bounty_unique\` ON \`case_runs\` (\`visitor_id\`,\`bounty_id\`);
   CREATE TABLE IF NOT EXISTS \`bounty_attempts\` (

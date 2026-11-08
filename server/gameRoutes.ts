@@ -43,6 +43,7 @@ import {
   showdownWon,
   resolveShot,
   caseRun,
+  recordReplayStrike,
 } from "./gameStorage.js";
 
 const accusationSchema = z.object({
@@ -62,6 +63,9 @@ const presentSchema = z.object({ clue: z.string().min(1).max(50) });
 const envMin = Number(process.env.SHOWDOWN_MIN_MS);
 const SHOWDOWN_MIN_MS = Number.isFinite(envMin) && envMin >= 0 ? envMin : 1500;
 const SHOT_GRACE_MS = 1000;
+const REPLAY_STRIKES = 3;
+// Below human reaction time, even after network jitter between the draw and shot requests.
+const SHOT_FLOOR_MS = 100;
 
 export function liveBounty(id: unknown): Bounty | undefined {
   const bounty = bountyById(String(id));
@@ -291,6 +295,15 @@ export function registerGameRoutes(app: Express) {
     }
     if (solution?.proofGroups && proof2 === undefined) return res.status(400).json({ error: "This case needs two pieces of evidence" });
     if (!solution || solution.suspect !== parsed.data.suspect || !proofHolds(solution, proof, proof2)) {
+      // First run: a wrong name costs the Clean Case seal. A replay has no seal to lose,
+      // so the third wrong name tears up the notebook and re-deals the case.
+      if ((await getProfile(req.visitorId!)).completedBounties.includes(bounty.id)) {
+        if ((await recordReplayStrike(req.visitorId!, bounty.id)) >= REPLAY_STRIKES) {
+          await replayInvestigation(req.visitorId!, bounty.id);
+          return res.json({ correct: false, reset: true });
+        }
+        return res.json({ correct: false });
+      }
       await recordWrongAccusation(req.visitorId!, bounty.id);
       return res.json({ correct: false });
     }
@@ -326,7 +339,7 @@ export function registerGameRoutes(app: Express) {
     const started = await showdownStartedAt(req.visitorId!, bounty.id);
     if (started === null) return res.status(409).json({ error: "Name the culprit before you collect" });
     const profile = await getProfile(req.visitorId!);
-    res.json(await resolveShot(req.visitorId!, bounty.id, drawWindowMs(profile.owned), SHOT_GRACE_MS));
+    res.json(await resolveShot(req.visitorId!, bounty.id, drawWindowMs(profile.owned), SHOT_GRACE_MS, SHOT_FLOOR_MS));
   });
 
   // Pay out once per hunter, only after a correct accusation and a real showdown.

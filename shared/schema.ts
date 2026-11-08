@@ -169,6 +169,8 @@ export const caseRuns = sqliteTable("case_runs", {
   visitorId: text("visitor_id").notNull(),
   bountyId: text("bounty_id").notNull(),
   runs: integer("runs").notNull().default(0),
+  // Wrong names in the current replay; the third tears up the notebook.
+  strikes: integer("strikes").notNull().default(0),
 }, (table) => [
   uniqueIndex("case_runs_visitor_bounty_unique").on(table.visitorId, table.bountyId),
 ]);

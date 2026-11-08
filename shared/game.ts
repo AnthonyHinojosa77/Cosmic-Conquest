@@ -253,7 +253,7 @@ export const BOUNTIES: Bounty[] = [
         topics: [
           { id: "night", label: "How was your shift last night?" },
           { id: "lunchbox", label: "What was in the lunchbox?", after: "servo" },
-          { id: "glitter", label: "Why is the mixer full of moon dust?", after: "mixer" },
+          { id: "glitter", label: "Why is the mixer full of glitter?", after: "mixer" },
         ],
       },
       {
@@ -821,8 +821,9 @@ export function creditsLabel(credits: number | null, failed = false): string {
 }
 
 // A shot lands if it reaches the server inside the draw window, plus a short allowance for the request.
-export function shotLands(elapsedMs: number, windowMs: number, graceMs = 1000): boolean {
-  return elapsedMs >= 0 && elapsedMs <= windowMs + graceMs;
+// Faster than `floorMs` after the draw is no human hand (people need about 150 ms); it counts as a miss.
+export function shotLands(elapsedMs: number, windowMs: number, graceMs = 1000, floorMs = 0): boolean {
+  return elapsedMs >= floorMs && elapsedMs <= windowMs + graceMs;
 }
 
 export function shopButtonLabel(opts: {
@@ -1059,7 +1060,7 @@ export function showResume(collected: boolean, hasShowdown: boolean, replayDuel 
 export function accuseSealCopy(collected: boolean): string {
   const lead = "Pick your suspect, then the clue from your notebook that proves it. ";
   if (collected) {
-    return lead + "The Clean Case seal was settled on your first collection. A wrong guess on this replay never changes it.";
+    return lead + "The Clean Case seal was settled on your first collection, and a wrong guess on this replay never changes it. Three wrong names tear up the notebook and deal the case again.";
   }
   return lead + "Crack the case on your first try to earn a ★ Clean Case seal. A wrong guess never costs you credits.";
 }

@@ -805,6 +805,7 @@ function Accusation({
   collected,
   onBack,
   onCorrect,
+  onReset,
 }: {
   bounty: Bounty;
   found: Record<string, string>;
@@ -812,6 +813,8 @@ function Accusation({
   collected: boolean;
   onBack: () => void;
   onCorrect: (suspectId: string, solution: CaseSolution) => void;
+  // A replay's third wrong name: the notebook was torn up
+  onReset: () => void;
 }) {
   const [suspectId, setSuspectId] = useState<string | null>(null);
   const [proof, setProof] = useState("");
@@ -828,7 +831,8 @@ function Accusation({
     setMessage(null);
     try {
       const solution = await accuse(bounty.id, suspect.id, proof, prompts ? proof2 : undefined);
-      if (solution) onCorrect(suspect.id, solution);
+      if (solution === "reset") onReset();
+      else if (solution) onCorrect(suspect.id, solution);
       else setMessage(`The sheriff isn't buying it: that evidence doesn't put ${suspect.name} behind this. Check your notebook and try again.`);
     } catch (err) {
       setMessage(errorMessage(err));
@@ -1112,6 +1116,8 @@ export default function BountyPage() {
   const [claimError, setClaimError] = useState<string | null>(null);
   // The server didn't record the winning shot (lost request or too slow): redraw, don't re-claim.
   const [shotError, setShotError] = useState<string | null>(null);
+  // Shown over the notebook after a replay's third wrong name tore it up.
+  const [resetNotice, setResetNotice] = useState<string | null>(null);
   const [duelRound, setDuelRound] = useState(0);
   const [confirmReplay, setConfirmReplay] = useState(false);
   const [replaying, setReplaying] = useState(false);
@@ -1279,6 +1285,9 @@ export default function BountyPage() {
           </>
         )}
 
+        {stage === "investigate" && resetNotice && (
+          <p className="text-sm text-center text-[hsl(0,65%,65%)] mb-3" role="alert" data-testid="text-reset-notice">{resetNotice}</p>
+        )}
         {stage === "investigate" && (
           <Investigation
             bounty={bounty}
@@ -1304,6 +1313,10 @@ export default function BountyPage() {
               setSuspect(id);
               setSolution(sol);
               setStage("showdown");
+            }}
+            onReset={() => {
+              setResetNotice("Three wrong names. The sheriff tears up your notebook, and the case file is dealt again from the top.");
+              setStage("investigate");
             }}
           />
         )}

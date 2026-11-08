@@ -129,6 +129,7 @@ async function winDuel(bountyId: string, cookie: string) {
     draw = await post(`/api/bounties/${bountyId}/draw`, {}, cookie);
   }
   assert.equal(draw.status, 200, `${bountyId} draw`);
+  await wait(130); // a human hand; faster than 100 ms counts as a miss
   const shot = await post(`/api/bounties/${bountyId}/shot`, {}, cookie);
   assert.equal(shot.status, 200, `${bountyId} shot`);
   assert.equal((await shot.json()).won, true);
@@ -1653,4 +1654,67 @@ test("game: the travel posters and Captain Cosmo notice closed cases", async () 
   for (const b of BOUNTIES.filter((x) => x.available)) assert.ok(b.aftermath, `${b.id} has an aftermath line`);
   // Luna's culprit can change on replay, so its line names nobody.
   assert.doesNotMatch(bountyById("heart-of-luna")!.aftermath!, /Cookie|Gearhart|Vela/);
+});
+
+test("game: a shot faster than a human hand misses, and the duel can be drawn again", async () => {
+  const { shotLands } = await import("../shared/game.js");
+  assert.equal(shotLands(10, 600, 1000, 100), false);
+  assert.equal(shotLands(140, 600, 1000, 100), true);
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  await investigate("heart-of-luna", cookie);
+  await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "dome" }, cookie);
+  await wait(850);
+  assert.equal((await post("/api/bounties/heart-of-luna/draw", {}, cookie)).status, 200);
+  const instant = await (await post("/api/bounties/heart-of-luna/shot", {}, cookie)).json();
+  assert.equal(instant.won, false);
+  assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 409);
+  await winDuel("heart-of-luna", cookie);
+  assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 200);
+});
+
+test("game: on a replay, three wrong names tear up the notebook and deal the case again", async () => {
+  const { caseRun } = await import("./gameStorage.js");
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  assert.equal((await solve("red-sands", "quill", cookie)).status, 200);
+  resetLimits();
+  await post("/api/bounties/red-sands/replay", {}, cookie);
+  await investigate("red-sands", cookie);
+  const run = await caseRun(visitorOf(cookie), "red-sands");
+  const guess = async () => (await post("/api/bounties/red-sands/accuse", { suspect: "venn", proof: "crates" }, cookie)).json();
+  assert.deepEqual(await guess(), { correct: false });
+  assert.deepEqual(await guess(), { correct: false });
+  assert.deepEqual(await guess(), { correct: false, reset: true });
+  assert.equal(await caseRun(visitorOf(cookie), "red-sands"), run + 1);
+  const progress = await (await fetch(`${base}/api/bounties/red-sands/progress`, { headers: { Cookie: cookie } })).json();
+  assert.deepEqual(progress.found, {});
+  // Strikes start over with the new deal, and the first collection's seal and credits stay.
+  await investigate("red-sands", cookie);
+  assert.deepEqual(await guess(), { correct: false });
+  const player = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
+  assert.ok(player.cleanBounties.includes("red-sands"));
+});
+
+test("game: Luna's deals alternate Cookie and Gearhart, and the variant tables stay in step", async () => {
+  const { VARIANTS, SOLUTION_VARIANTS, TESTIMONY_VARIANTS, solutionFor } = await import("./bounties.js");
+  for (const [id, sols] of Object.entries(SOLUTION_VARIANTS)) assert.equal(sols.length, VARIANTS[id]?.length, `${id} solutions`);
+  for (const [id, says] of Object.entries(TESTIMONY_VARIANTS)) assert.equal(says.length, VARIANTS[id]?.length, `${id} testimony`);
+  assert.deepEqual([0, 1, 2, 3].map((run) => solutionFor("heart-of-luna", run)!.suspect), ["cookie", "gearhart", "cookie", "gearhart"]);
+
+  // Run 1 needs Gearhart's lie, then pays nothing; run 2 deals Cookie again.
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  assert.equal((await solve("heart-of-luna", "cookie", cookie)).status, 200);
+  resetLimits();
+  await post("/api/bounties/heart-of-luna/replay", {}, cookie);
+  for (const c of ["dome", "robot", "servo", "mixer"]) await post(`/api/bounties/heart-of-luna/clues/${c}/search`, {}, cookie);
+  assert.equal((await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie)).status, 409);
+  await post("/api/bounties/heart-of-luna/suspects/gearhart/ask/night/present", { clue: "robot" }, cookie);
+  assert.equal((await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie)).json()).correct, true);
+  await winDuel("heart-of-luna", cookie);
+  const claim = await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie);
+  assert.equal(claim.status, 409);
+  assert.match((await claim.json()).error, /already collected/);
+  resetLimits();
+  await post("/api/bounties/heart-of-luna/replay", {}, cookie);
+  const robot = await (await post("/api/bounties/heart-of-luna/clues/robot/search", {}, cookie)).json();
+  assert.match(robot.text, /paper diner cap/);
 });

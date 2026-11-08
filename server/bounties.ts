@@ -206,12 +206,14 @@ export function secretFor(bountyId: string, clueId: string, run = 0): ClueSecret
 
 // Some replays change who did it. The culprit's solution and testimony for that run
 // replace the case's own, at the same variant index as the clue words.
-const SOLUTION_VARIANTS: Record<string, (Solution | undefined)[]> = {
+export const SOLUTION_VARIANTS: Record<string, (Solution | undefined)[]> = {
   "heart-of-luna": [undefined, {
     suspect: "gearhart",
     // The wiped tape (only the inventor holds the key), the robot oil on the screws,
     // Servo's man in the lab coat, and his own caught lie.
     proof: ["robot", "dome", "servo", "breakthrough-1"],
+    // The frame only falls apart once his own story does.
+    beforeAccusation: ["breakthrough-1"],
     outro: "The Heart of Luna is back under the dome, RB-9 has a fresh memory tape, and Dr. Gearhart is redesigning the Lunar lock-up's door from the inside. Cookie got a new cap out of it, and a free Rocket Burger from the Committee.",
     showdown: {
       opponent: "Dr. Otto Gearhart",
@@ -225,7 +227,7 @@ const SOLUTION_VARIANTS: Record<string, (Solution | undefined)[]> = {
 
 type Testimony = Record<string, Record<string, { text: string; caughtBy?: string[]; breakthrough?: { id: string; text: string } }>>;
 
-const TESTIMONY_VARIANTS: Record<string, (Testimony | undefined)[]> = {
+export const TESTIMONY_VARIANTS: Record<string, (Testimony | undefined)[]> = {
   "heart-of-luna": [undefined, {
     gearhart: {
       night: {
