@@ -3,7 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { ContractLink } from "@/components/ContractLink";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
-import { errorMessage, useCallsignName } from "@/lib/game";
+import { errorMessage, useCallsignName, usePlayer } from "@/lib/game";
+import { bountyById, cosmoLine } from "@shared/game";
 import { keepDraft, showEmptyError } from "@/lib/votes";
 import { useDiscovered, useRestoreFocus } from "@/lib/discovered";
 import type { Postcard } from "@shared/schema";
@@ -118,6 +119,10 @@ export default function Voyages() {
   const closePanel = useRestoreFocus(activeHotspot, setActiveHotspot);
 
   const activeData = hotspots.find(h => h.id === activeHotspot);
+  // The posters and Captain Cosmo notice the cases this hunter has closed.
+  const { data: player } = usePlayer();
+  const completed = player?.completedBounties ?? [];
+  const cosmo = activeData?.id === "astronaut" ? cosmoLine(completed) : null;
 
   return (
     <div className="game-page">
@@ -193,6 +198,9 @@ export default function Voyages() {
               <p className="text-sm text-[hsl(25,40%,20%)] leading-relaxed mb-4">
                 {activeData.description}
               </p>
+              {cosmo && (
+                <p className="text-sm italic text-[hsl(195,65%,30%)] leading-relaxed mb-4" data-testid="text-cosmo-line">{cosmo}</p>
+              )}
 
               {/* Travel Posters → Destination cards */}
               {activeData.showsDestinations && (
@@ -204,6 +212,11 @@ export default function Voyages() {
                         <span className="pulp-title text-xs text-[hsl(25,40%,15%)]">{dest.name}</span>
                         <span className="block text-xs text-[hsl(195,65%,38%)] font-bold mt-0.5">{dest.tagline}</span>
                         <p className="text-xs text-[hsl(25,20%,40%)] mt-1">{dest.desc}</p>
+                        {dest.bountyId && completed.includes(dest.bountyId) && bountyById(dest.bountyId)?.aftermath && (
+                          <p className="text-xs mt-1 text-[hsl(140,40%,28%)]" data-testid={`text-aftermath-${dest.bountyId}`}>
+                            <span className="pulp-title tracking-wider">★ Case closed.</span> {bountyById(dest.bountyId)!.aftermath}
+                          </p>
+                        )}
                         {dest.bountyId && <ContractLink bountyId={dest.bountyId} />}
                       </div>
                     ))}

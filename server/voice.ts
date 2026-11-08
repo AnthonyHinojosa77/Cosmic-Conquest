@@ -4,7 +4,7 @@ import fs from "fs";
 import { invitedToAurelia } from "../shared/game.js";
 import { liveBounty, clueOf } from "./gameRoutes.js";
 import { foundClues, showdownStartedAt, getProfile, canAccessBounty, caseRun } from "./gameStorage.js";
-import { TESTIMONY, voicedInRun } from "./bounties.js";
+import { TESTIMONY, voicedInRun, culpritChanged } from "./bounties.js";
 
 // Voice lines are recordings of clue text, taunts and so on, so they give away as much
 // as the words do. They live outside the public folder and are only served when the
@@ -25,14 +25,16 @@ function gateFor(scope: string, a: string, b?: string): Gate | null {
     // A replay that changed this clue's words has no recording of them.
     return async (v) => (await foundClues(v, a)).includes(b) && voicedInRun(a, b, await caseRun(v, a));
   }
+  // A replay with a different culprit has no recording of the new taunt, ending or testimony.
+  const sameCulprit = async (v: string) => !culpritChanged(a, await caseRun(v, a));
   if (scope === "taunt" && bounty && !b) {
-    return async (v) => (await showdownStartedAt(v, a)) !== null;
+    return async (v) => (await showdownStartedAt(v, a)) !== null && (await sameCulprit(v));
   }
   // The ending stays available after the replay duel is closed. The collection is the record.
   if (scope === "outro" && bounty && !b) {
     return async (v) =>
-      (await showdownStartedAt(v, a)) !== null
-      || (await getProfile(v)).completedBounties.includes(a);
+      ((await showdownStartedAt(v, a)) !== null || (await getProfile(v)).completedBounties.includes(a))
+      && (await sameCulprit(v));
   }
   // What a suspect says: once the topic can be asked (file name "<suspect>--<topic>")
   if (scope === "testimony" && bounty && b) {
@@ -40,10 +42,13 @@ function gateFor(scope: string, a: string, b?: string): Gate | null {
     const topic = bounty.interviews?.find((i) => i.suspect === suspect)?.topics.find((t) => t.id === topicId);
     if (!topic || !TESTIMONY[a]?.[suspect]?.[topicId]) return null;
     return async (v) =>
-      (await canAccessBounty(v, bounty)) && (topic.after === undefined || (await foundClues(v, a)).includes(topic.after));
+      (await canAccessBounty(v, bounty)) && (topic.after === undefined || (await foundClues(v, a)).includes(topic.after))
+      && (await sameCulprit(v));
   }
   // A caught lie: once the hunter has caught it
-  if (scope === "breakthrough" && bounty?.breakthroughs?.includes(b ?? "")) return async (v) => (await foundClues(v, a)).includes(b!);
+  if (scope === "breakthrough" && bounty?.breakthroughs?.includes(b ?? "")) {
+    return async (v) => (await foundClues(v, a)).includes(b!) && (await sameCulprit(v));
+  }
   // The contracts board and the dispatch change with the satchel, so a single
   // recording would speak the wrong line. They stay silent.
   if (scope === "aurelia" && (b === "board" || b === "dispatch")) return null;

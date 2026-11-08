@@ -84,9 +84,10 @@ async function investigate(bountyId: string, cookie: string) {
       : null;
     if (res) assert.equal((await res.json()).correct, true, `${bountyId}/${clueId}`);
   }
-  // Catch every lie with the first clue that exposes it
-  const { TESTIMONY } = await import("./bounties.js");
-  for (const [suspect, topics] of Object.entries(TESTIMONY[bountyId] ?? {})) {
+  // Catch every lie with the first clue that exposes it (this run's testimony: a replay can change it)
+  const { testimonyFor } = await import("./bounties.js");
+  const { caseRun } = await import("./gameStorage.js");
+  for (const [suspect, topics] of Object.entries(testimonyFor(bountyId, await caseRun(visitorOf(cookie), bountyId)) ?? {})) {
     for (const [topic, said] of Object.entries(topics)) {
       if (!said.breakthrough) continue;
       const res = await post(`/api/bounties/${bountyId}/suspects/${suspect}/ask/${topic}/present`, { clue: said.caughtBy![0] }, cookie);
@@ -102,9 +103,20 @@ async function proofFor(bountyId: string): Promise<string> {
   return BOUNTY_SOLUTIONS[bountyId].proof[0];
 }
 
+// A full accusation body: one proof, or one from each group on two-question cases.
+// `proof` (if given) is kept, and the second answer comes from the other group.
+async function evidenceFor(bountyId: string, proof?: string): Promise<{ proof: string; proof2?: string }> {
+  const { BOUNTY_SOLUTIONS } = await import("./bounties.js");
+  const sol = BOUNTY_SOLUTIONS[bountyId];
+  if (!sol.proofGroups) return { proof: proof ?? sol.proof[0] };
+  const [a, b] = sol.proofGroups;
+  if (proof === undefined) return { proof: a[0], proof2: b[0] };
+  return { proof, proof2: a.includes(proof) ? b[0] : a[0] };
+}
+
 async function solve(bountyId: string, suspect: string, cookie: string) {
   await investigate(bountyId, cookie);
-  await post(`/api/bounties/${bountyId}/accuse`, { suspect, proof: await proofFor(bountyId) }, cookie);
+  await post(`/api/bounties/${bountyId}/accuse`, { suspect, ...(await evidenceFor(bountyId)) }, cookie);
   await winDuel(bountyId, cookie);
   return post(`/api/bounties/${bountyId}/claim`, { suspect }, cookie);
 }
@@ -519,7 +531,7 @@ test("game: questioning suspects: topics unlock with clues, and the right clue c
   assert.deepEqual(progress.caught, { "tuttle/night": caught.id }); // survives leaving the tab or reloading
 
   // Two clues and one lie are not enough to name anyone
-  assert.equal((await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "telescope" }, cookie)).status, 409);
+  assert.equal((await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "telescope", proof2: "luggage" }, cookie)).status, 409);
 });
 
 test("game: Saturn can be closed without Lady Ashgrove's lie", async () => {
@@ -530,7 +542,7 @@ test("game: Saturn can be closed without Lady Ashgrove's lie", async () => {
   }
   const caught = await post("/api/bounties/saturn-orrery/suspects/tuttle/ask/night/present", { clue: "telescope" }, cookie);
   assert.equal((await caught.json()).correct, true);
-  const named = await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "telescope" }, cookie);
+  const named = await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "telescope", proof2: "luggage" }, cookie);
   assert.equal((await named.json()).correct, true);
 });
 
@@ -542,13 +554,13 @@ test("game: Saturn stays shut until Tuttle's own lie is caught", async () => {
   }
   const ashgrove = await post("/api/bounties/saturn-orrery/suspects/ashgrove/ask/money/present", { clue: "guestbook" }, cookie);
   assert.equal((await ashgrove.json()).correct, true);
-  assert.equal((await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "guestbook" }, cookie)).status, 409);
+  assert.equal((await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "guestbook", proof2: "luggage" }, cookie)).status, 409);
   const held = await (await fetch(base + "/api/bounties/saturn-orrery/progress", { headers: { Cookie: cookie } })).json();
   assert.equal(held.canAccuse, false);
   assert.equal(held.needsLie, true);
   const tuttle = await post("/api/bounties/saturn-orrery/suspects/tuttle/ask/night/present", { clue: "guestbook" }, cookie);
   assert.equal((await tuttle.json()).correct, true);
-  const named = await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "guestbook" }, cookie);
+  const named = await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "guestbook", proof2: "luggage" }, cookie);
   assert.equal((await named.json()).correct, true);
   const open = await (await fetch(base + "/api/bounties/saturn-orrery/progress", { headers: { Cookie: cookie } })).json();
   assert.equal(open.canAccuse, true);
@@ -571,7 +583,7 @@ test("game: a clue that points at the culprit counts as proof", async () => {
 
   const saturn = cookieOf(await fetch(base + "/api/player"));
   await investigate("saturn-orrery", saturn);
-  const book = await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "guestbook" }, saturn);
+  const book = await post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", proof: "guestbook", proof2: "luggage" }, saturn);
   assert.equal((await book.json()).correct, true);
 });
 
@@ -603,7 +615,7 @@ test("game: Neptune's diving bell needs all three chart clues, then the right sq
 
   const progress = await (await fetch(base + "/api/bounties/neptune-deep/progress", { headers: { Cookie: cookie } })).json();
   assert.equal(progress.found.chart, found.text); // the dive survives a refresh
-  assert.equal((await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "chart" }, cookie)).status, 409); // berth and stage door still unsearched
+  assert.equal((await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "chart", proof2: "stage-door" }, cookie)).status, 409); // berth and stage door still unsearched
 });
 
 test("game: the chart clues point to exactly one square", async () => {
@@ -625,10 +637,10 @@ test("game: the chart clues point to exactly one square", async () => {
 test("game: Neptune bounty pays 2000 and turns up fragment V", async () => {
   const cookie = cookieOf(await fetch(base + "/api/player"));
   await investigate("neptune-deep", cookie);
-  assert.deepEqual(await (await post("/api/bounties/neptune-deep/accuse", { suspect: "rusty", proof: "chamber" }, cookie)).json(), { correct: false });
+  assert.deepEqual(await (await post("/api/bounties/neptune-deep/accuse", { suspect: "rusty", proof: "chamber", proof2: "stage-door" }, cookie)).json(), { correct: false });
   // The right suspect with evidence that doesn't name her is still turned away
-  assert.deepEqual(await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "sonar" }, cookie)).json(), { correct: false });
-  const right = await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door" }, cookie)).json();
+  assert.deepEqual(await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "sonar", proof2: "stage-door" }, cookie)).json(), { correct: false });
+  const right = await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door", proof2: "chart" }, cookie)).json();
   assert.equal(right.showdown.scene, "./game/showdown-promenade-neptune.webp");
   await winDuel("neptune-deep", cookie);
   const paid = await post("/api/bounties/neptune-deep/claim", { suspect: "coralie" }, cookie);
@@ -903,35 +915,36 @@ test("game: replay clears the notebook, pays nothing, and keeps the Clean Case s
   const first = await paid.json();
   const closed = await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json();
   assert.equal(closed.replayDuel, false);
+  assert.equal((await fetch(base + "/api/voice/outro/heart-of-luna", { headers: { Cookie: cookie } })).status, 200);
   assert.equal((await post("/api/bounties/heart-of-luna/replay", {}, cookie)).status, 200);
   const progress = await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json();
   assert.deepEqual(progress.found, {});
   assert.equal(progress.accused, undefined);
   assert.equal(progress.replayDuel, false);
-  assert.equal((await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "dome" }, cookie)).status, 409);
-  assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 409);
+  assert.equal((await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "dome" }, cookie)).status, 409);
+  assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie)).status, 409);
   await investigate("heart-of-luna", cookie);
   const wrong = await post("/api/bounties/heart-of-luna/accuse", { suspect: "vela", proof: await proofFor("heart-of-luna") }, cookie);
   assert.equal(wrong.status, 200);
   assert.equal((await wrong.json()).correct, false);
   const afterWrong = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
   assert.ok(afterWrong.cleanBounties.includes("heart-of-luna"));
-  assert.equal((await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: await proofFor("heart-of-luna") }, cookie)).status, 200);
+  assert.equal((await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: await proofFor("heart-of-luna") }, cookie)).status, 200);
   const reopened = await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json();
-  assert.equal(reopened.accused.suspect, "cookie");
+  assert.equal(reopened.accused.suspect, "gearhart"); // Luna's replay re-deals the culprit
   assert.equal(reopened.replayDuel, true);
-  const early = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  const early = await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie);
   assert.equal(early.status, 409);
   assert.match((await early.json()).error, /Win the showdown first/);
   const stillOpen = await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json();
   assert.equal(stillOpen.replayDuel, true);
   await wait(850);
-  const noShot = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  const noShot = await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie);
   assert.equal(noShot.status, 409);
   assert.match((await noShot.json()).error, /Win the showdown first/);
   assert.equal((await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json()).replayDuel, true);
   await winDuel("heart-of-luna", cookie);
-  const finished = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  const finished = await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie);
   assert.equal(finished.status, 409);
   assert.match((await finished.json()).error, /already collected/);
   const shut = await (await fetch(base + "/api/bounties/heart-of-luna/progress", { headers: { Cookie: cookie } })).json();
@@ -940,16 +953,16 @@ test("game: replay clears the notebook, pays nothing, and keeps the Clean Case s
   const outro = await fetch(base + "/api/voice/outro/heart-of-luna", {
     headers: { Cookie: cookie, "Cache-Control": "no-cache" },
   });
-  assert.equal(outro.status, 200);
+  assert.equal(outro.status, 404); // the recorded ending names Cookie; this run's culprit was Gearhart
   assert.equal((await fetch(base + "/api/voice/taunt/heart-of-luna", { headers: { Cookie: cookie } })).status, 404);
   const again = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
   assert.equal(again.credits, first.credits);
   assert.ok(again.cleanBounties.includes("heart-of-luna"));
-  const retry = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  const retry = await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie);
   assert.equal(retry.status, 409);
   assert.match((await retry.json()).error, /already collected/);
   assert.equal((await post("/api/bounties/heart-of-luna/replay", {}, cookie)).status, 200);
-  const cleared = await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie);
+  const cleared = await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie);
   assert.equal(cleared.status, 409);
   assert.match((await cleared.json()).error, /Name the culprit/);
   const afterRetry = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
@@ -1402,7 +1415,7 @@ test("game: Mars, Venus and Neptune can't be named until the culprit's lie is ca
     }
     const sol = BOUNTY_SOLUTIONS[id];
     const sceneProof = sol.proof.find((p) => !p.startsWith("breakthrough"))!;
-    const before = await post(`/api/bounties/${id}/accuse`, { suspect: sol.suspect, proof: sceneProof }, cookie);
+    const before = await post(`/api/bounties/${id}/accuse`, { suspect: sol.suspect, ...(await evidenceFor(id, sceneProof)) }, cookie);
     assert.equal(before.status, 409, `${id} needs the lie first`);
     const progress = await (await fetch(`${base}/api/bounties/${id}/progress`, { headers: { Cookie: cookie } })).json();
     assert.equal(progress.needsLie, true);
@@ -1415,7 +1428,7 @@ test("game: Mars, Venus and Neptune can't be named until the culprit's lie is ca
     const caught = await (await post(url, { clue: said.caughtBy![0] }, cookie)).json();
     assert.equal(caught.correct, true);
     // The caught lie itself backs the accusation.
-    const named = await (await post(`/api/bounties/${id}/accuse`, { suspect: sol.suspect, proof: said.breakthrough!.id }, cookie)).json();
+    const named = await (await post(`/api/bounties/${id}/accuse`, { suspect: sol.suspect, ...(await evidenceFor(id, said.breakthrough!.id)) }, cookie)).json();
     assert.equal(named.correct, true, `${id} named with the caught lie`);
   }
 });
@@ -1490,7 +1503,7 @@ test("game: a replay moves the Venus combination and the Neptune hiding place, a
 
   // The second replay moves on again (C1, by the Aquadome), then the variant run is played to the claim.
   resetLimits();
-  await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "chart" }, neptune);
+  await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "chart", proof2: "stage-door" }, neptune);
   await replay("neptune-deep", neptune);
   for (const c of ["berth", "chamber", "sonar", "beacon", "stage-door"]) await post(`/api/bounties/neptune-deep/clues/${c}/search`, {}, neptune);
   assert.deepEqual(await (await dive("C5")).json(), { correct: false });
@@ -1498,7 +1511,7 @@ test("game: a replay moves the Venus combination and the Neptune hiding place, a
   assert.equal(dome.correct, true);
   assert.match(dome.text, /shadow of the Aquadome/);
   await post("/api/bounties/neptune-deep/suspects/coralie/ask/night/present", { clue: "stage-door" }, neptune);
-  const named = await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "chart" }, neptune)).json();
+  const named = await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "chart", proof2: "stage-door" }, neptune)).json();
   assert.equal(named.correct, true);
   await winDuel("neptune-deep", neptune);
   const claim = await post("/api/bounties/neptune-deep/claim", { suspect: "coralie" }, neptune);
@@ -1517,9 +1530,9 @@ test("game: an optional red-herring lie never stands in for a scene clue or the 
   assert.equal(progress.counted, 6); // five scene clues and Coralie's lie; Brine's doesn't count
   const { accuseLabel } = await import("../shared/game.js");
   assert.equal(accuseLabel({ interviews: true, canAccuse: false, needsLie: false, foundCount: progress.counted, needed: 7 }), "Find 1 more clue");
-  assert.equal((await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door" }, cookie)).status, 409);
+  assert.equal((await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door", proof2: "chart" }, cookie)).status, 409);
   assert.equal((await (await post("/api/bounties/neptune-deep/clues/chart/unlock", { code: "C3" }, cookie)).json()).correct, true);
-  assert.equal((await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door" }, cookie)).json()).correct, true);
+  assert.equal((await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door", proof2: "chart" }, cookie)).json()).correct, true);
 });
 
 test("game: the Kelp Forest variant has exactly one answer on the harbor chart", () => {
@@ -1554,4 +1567,90 @@ test("game: voice lines revalidate every play, and the culprit isn't always in t
   const slots = BOUNTIES.filter((b) => b.available).map((b) => b.suspects!.findIndex((s) => s.id === BOUNTY_SOLUTIONS[b.id].suspect));
   assert.ok(slots.every((i) => i >= 0));
   assert.ok(new Set(slots).size >= 3, `culprit slots ${slots}`);
+});
+
+test("game: Luna's replay re-deals the culprit: Gearhart framed Cookie, and the clues say so", async () => {
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  assert.equal((await solve("heart-of-luna", "cookie", cookie)).status, 200);
+  resetLimits();
+  assert.equal((await post("/api/bounties/heart-of-luna/replay", {}, cookie)).status, 200);
+  const search = async (c: string) => (await (await post(`/api/bounties/heart-of-luna/clues/${c}/search`, {}, cookie)).json()).text as string;
+  assert.match(await search("robot"), /maintenance key/);
+  assert.match(await search("jukebox"), /brand new/);
+  assert.match(await search("mixer"), /gift shop/);
+  await search("servo");
+  await search("dome");
+  // Cookie's account is true this time, so Servo can't break it; RB-9's wiped tape breaks Gearhart's.
+  const ask = (s: string, clue: string) => post(`/api/bounties/heart-of-luna/suspects/${s}/ask/night/present`, { clue }, cookie);
+  assert.deepEqual(await (await ask("cookie", "servo")).json(), { correct: false });
+  const caught = await (await ask("gearhart", "robot")).json();
+  assert.equal(caught.correct, true);
+  assert.match(caught.text, /twelve blank hours/);
+  assert.equal((await fetch(`${base}/api/voice/clue/heart-of-luna/robot`, { headers: { Cookie: cookie } })).status, 404);
+  // Naming Cookie on the planted cap is wrong; Gearhart on the tape is right.
+  assert.deepEqual(await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "jukebox" }, cookie)).json(), { correct: false });
+  const right = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie)).json();
+  assert.equal(right.correct, true);
+  assert.equal(right.showdown.opponent, "Dr. Otto Gearhart");
+  assert.equal(right.showdown.framed, true);
+  assert.ok(existsSync(path.join("client/public", right.showdown.image)), "framed portrait exists");
+  assert.equal((await fetch(`${base}/api/voice/taunt/heart-of-luna`, { headers: { Cookie: cookie } })).status, 404); // Cookie's recorded taunt
+  const progress = await (await fetch(`${base}/api/bounties/heart-of-luna/progress`, { headers: { Cookie: cookie } })).json();
+  assert.equal(progress.accused.suspect, "gearhart");
+  assert.equal(progress.caught["gearhart/night"], "breakthrough-1");
+});
+
+test("game: Saturn and Neptune want one piece of evidence for each question", async () => {
+  const { BOUNTY_SOLUTIONS } = await import("./bounties.js");
+  const { proofHolds } = await import("./gameRoutes.js");
+  const neptune = BOUNTY_SOLUTIONS["neptune-deep"];
+  assert.equal(proofHolds(neptune, "chart", "stage-door"), true);
+  assert.equal(proofHolds(neptune, "breakthrough-1", "chart"), true); // either order
+  assert.equal(proofHolds(neptune, "stage-door", "breakthrough-1"), false); // both answer the same question
+  assert.equal(proofHolds(neptune, "chart"), false);
+  assert.equal(proofHolds(BOUNTY_SOLUTIONS["red-sands"], "crates"), true); // one-question cases are unchanged
+  for (const b of BOUNTIES.filter((x) => BOUNTY_SOLUTIONS[x.id]?.proofGroups)) {
+    assert.equal(b.proofPrompts?.length, 2, `${b.id} asks both questions`);
+    for (const id of BOUNTY_SOLUTIONS[b.id].proofGroups!.flat()) assert.ok(BOUNTY_SOLUTIONS[b.id].proof.includes(id), `${b.id}/${id} is proof`);
+  }
+
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  await investigate("saturn-orrery", cookie);
+  const accuse = (body: object) => post("/api/bounties/saturn-orrery/accuse", { suspect: "tuttle", ...body }, cookie);
+  assert.equal((await accuse({ proof: "telescope" })).status, 400);
+  assert.deepEqual(await (await accuse({ proof: "telescope", proof2: "galley" })).json(), { correct: false });
+  assert.equal((await (await accuse({ proof: "galley", proof2: "luggage" })).json()).correct, true);
+});
+
+test("game: every re-dealt culprit has a complete, catchable case", async () => {
+  const { solutionFor, testimonyFor, culpritChanged, secretFor, VARIANTS } = await import("./bounties.js");
+  for (const [id, variants] of Object.entries(VARIANTS)) {
+    const b = bountyById(id)!;
+    const clueIds = new Set(b.locations!.flatMap((l) => l.clues).map((c) => c.id));
+    for (let run = 0; run < variants.length; run++) {
+      for (const clue of clueIds) assert.ok(secretFor(id, clue, run)?.text, `${id} run ${run} ${clue}`);
+      if (!culpritChanged(id, run)) continue;
+      const sol = solutionFor(id, run)!;
+      const said = testimonyFor(id, run)!;
+      assert.ok(b.suspects!.some((s) => s.id === sol.suspect), `${id} run ${run} culprit is a suspect`);
+      const lies = Object.values(said).flatMap((t) => Object.values(t)).filter((t) => t.breakthrough);
+      assert.ok(lies.length >= 1);
+      for (const lie of lies) {
+        assert.ok(b.breakthroughs!.includes(lie.breakthrough!.id));
+        assert.ok(lie.caughtBy!.every((c) => clueIds.has(c)));
+      }
+      for (const p of sol.proof) assert.ok(clueIds.has(p) || lies.some((l) => l.breakthrough!.id === p), `${id} run ${run} proof ${p}`);
+      for (const i of b.interviews!) for (const t of i.topics) assert.ok(said[i.suspect]?.[t.id], `${id} run ${run} ${i.suspect}/${t.id} answers`);
+    }
+  }
+});
+
+test("game: the travel posters and Captain Cosmo notice closed cases", async () => {
+  const { cosmoLine } = await import("../shared/game.js");
+  assert.equal(cosmoLine(["heart-of-luna"]), null);
+  assert.match(cosmoLine(["heart-of-luna", "red-sands", "venus-fog"])!, /2 of my four big posters/);
+  assert.match(cosmoLine(["red-sands", "venus-fog", "saturn-orrery", "neptune-deep"])!, /on the house/);
+  for (const b of BOUNTIES.filter((x) => x.available)) assert.ok(b.aftermath, `${b.id} has an aftermath line`);
+  // Luna's culprit can change on replay, so its line names nobody.
+  assert.doesNotMatch(bountyById("heart-of-luna")!.aftermath!, /Cookie|Gearhart|Vela/);
 });

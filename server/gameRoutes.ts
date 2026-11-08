@@ -18,7 +18,7 @@ import {
 } from "../shared/game.js";
 import { aureliaFor } from "./aurelia.js";
 import { gameLimiter, clueLimiter } from "./middleware.js";
-import { BOUNTY_SOLUTIONS, TESTIMONY, secretFor } from "./bounties.js";
+import { secretFor, solutionFor, testimonyFor, type Solution } from "./bounties.js";
 import {
   getProfile,
   updateProfile,
@@ -45,7 +45,12 @@ import {
   caseRun,
 } from "./gameStorage.js";
 
-const accusationSchema = z.object({ suspect: z.string().min(1).max(40), proof: z.string().min(1).max(40) });
+const accusationSchema = z.object({
+  suspect: z.string().min(1).max(40),
+  proof: z.string().min(1).max(40),
+  // Cases with two evidence questions send the second answer here.
+  proof2: z.string().min(1).max(40).optional(),
+});
 const claimSchema = z.object({ suspect: z.string().min(1).max(40) });
 const decodeSchema = z.object({ key: z.number().int().min(0).max(25) });
 // A lock's digits, or a square on a sea chart ("C3")
@@ -84,10 +89,18 @@ export function clueOf(bounty: Bounty, clueId: string, run = 0) {
   return clue && secret ? { clue, secret } : undefined;
 }
 
+// One clue from each group answers the case's two questions (in either order).
+// A case with one question takes any single piece of proof.
+export function proofHolds(solution: Solution, proof: string, proof2?: string): boolean {
+  if (!solution.proofGroups) return solution.proof.includes(proof);
+  const [a, b] = solution.proofGroups;
+  return proof2 !== undefined && ((a.includes(proof) && b.includes(proof2)) || (b.includes(proof) && a.includes(proof2)));
+}
+
 // A topic the hunter may ask about right now, with what the suspect says.
-function topicOf(found: string[], bounty: Bounty, suspect: string, topicId: string) {
+function topicOf(found: string[], bounty: Bounty, suspect: string, topicId: string, run: number) {
   const topic = bounty.interviews?.find((i) => i.suspect === suspect)?.topics.find((t) => t.id === topicId);
-  const said = TESTIMONY[bounty.id]?.[suspect]?.[topicId];
+  const said = testimonyFor(bounty.id, run)?.[suspect]?.[topicId];
   if (!topic || !said) return { status: "missing" as const };
   if (topic.after && !found.includes(topic.after)) return { status: "locked" as const };
   return { status: "ok" as const, said };
@@ -97,7 +110,7 @@ function topicOf(found: string[], bounty: Bounty, suspect: string, topicId: stri
 function textOf(bountyId: string, id: string, run: number): string | undefined {
   const clue = secretFor(bountyId, id, run)?.text;
   if (clue) return clue;
-  for (const topics of Object.values(TESTIMONY[bountyId] ?? {})) {
+  for (const topics of Object.values(testimonyFor(bountyId, run) ?? {})) {
     for (const said of Object.values(topics)) if (said.breakthrough?.id === id) return said.breakthrough.text;
   }
   return undefined;
@@ -113,12 +126,12 @@ async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProg
   }
   // Which statements were caught (only once caught, so this reveals nothing new)
   const caught: Record<string, string> = {};
-  for (const [suspect, topics] of Object.entries(TESTIMONY[bounty.id] ?? {})) {
+  for (const [suspect, topics] of Object.entries(testimonyFor(bounty.id, run) ?? {})) {
     for (const [topic, said] of Object.entries(topics)) {
       if (said.breakthrough && ids.includes(said.breakthrough.id)) caught[`${suspect}/${topic}`] = said.breakthrough.id;
     }
   }
-  const solution = BOUNTY_SOLUTIONS[bounty.id];
+  const solution = solutionFor(bounty.id, run);
   const accused = (await showdownStartedAt(visitorId, bounty.id)) !== null;
   const replayDuel = accused && await replayDuelOpen(visitorId, bounty.id);
   const needsLie = (solution?.beforeAccusation ?? []).some((id) => !ids.includes(id));
@@ -231,7 +244,7 @@ export function registerGameRoutes(app: Express) {
     const bounty = await openBounty(req, res);
     if (!bounty) return;
     const found = await foundClues(req.visitorId!, bounty.id);
-    const t = topicOf(found, bounty, String(req.params.suspect), String(req.params.topic));
+    const t = topicOf(found, bounty, String(req.params.suspect), String(req.params.topic), await caseRun(req.visitorId!, bounty.id));
     if (t.status === "missing") return res.status(404).json({ error: "They have nothing to say about that" });
     if (t.status === "locked") return res.status(409).json({ error: "Find more clues before you ask about that" });
     res.json({ text: t.said.text });
@@ -245,7 +258,7 @@ export function registerGameRoutes(app: Express) {
     const parsed = presentSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const found = await foundClues(req.visitorId!, bounty.id);
-    const t = topicOf(found, bounty, String(req.params.suspect), String(req.params.topic));
+    const t = topicOf(found, bounty, String(req.params.suspect), String(req.params.topic), await caseRun(req.visitorId!, bounty.id));
     if (t.status === "missing") return res.status(404).json({ error: "They have nothing to say about that" });
     if (t.status === "locked") return res.status(409).json({ error: "Find more clues before you ask about that" });
     if (!found.includes(parsed.data.clue)) {
@@ -266,14 +279,18 @@ export function registerGameRoutes(app: Express) {
     const parsed = accusationSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const found = await foundClues(req.visitorId!, bounty.id);
-    const solution = BOUNTY_SOLUTIONS[bounty.id];
+    const solution = solutionFor(bounty.id, await caseRun(req.visitorId!, bounty.id));
     const ready = accusationCount(bounty, found, solution?.beforeAccusation) >= cluesNeeded(bounty)
       && (solution?.beforeAccusation ?? []).every((id) => found.includes(id));
     if (!ready) {
       return res.status(409).json({ error: "Find more clues before you name anyone" });
     }
-    if (!found.includes(parsed.data.proof)) return res.status(409).json({ error: "You haven't found that clue" });
-    if (!solution || solution.suspect !== parsed.data.suspect || !solution.proof.includes(parsed.data.proof)) {
+    const { proof, proof2 } = parsed.data;
+    if (!found.includes(proof) || (proof2 !== undefined && !found.includes(proof2))) {
+      return res.status(409).json({ error: "You haven't found that clue" });
+    }
+    if (solution?.proofGroups && proof2 === undefined) return res.status(400).json({ error: "This case needs two pieces of evidence" });
+    if (!solution || solution.suspect !== parsed.data.suspect || !proofHolds(solution, proof, proof2)) {
       await recordWrongAccusation(req.visitorId!, bounty.id);
       return res.json({ correct: false });
     }
@@ -325,7 +342,7 @@ export function registerGameRoutes(app: Express) {
       const error = settled === "already_collected" ? "Bounty already collected" : "Name the culprit before you collect";
       return res.status(409).json({ error });
     }
-    if (BOUNTY_SOLUTIONS[bounty.id]?.suspect !== parsed.data.suspect) {
+    if (solutionFor(bounty.id, await caseRun(req.visitorId!, bounty.id))?.suspect !== parsed.data.suspect) {
       return res.status(422).json({ error: "Wrong suspect" });
     }
     if (Date.now() - started < SHOWDOWN_MIN_MS) return res.status(409).json({ error: "Win the showdown first" });

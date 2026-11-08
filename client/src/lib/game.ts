@@ -143,8 +143,8 @@ export async function replayBounty(bountyId: string): Promise<void> {
 
 // Name a suspect with a found clue as proof. Returns the case solution (showdown + outro)
 // when both are right, else null (a wrong guess costs the Clean Case seal, never credits).
-export async function accuse(bountyId: string, suspect: string, proof: string): Promise<CaseSolution | null> {
-  const res = await apiRequest("POST", `/api/bounties/${bountyId}/accuse`, { suspect, proof });
+export async function accuse(bountyId: string, suspect: string, proof: string, proof2?: string): Promise<CaseSolution | null> {
+  const res = await apiRequest("POST", `/api/bounties/${bountyId}/accuse`, { suspect, proof, ...(proof2 ? { proof2 } : {}) });
   const body = await res.json();
   if (!body.correct) return null;
   const solution: CaseSolution = { showdown: body.showdown, outro: body.outro };

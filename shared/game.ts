@@ -207,6 +207,11 @@ export interface Bounty {
   suspects?: Suspect[];
   cluesNeeded?: number;
   accusePrompt?: string;
+  // How the solar system talks about the case once this hunter has closed it (shown in
+  // the social worlds). Culprit-neutral where a replay can re-deal the culprit.
+  aftermath?: string;
+  // Late cases ask for two pieces of evidence, one answering each question.
+  proofPrompts?: readonly [string, string];
   fragment?: MapFragment;
   interviews?: Interview[];
   // Ids of the lies to catch while questioning (each counts like a clue). Only ids:
@@ -329,6 +334,8 @@ export const BOUNTIES: Bounty[] = [
       },
     ],
     accusePrompt: "Who took the Heart of Luna?",
+    aftermath: "The Heart of Luna glows under its dome again, and the Expo has hired a second night guard to keep RB-9 company.",
+    replayNote: "Replays reopen the Guild's training file, and the night may not go the same way twice. Read every clue again, closely.",
     fragment: {
       id: "lunar-quadrant",
       number: 1,
@@ -445,6 +452,7 @@ export const BOUNTIES: Bounty[] = [
       },
     ],
     accusePrompt: "Who's rustling the Rain-Makers?",
+    aftermath: "Rain-Maker tours are running again, and the Ares Valley farmers send their thanks in the form of a very large pumpkin.",
     fragment: {
       id: "martian-quadrant",
       number: 2,
@@ -460,6 +468,7 @@ export const BOUNTIES: Bounty[] = [
     available: true,
     requires: ["heart-of-luna"],
     music: "venus",
+    aftermath: "The fog shows on Venus run on schedule again, and every gondola pilot now signs the dock log in full.",
     replayNote: "Each replay, the Phantom tears a fresh note: new scraps, and a different combination from your last run.",
     teaser: "A masked thief lifted the Star of Venus during the sky-resort's fog show.",
     briefing:
@@ -629,6 +638,8 @@ export const BOUNTIES: Bounty[] = [
       },
     ],
     accusePrompt: "Who took the Saturn Gear?",
+    proofPrompts: ["Where is the Saturn Gear now?", "What breaks their alibi?"],
+    aftermath: "The Sterling Orrery chimes on the ring tour again. The liner added a line to its brochure: \"Now with 100% fewer professors in the luggage rack.\"",
     fragment: {
       id: "saturnian-quadrant",
       number: 4,
@@ -643,6 +654,7 @@ export const BOUNTIES: Bounty[] = [
     reward: 2000,
     available: true,
     requires: ["saturn-orrery"],
+    aftermath: "The Tomorrow is back in her berth, and the Aquacade's new mermaid signs out at the stage door every single time.",
     replayNote: "Each replay, the thief hides somewhere other than your last run. Read the sonar tape again.",
     // All six scene clues (the chart included) plus the thief's lie. Captain Brine's
     // tall tale is there to catch too; it is not required and does not count.
@@ -739,6 +751,7 @@ export const BOUNTIES: Bounty[] = [
       },
     ],
     accusePrompt: "Who took the Tomorrow?",
+    proofPrompts: ["What ties them to the stolen sub?", "What puts them out on the water that night?"],
     fragment: {
       id: "neptunian-quadrant",
       number: 5,
@@ -989,7 +1002,8 @@ export interface StarMapStatus {
 
 // Revealed by the server only after a correct accusation (keeps the culprit out of the bundle).
 export interface CaseSolution {
-  showdown: { opponent: string; image: string; taunt: string; scene?: string };
+  // `framed`: the opponent has no pose art yet, so the duel shows their portrait as a wanted poster
+  showdown: { opponent: string; image: string; taunt: string; scene?: string; framed?: boolean };
   outro: string;
 }
 
@@ -1117,6 +1131,14 @@ export function tickerLines(wire: readonly WireEntry[], arrivals: readonly strin
     if (i < arrivals.length && out.length < limit) out.push(arrivals[i]);
   }
   return out;
+}
+
+// Captain Cosmo's greeting changes as the hunter closes cases out among the planets.
+export function cosmoLine(completed: readonly string[]): string | null {
+  const outer = ["red-sands", "venus-fog", "saturn-orrery", "neptune-deep"].filter((id) => completed.includes(id)).length;
+  if (outer === 0) return null;
+  if (outer === 4) return "Cosmo salutes you. \"Mars, Venus, Saturn, Neptune. Kid, I've been selling tickets to those places for fifty years, and you're the first customer who came back and made them safer. Rest of the trip's on the house.\"";
+  return `Cosmo leans over the counter. "Word gets around the spaceports, hunter. ${outer} of my four big posters are back to selling tickets because of you. Keep going."`;
 }
 
 export interface LeaderboardEntry {

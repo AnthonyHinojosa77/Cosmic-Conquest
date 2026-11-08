@@ -815,17 +815,19 @@ function Accusation({
 }) {
   const [suspectId, setSuspectId] = useState<string | null>(null);
   const [proof, setProof] = useState("");
+  const [proof2, setProof2] = useState("");
+  const prompts = bounty.proofPrompts;
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const entries = notebookEntries(bounty, found, caughtTopics);
   const suspect = bounty.suspects?.find((s) => s.id === suspectId);
 
   const submit = async () => {
-    if (!suspect || !proof) return;
+    if (!suspect || !proof || (prompts && !proof2)) return;
     setPending(true);
     setMessage(null);
     try {
-      const solution = await accuse(bounty.id, suspect.id, proof);
+      const solution = await accuse(bounty.id, suspect.id, proof, prompts ? proof2 : undefined);
       if (solution) onCorrect(suspect.id, solution);
       else setMessage(`The sheriff isn't buying it: that evidence doesn't put ${suspect.name} behind this. Check your notebook and try again.`);
     } catch (err) {
@@ -872,27 +874,34 @@ function Accusation({
       </div>
 
       <div className="comic-panel bg-[hsl(38,35%,88%)] p-4 max-w-2xl mx-auto space-y-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs pulp-title" htmlFor="proof" style={{ color: INK }}>
-            {suspect ? `Your proof against ${suspect.name}:` : "Your proof:"}
-          </label>
-          <select
-            id="proof"
-            value={proof}
-            onChange={(e) => {
-              setProof(e.target.value);
-              setMessage(null);
-            }}
-            className="text-sm px-2 py-1 bg-[hsl(38,30%,90%)] border-2 border-[hsl(30,20%,68%)] rounded max-w-full"
-            disabled={pending}
-            data-testid="select-proof"
-          >
-            <option value="">Pick a clue from your notebook…</option>
-            {entries.map((e) => (
-              <option key={e.id} value={e.id}>{e.label}</option>
-            ))}
-          </select>
-        </div>
+        {(prompts ?? [null]).map((question, i) => {
+          const value = i === 0 ? proof : proof2;
+          const set = i === 0 ? setProof : setProof2;
+          const id = i === 0 ? "proof" : "proof2";
+          return (
+            <div className="flex flex-col gap-1" key={id}>
+              <label className="text-xs pulp-title" htmlFor={id} style={{ color: INK }}>
+                {question ?? (suspect ? `Your proof against ${suspect.name}:` : "Your proof:")}
+              </label>
+              <select
+                id={id}
+                value={value}
+                onChange={(e) => {
+                  set(e.target.value);
+                  setMessage(null);
+                }}
+                className="text-sm px-2 py-1 bg-[hsl(38,30%,90%)] border-2 border-[hsl(30,20%,68%)] rounded max-w-full"
+                disabled={pending}
+                data-testid={i === 0 ? "select-proof" : "select-proof-2"}
+              >
+                <option value="">Pick a clue from your notebook…</option>
+                {entries.map((e) => (
+                  <option key={e.id} value={e.id}>{e.label}</option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
         <div className="flex flex-wrap gap-3">
           <button className="retro-btn teal text-sm" onClick={onBack} disabled={pending} data-testid="button-back-investigation">
             ← Back to Investigation
@@ -900,7 +909,7 @@ function Accusation({
           <button
             className="retro-btn gold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={submit}
-            disabled={!suspect || !proof || pending}
+            disabled={!suspect || !proof || (!!prompts && !proof2) || pending}
             data-testid="button-accuse"
           >
             {pending ? "Making your case…" : "Accuse with this evidence"}
@@ -1039,7 +1048,7 @@ function Showdown({
               <img
                 src={showdown.image}
                 alt={showdown.opponent}
-                className={`duel-sprite duel-villain ${state === "won" ? "is-down" : ""}`}
+                className={`duel-sprite duel-villain ${showdown.framed ? "is-framed" : ""} ${state === "won" ? "is-down" : ""}`}
                 draggable={false}
               />
             )}

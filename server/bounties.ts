@@ -4,7 +4,16 @@ import { shiftLetters, type CaseSolution } from "../shared/game.js";
 // The showdown/outro name the culprit, so they're only sent after a correct accusation.
 // `proof`: the found clues (or caught lies) that back up naming the culprit; an
 // accusation needs the right suspect AND one of these.
-export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly string[]; beforeAccusation?: readonly string[] } & CaseSolution> = {
+// `proofGroups`: late cases want two pieces of evidence, one from each group, answering
+// the two questions in the case's shared `proofPrompts` (in the same order).
+export type Solution = {
+  suspect: string;
+  proof: readonly string[];
+  beforeAccusation?: readonly string[];
+  proofGroups?: readonly [readonly string[], readonly string[]];
+} & CaseSolution;
+
+export const BOUNTY_SOLUTIONS: Record<string, Solution> = {
   "heart-of-luna": {
     suspect: "cookie",
     // Every clue but the videophone log (Madame Vela's alibi) points at Cookie: the malt
@@ -24,6 +33,8 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly
     // Naming him also takes his own caught lie. Lady Ashgrove's lie does not stand in for it.
     proof: ["luggage", "breakthrough-2", "telescope", "galley", "guestbook"],
     beforeAccusation: ["breakthrough-2"],
+    // Where the gear is now, and what breaks his alibi.
+    proofGroups: [["luggage"], ["telescope", "galley", "guestbook", "breakthrough-2"]],
     outro: "The Saturn Gear clicks back onto its spindle and the Sterling Orrery chimes again. Professor Tuttle will be lecturing on Titan after all, from the inside of the Titan lock-up.",
     showdown: {
       opponent: "Professor Orson Tuttle",
@@ -52,6 +63,8 @@ export const BOUNTY_SOLUTIONS: Record<string, { suspect: string; proof: readonly
     // sequinned mask left aboard the Tomorrow. The berth's lone sequin alone names no one.
     proof: ["stage-door", "chart", "breakthrough-1"],
     beforeAccusation: ["breakthrough-1"],
+    // What ties her to the stolen sub, and what puts her out of the Aquacade that night.
+    proofGroups: [["chart"], ["stage-door", "breakthrough-1"]],
     outro: "The Tomorrow is back in her berth, polished and gleaming, and the Aquacade is holding auditions for a new mermaid. Coralie Finn is practicing her breath-holding in the Triton lock-up.",
     showdown: {
       opponent: "Coralie Finn",
@@ -161,7 +174,19 @@ const NEPTUNE_DOME: Record<string, Partial<ClueSecret>> = {
   },
 };
 
+// Luna, re-dealt: Dr. Gearhart takes the crystal and tries to frame Cookie. Every clue
+// that pointed at Cookie still points at him at first glance; read closely, each one
+// is planted, and the real tells (the wiped tape, the robot oil) lead to the inventor.
+const LUNA_GEARHART: Record<string, Partial<ClueSecret>> = {
+  dome: { text: "The base panel was unscrewed and put back perfectly square, every screw turned to the same snug quarter-inch. A bead of blue robot lubricant sits on one screw head. A trail of glitter runs toward the exit, too neat, like it was poured from a cup." },
+  robot: { text: "You rewind RB-9's memory tape. It is blank from 6:02 PM to 6:00 AM: twelve hours wiped with a maintenance key. RB-9's maintenance key never leaves its inventor's watch chain." },
+  mixer: { text: "The Moon Malt mixer is clogged with glitter, but not moon dust: it's the cheap souvenir sparkle the Expo gift shop sells by the scoop. Real moon dust is grey. Somebody wanted this mixer to look guilty." },
+  servo: { text: "Servo's eyes flicker. 'Cookie worked until close, sir, and took his lunchbox home, same as always. At 11:48 PM a gentleman in a lab coat bought a coffee to go and asked whether the Expo's service door still sticks.'" },
+  jukebox: { text: "Tucked behind the jukebox: a paper diner cap with 'COOKIE' stitched on the band. It's brand new, still creased from the packet, and the stitching is machine-perfect. Cookie's caps are grease-stained and lettered by hand." },
+};
+
 export const VARIANTS: Record<string, Record<string, Partial<ClueSecret>>[]> = {
+  "heart-of-luna": [{}, LUNA_GEARHART],
   "venus-fog": [{}, venusScraps(7, 3, 5), venusScraps(2, 9, 6)],
   "neptune-deep": [{}, NEPTUNE_KELP, NEPTUNE_DOME],
 };
@@ -179,6 +204,63 @@ export function secretFor(bountyId: string, clueId: string, run = 0): ClueSecret
   return over ? { ...base, ...over } : base;
 }
 
+// Some replays change who did it. The culprit's solution and testimony for that run
+// replace the case's own, at the same variant index as the clue words.
+const SOLUTION_VARIANTS: Record<string, (Solution | undefined)[]> = {
+  "heart-of-luna": [undefined, {
+    suspect: "gearhart",
+    // The wiped tape (only the inventor holds the key), the robot oil on the screws,
+    // Servo's man in the lab coat, and his own caught lie.
+    proof: ["robot", "dome", "servo", "breakthrough-1"],
+    outro: "The Heart of Luna is back under the dome, RB-9 has a fresh memory tape, and Dr. Gearhart is redesigning the Lunar lock-up's door from the inside. Cookie got a new cap out of it, and a free Rocket Burger from the Committee.",
+    showdown: {
+      opponent: "Dr. Otto Gearhart",
+      // No pose art for this variant yet: the duel shows his wanted poster instead.
+      image: "./game/suspect-gearhart.webp",
+      framed: true,
+      taunt: "Gearhart raises a soldering-iron ray gun, goggles down. \"They gave a rock a dome and my butler a corner, hunter. I gave the rock a purpose!\"",
+    },
+  }],
+};
+
+type Testimony = Record<string, Record<string, { text: string; caughtBy?: string[]; breakthrough?: { id: string; text: string } }>>;
+
+const TESTIMONY_VARIANTS: Record<string, (Testimony | undefined)[]> = {
+  "heart-of-luna": [undefined, {
+    gearhart: {
+      night: {
+        text: "I locked the Expo at six sharp and went home to my workshop, where a man can think. RB-9 kept the doors. RB-9 always keeps the doors.",
+        caughtBy: ["robot", "servo"],
+        breakthrough: { id: "breakthrough-1", text: "Gearhart polishes his goggles far longer than goggles need. \"Fine. I came back at midnight to run diagnostics on RB-9. A routine wipe of his tape. Routine!\" RB-9's tape had never been wiped before, and the Heart of Luna went missing during those twelve blank hours." },
+      },
+      robot: { text: "RB-9 remembers every face and every word, which is more than the Expo Committee can say. They gave my butler a corner. They gave a rock a dome." },
+      dome: { text: "Whoever opened it knew what they were doing, I'll grant them that. Square as a ruler. Not like the Committee's work." },
+    },
+    vela: {
+      night: { text: "On the line to Mars, darling, from a quarter past ten until the small hours. My sister. The light delay makes every argument twice as long." },
+      crystal: { text: "Pretty, but it doesn't ring. Though I'll tell you who sulked at it all week: that inventor. Stood at the dome every afternoon, muttering about 'wasted wattage.'" },
+    },
+    cookie: {
+      night: { text: "Worked my whole shift, start to close, flipping Rocket Burgers. Ask Servo. Ask anybody. I walked home at midnight with my lunchbox and my feet hurting." },
+      lunchbox: { text: "Meatloaf. Same as every night. You want to look? Go on, look. It's meatloaf." },
+      glitter: { text: "That's gift-shop glitter! Somebody dumped a scoop of it in my mixer. You know what that does to a milkshake? It ruins it, that's what." },
+    },
+  }],
+};
+
+export function solutionFor(bountyId: string, run = 0): Solution | undefined {
+  return SOLUTION_VARIANTS[bountyId]?.[variantIndex(bountyId, run)] ?? BOUNTY_SOLUTIONS[bountyId];
+}
+
+export function testimonyFor(bountyId: string, run = 0): Testimony | undefined {
+  return TESTIMONY_VARIANTS[bountyId]?.[variantIndex(bountyId, run)] ?? TESTIMONY[bountyId];
+}
+
+// This run has a different culprit, so the recorded taunt, ending and testimony don't fit.
+export function culpritChanged(bountyId: string, run: number): boolean {
+  return SOLUTION_VARIANTS[bountyId]?.[variantIndex(bountyId, run)] !== undefined;
+}
+
 // A recording speaks run 0's words. A clue whose words change in this run stays silent.
 export function voicedInRun(bountyId: string, clueId: string, run: number): boolean {
   return VARIANTS[bountyId]?.[variantIndex(bountyId, run)]?.[clueId]?.text === undefined;
@@ -186,11 +268,7 @@ export function voicedInRun(bountyId: string, clueId: string, run: number): bool
 
 // What suspects say when questioned. A statement with `caughtBy` is a lie: presenting
 // one of those found clues is a breakthrough (recorded like a clue, with its own text).
-export const TESTIMONY: Record<string, Record<string, Record<string, {
-  text: string;
-  caughtBy?: string[];
-  breakthrough?: { id: string; text: string };
-}>>> = {
+export const TESTIMONY: Record<string, Testimony> = {
   "heart-of-luna": {
     gearhart: {
       night: { text: "I locked the Expo at six sharp and went home to my workshop, where a man can think. RB-9 kept the doors. RB-9 always keeps the doors." },

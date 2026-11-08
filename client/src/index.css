@@ -733,6 +733,17 @@
   .duel-hero { left: -3%; animation: duelInLeft 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
   .duel-villain { right: -3%; animation: duelInRight 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both; transition: transform 0.25s, filter 0.25s; }
   @media (min-width: 768px) { .duel-hero { left: 4%; } .duel-villain { right: 4%; } }
+  /* No pose art yet: the opponent's portrait, pinned up like a wanted poster */
+  .duel-villain.is-framed {
+    height: min(42%, 56vw);
+    aspect-ratio: 1;
+    object-fit: cover;
+    border: 6px solid hsl(38 35% 88%);
+    outline: 3px solid hsl(25 40% 18%);
+    border-radius: 4px;
+    bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 768px) { .duel-villain.is-framed { height: 52%; bottom: 18%; } }
   .duel-villain.is-down { transform: rotate(14deg) translateY(6%); filter: grayscale(0.6) drop-shadow(0 16px 18px hsl(0 0% 0% / 0.6)); }
   @keyframes duelInLeft { from { transform: translateX(-60%); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes duelInRight { from { transform: translateX(60%); opacity: 0; } to { transform: none; opacity: 1; } }
