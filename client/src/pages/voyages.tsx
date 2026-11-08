@@ -4,7 +4,7 @@ import { ContractLink } from "@/components/ContractLink";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
 import { errorMessage, useCallsignName, usePlayer } from "@/lib/game";
-import { bountyById, cosmoLine } from "@shared/game";
+import { cosmoLine } from "@shared/game";
 import { keepDraft, showEmptyError } from "@/lib/votes";
 import { useDiscovered, useRestoreFocus } from "@/lib/discovered";
 import type { Postcard } from "@shared/schema";
@@ -212,11 +212,6 @@ export default function Voyages() {
                         <span className="pulp-title text-xs text-[hsl(25,40%,15%)]">{dest.name}</span>
                         <span className="block text-xs text-[hsl(195,65%,38%)] font-bold mt-0.5">{dest.tagline}</span>
                         <p className="text-xs text-[hsl(25,20%,40%)] mt-1">{dest.desc}</p>
-                        {dest.bountyId && completed.includes(dest.bountyId) && bountyById(dest.bountyId)?.aftermath && (
-                          <p className="text-xs mt-1 text-[hsl(140,40%,28%)]" data-testid={`text-aftermath-${dest.bountyId}`}>
-                            <span className="pulp-title tracking-wider">★ Case closed.</span> {bountyById(dest.bountyId)!.aftermath}
-                          </p>
-                        )}
                         {dest.bountyId && <ContractLink bountyId={dest.bountyId} />}
                       </div>
                     ))}

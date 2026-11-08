@@ -72,6 +72,10 @@ export function bandanaNote(spentPardon: boolean, state: DuelState): boolean {
 
 export type DuelState = "idle" | "waiting" | "steady" | "draw" | "early" | "slow" | "won";
 
+// No human hand fires within 100 ms of seeing DRAW (people need about 150 ms). The duel
+// screen calls a faster press a jump, and the server calls a faster shot a miss.
+export const SHOT_FLOOR_MS = 100;
+
 // One press in a showdown. The first early press is forgiven only while `pardon` is true.
 // A second early press, including one during the "steady" beat, ends the attempt.
 export function duelPress(
@@ -84,6 +88,7 @@ export function duelPress(
   if (state === "waiting" && pardon) return { state: "steady", pardon: false, won: false };
   if (state === "waiting") return { state: "early", pardon: false, won: false };
   if (state === "draw") {
+    if (elapsedMs < SHOT_FLOOR_MS) return { state: "early", pardon: false, won: false };
     return elapsedMs <= windowMs
       ? { state: "won", pardon, won: true }
       : { state: "slow", pardon, won: false };

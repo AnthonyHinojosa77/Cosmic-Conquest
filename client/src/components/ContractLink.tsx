@@ -37,12 +37,20 @@ export function ContractLink({ bountyId }: { bountyId: string }) {
     );
   }
   return (
-    <Link
-      href={`/bounty/${bountyId}`}
-      className="block text-xs mt-2 underline pulp-title text-[hsl(0,72%,40%)]"
-      data-testid={`link-job-${bountyId}`}
-    >
-      {phase === "collected" ? `✓ Collected — open: ${bounty.title}` : `Open contract: ${bounty.title}`}
-    </Link>
+    <>
+      {/* The world remembers a case this hunter closed (Expo, Diner and Voyages alike). */}
+      {phase === "collected" && bounty.aftermath && (
+        <p className="text-xs mt-2 text-[hsl(140,40%,28%)]" data-testid={`text-aftermath-${bountyId}`}>
+          <span className="pulp-title tracking-wider">★ Case closed.</span> {bounty.aftermath}
+        </p>
+      )}
+      <Link
+        href={`/bounty/${bountyId}`}
+        className="block text-xs mt-2 underline pulp-title text-[hsl(0,72%,40%)]"
+        data-testid={`link-job-${bountyId}`}
+      >
+        {phase === "collected" ? `✓ Collected — open: ${bounty.title}` : `Open contract: ${bounty.title}`}
+      </Link>
+    </>
   );
 }

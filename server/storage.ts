@@ -172,6 +172,20 @@ const SCHEMA = `
   CREATE UNIQUE INDEX IF NOT EXISTS \`bounty_attempts_visitor_bounty_unique\` ON \`bounty_attempts\` (\`visitor_id\`,\`bounty_id\`);
 `;
 
+// Columns added after a table first shipped. CREATE TABLE IF NOT EXISTS skips a table
+// that already exists, so an older database gets each missing column here.
+const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
+  { table: "case_runs", column: "strikes", ddl: "integer DEFAULT 0 NOT NULL" },
+];
+
+export async function upgradeColumns(c: Pick<Client, "execute">): Promise<void> {
+  for (const { table, column, ddl } of ADDED_COLUMNS) {
+    const info = await c.execute(`PRAGMA table_info(\`${table}\`)`);
+    if (info.rows.some((r) => r.name === column)) continue;
+    await c.execute(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${ddl}`);
+  }
+}
+
 let ready: Promise<void> | undefined;
 
 // Resolves once the schema exists. Runs once per process (once per warm instance
@@ -181,6 +195,7 @@ export function dbReady(): Promise<void> {
     await connect();
     if (!useRemote) await client!.execute("PRAGMA journal_mode = WAL");
     await client!.executeMultiple(SCHEMA);
+    await upgradeColumns(client!);
     // Enforce one vote per visitor per item at the database level. Kept separate so
     // a database holding duplicate rows from older code logs a warning instead of
     // failing to boot (the application-level check still applies).

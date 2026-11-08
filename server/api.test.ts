@@ -1487,7 +1487,7 @@ test("game: a replay moves the Venus combination and the Neptune hiding place, a
     assert.match(progress.found.case, new RegExp(`the digit ${left} on it`));
   }
 
-  // Neptune: C3, then C5 after a replay.
+  // Neptune: C3, then C4 (the Beacon's row) after a replay.
   resetLimits();
   const neptune = cookieOf(await fetch(base + "/api/player"));
   assert.equal((await solve("neptune-deep", BOUNTY_SOLUTIONS["neptune-deep"].suspect, neptune)).status, 200);
@@ -1495,19 +1495,19 @@ test("game: a replay moves the Venus combination and the Neptune hiding place, a
   await replay("neptune-deep", neptune);
   for (const c of ["chamber", "sonar", "beacon"]) await post(`/api/bounties/neptune-deep/clues/${c}/search`, {}, neptune);
   const progress = await (await fetch(`${base}/api/bounties/neptune-deep/progress`, { headers: { Cookie: neptune } })).json();
-  assert.match(progress.found.sonar, /due east of the Kelp Forest/);
+  assert.match(progress.found.sonar, /Beacon's own row/);
   const dive = (code: string) => post("/api/bounties/neptune-deep/clues/chart/unlock", { code }, neptune);
   assert.deepEqual(await (await dive("C3")).json(), { correct: false });
-  const found = await (await dive("C5")).json();
+  const found = await (await dive("C4")).json();
   assert.equal(found.correct, true);
-  assert.match(found.text, /square C5/);
+  assert.match(found.text, /square C4/);
 
   // The second replay moves on again (C1, by the Aquadome), then the variant run is played to the claim.
   resetLimits();
   await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "chart", proof2: "stage-door" }, neptune);
   await replay("neptune-deep", neptune);
   for (const c of ["berth", "chamber", "sonar", "beacon", "stage-door"]) await post(`/api/bounties/neptune-deep/clues/${c}/search`, {}, neptune);
-  assert.deepEqual(await (await dive("C5")).json(), { correct: false });
+  assert.deepEqual(await (await dive("C4")).json(), { correct: false });
   const dome = await (await dive("C1")).json();
   assert.equal(dome.correct, true);
   assert.match(dome.text, /shadow of the Aquadome/);
@@ -1536,13 +1536,17 @@ test("game: an optional red-herring lie never stands in for a scene clue or the 
   assert.equal((await (await post("/api/bounties/neptune-deep/accuse", { suspect: "coralie", proof: "stage-door", proof2: "chart" }, cookie)).json()).correct, true);
 });
 
-test("game: the Kelp Forest variant has exactly one answer on the harbor chart", () => {
+test("game: the Beacon-row variant has exactly one answer, and only with the Beacon's light", () => {
   const chart = bountyById("neptune-deep")!.locations!.flatMap((l) => l.clues).find((c) => c.chart)!.chart!;
-  const kelp = chart.marks.find((m) => m.name === "Kelp Forest")!;
-  const row = kelp.cell.slice(1);
-  const kelpCol = kelp.cell.charCodeAt(0) - 64;
-  const candidates = chart.deep.filter((c) => c.slice(1) === row && c.charCodeAt(0) - 64 > kelpCol && !chart.lit.includes(c));
-  assert.deepEqual(candidates, ["C5"]);
+  const beacon = chart.marks.find((m) => m.name === "The Beacon")!;
+  const row = beacon.cell.slice(1);
+  const col = (c: string) => c.charCodeAt(0) - 64;
+  const west = chart.deep.filter((c) => c.slice(1) === row && col(c) < col(beacon.cell));
+  const dark = west.filter((c) => !chart.lit.includes(c));
+  assert.ok(dark.length > 1, "without the light, the row alone is ambiguous");
+  const edge = Math.max(...west.filter((c) => chart.lit.includes(c)).map(col));
+  // The first dark square past the light's western edge
+  assert.deepEqual(dark.filter((c) => col(c) === Math.max(...dark.map(col)) && col(c) < edge), ["C4"]);
 });
 
 test("game: the Guild Wire lists real closures, newest first, and the ticker mixes them with arrivals", async () => {
@@ -1717,4 +1721,33 @@ test("game: Luna's deals alternate Cookie and Gearhart, and the variant tables s
   await post("/api/bounties/heart-of-luna/replay", {}, cookie);
   const robot = await (await post("/api/bounties/heart-of-luna/clues/robot/search", {}, cookie)).json();
   assert.match(robot.text, /paper diner cap/);
+});
+
+test("game: a press under 100 ms is a jump on the duel screen, and older databases gain new columns", async () => {
+  const { duelPress, SHOT_FLOOR_MS } = await import("../shared/game.js");
+  assert.equal(duelPress("draw", true, SHOT_FLOOR_MS - 50, 600).state, "early");
+  assert.equal(duelPress("draw", false, SHOT_FLOOR_MS + 50, 600).state, "won");
+
+  const { createClient } = await import("@libsql/client");
+  const { upgradeColumns } = await import("./storage.js");
+  const old = createClient({ url: "file:" + path.join(dbDir, "round23.db") });
+  await old.execute("CREATE TABLE case_runs (visitor_id text NOT NULL, bounty_id text NOT NULL, runs integer DEFAULT 0 NOT NULL)");
+  await old.execute("INSERT INTO case_runs VALUES ('v', 'venus-fog', 2)");
+  await upgradeColumns(old);
+  await upgradeColumns(old); // twice is harmless
+  const row = (await old.execute("SELECT runs, strikes FROM case_runs")).rows[0];
+  assert.equal(row.runs, 2);
+  assert.equal(row.strikes, 0);
+  old.close();
+});
+
+test("game: every variant's changed words really differ from the first run", async () => {
+  const { VARIANTS, CLUES } = await import("./bounties.js");
+  for (const [id, variants] of Object.entries(VARIANTS)) {
+    variants.forEach((v, run) => {
+      for (const [clue, over] of Object.entries(v)) {
+        if (over.text !== undefined) assert.notEqual(over.text, CLUES[id][clue].text, `${id} run ${run} ${clue} text changed`);
+      }
+    });
+  }
 });

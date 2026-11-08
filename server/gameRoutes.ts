@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { updatePlayerSchema } from "../shared/schema.js";
 import {
+  SHOT_FLOOR_MS,
   bountyById,
   cluesNeeded,
   accusationCount,
@@ -64,8 +65,7 @@ const envMin = Number(process.env.SHOWDOWN_MIN_MS);
 const SHOWDOWN_MIN_MS = Number.isFinite(envMin) && envMin >= 0 ? envMin : 1500;
 const SHOT_GRACE_MS = 1000;
 const REPLAY_STRIKES = 3;
-// Below human reaction time, even after network jitter between the draw and shot requests.
-const SHOT_FLOOR_MS = 100;
+
 
 export function liveBounty(id: unknown): Bounty | undefined {
   const bounty = bountyById(String(id));

@@ -157,10 +157,11 @@ function venusScraps(left: number, middle: number, right: number): Record<string
   };
 }
 
-// On the harbor chart, C5 is the only deep, unlit square on the Kelp Forest's row.
-const NEPTUNE_KELP: Record<string, Partial<ClueSecret>> = {
-  sonar: { text: CLUES["neptune-deep"].sonar.text.replace("due east of the Coral Arch", "due east of the Kelp Forest") },
-  chart: { text: CLUES["neptune-deep"].chart.text.replace("square C3", "square C5"), code: "C5" },
+// On the Beacon's own row, B4 and C4 are deep and dark (D4 is lit); "just past the edge
+// of the light" is C4. The keeper's word that nothing entered the light rules out D4.
+const NEPTUNE_BEACON_ROW: Record<string, Partial<ClueSecret>> = {
+  sonar: { text: CLUES["neptune-deep"].sonar.text.replace("contact stops due east of the Coral Arch, on the very same row of the harbor chart.", "contact stops on the Beacon's own row of the harbor chart, west of the Beacon, in the first dark square past the edge of its light.") },
+  chart: { text: CLUES["neptune-deep"].chart.text.replace("square C3", "square C4"), code: "C4" },
 };
 
 // C1 is the only deep square on the Aquadome's row (the Beacon's light never reaches row 1).
@@ -188,7 +189,7 @@ const LUNA_GEARHART: Record<string, Partial<ClueSecret>> = {
 export const VARIANTS: Record<string, Record<string, Partial<ClueSecret>>[]> = {
   "heart-of-luna": [{}, LUNA_GEARHART],
   "venus-fog": [{}, venusScraps(7, 3, 5), venusScraps(2, 9, 6)],
-  "neptune-deep": [{}, NEPTUNE_KELP, NEPTUNE_DOME],
+  "neptune-deep": [{}, NEPTUNE_BEACON_ROW, NEPTUNE_DOME],
 };
 
 export function variantIndex(bountyId: string, run: number): number {
