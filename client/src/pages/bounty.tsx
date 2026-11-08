@@ -3,6 +3,7 @@ import { Link, useParams } from "wouter";
 import { HeroArt, heroSrc, preloadHeroPoses, type HeroPose } from "@/components/HeroArt";
 import { usePlayer, useProgress, accuse, claimBounty, openDraw, landShot, replayBounty, searchClue, decodeClue, unlockClue, askSuspect, presentClue, errorMessage, heardFor, keepLine, type ClaimOutcome } from "@/lib/game";
 import {
+  SHOT_FLOOR_MS,
   accusationCount,
   bountyById,
   bandanaSteadies,
@@ -830,10 +831,12 @@ function Accusation({
     setPending(true);
     setMessage(null);
     try {
-      const solution = await accuse(bounty.id, suspect.id, proof, prompts ? proof2 : undefined);
-      if (solution === "reset") onReset();
-      else if (solution) onCorrect(suspect.id, solution);
-      else setMessage(`The sheriff isn't buying it: that evidence doesn't put ${suspect.name} behind this. Check your notebook and try again.`);
+      const result = await accuse(bounty.id, suspect.id, proof, prompts ? proof2 : undefined);
+      if (result === "reset") onReset();
+      else if ("wrong" in result) {
+        const left = result.strikesLeft === undefined ? "" : ` ${result.strikesLeft === 1 ? "One more wrong name" : `${result.strikesLeft} more wrong names`} and he tears up your notebook.`;
+        setMessage(`The sheriff isn't buying it: that evidence doesn't put ${suspect.name} behind this. Check your notebook and try again.${left}`);
+      } else onCorrect(suspect.id, result);
     } catch (err) {
       setMessage(errorMessage(err));
     } finally {
@@ -899,7 +902,8 @@ function Accusation({
                 data-testid={i === 0 ? "select-proof" : "select-proof-2"}
               >
                 <option value="">Pick a clue from your notebook…</option>
-                {entries.map((e) => (
+                {/* One clue can't answer both questions */}
+                {entries.filter((e) => e.id === value || e.id !== (i === 0 ? proof2 : proof)).map((e) => (
                   <option key={e.id} value={e.id}>{e.label}</option>
                 ))}
               </select>
@@ -913,7 +917,7 @@ function Accusation({
           <button
             className="retro-btn gold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={submit}
-            disabled={!suspect || !proof || (!!prompts && !proof2) || pending}
+            disabled={!suspect || !proof || (!!prompts && (!proof2 || proof2 === proof)) || pending}
             data-testid="button-accuse"
           >
             {pending ? "Making your case…" : "Accuse with this evidence"}
@@ -1116,8 +1120,12 @@ export default function BountyPage() {
   const [claimError, setClaimError] = useState<string | null>(null);
   // The server didn't record the winning shot (lost request or too slow): redraw, don't re-claim.
   const [shotError, setShotError] = useState<string | null>(null);
-  // Shown over the notebook after a replay's third wrong name tore it up.
+  // Shown over the notebook after a replay's third wrong name tore it up, until the next find.
   const [resetNotice, setResetNotice] = useState<string | null>(null);
+  const foundSoFar = Object.keys(progress?.found ?? {}).length;
+  useEffect(() => {
+    if (foundSoFar > 0) setResetNotice(null);
+  }, [foundSoFar]);
   const [duelRound, setDuelRound] = useState(0);
   const [confirmReplay, setConfirmReplay] = useState(false);
   const [replaying, setReplaying] = useState(false);
@@ -1343,7 +1351,11 @@ export default function BountyPage() {
                 setShotError(null);
                 void drawGate.current
                   .then(() => landShot(bounty.id))
-                  .then((shot) => { if (shot.won) collect(); else setShotError("The shot didn't land in time."); })
+                  .then((shot) => {
+                    if (shot.won) collect();
+                    else if (typeof shot.elapsed === "number" && shot.elapsed < SHOT_FLOOR_MS) setShotError("Too quick for the sheriff's clock. Draw again.");
+                    else setShotError("The shot didn't land in time.");
+                  })
                   .catch((err) => setShotError(`The shot didn't reach the sheriff: ${errorMessage(err)}`));
               }}
             />

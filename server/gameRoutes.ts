@@ -298,11 +298,12 @@ export function registerGameRoutes(app: Express) {
       // First run: a wrong name costs the Clean Case seal. A replay has no seal to lose,
       // so the third wrong name tears up the notebook and re-deals the case.
       if ((await getProfile(req.visitorId!)).completedBounties.includes(bounty.id)) {
-        if ((await recordReplayStrike(req.visitorId!, bounty.id)) >= REPLAY_STRIKES) {
+        const strikes = await recordReplayStrike(req.visitorId!, bounty.id);
+        if (strikes >= REPLAY_STRIKES) {
           await replayInvestigation(req.visitorId!, bounty.id);
           return res.json({ correct: false, reset: true });
         }
-        return res.json({ correct: false });
+        return res.json({ correct: false, strikesLeft: REPLAY_STRIKES - strikes });
       }
       await recordWrongAccusation(req.visitorId!, bounty.id);
       return res.json({ correct: false });

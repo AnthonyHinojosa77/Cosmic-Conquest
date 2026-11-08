@@ -1593,7 +1593,7 @@ test("game: Luna's replay re-deals the culprit: Gearhart framed Cookie, and the 
   assert.match(caught.text, /twelve blank hours/);
   assert.equal((await fetch(`${base}/api/voice/clue/heart-of-luna/robot`, { headers: { Cookie: cookie } })).status, 404);
   // Naming Cookie on the planted cap is wrong; Gearhart on the tape is right.
-  assert.deepEqual(await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "jukebox" }, cookie)).json(), { correct: false });
+  assert.deepEqual(await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "jukebox" }, cookie)).json(), { correct: false, strikesLeft: 2 });
   const right = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie)).json();
   assert.equal(right.correct, true);
   assert.equal(right.showdown.opponent, "Dr. Otto Gearhart");
@@ -1685,15 +1685,15 @@ test("game: on a replay, three wrong names tear up the notebook and deal the cas
   await investigate("red-sands", cookie);
   const run = await caseRun(visitorOf(cookie), "red-sands");
   const guess = async () => (await post("/api/bounties/red-sands/accuse", { suspect: "venn", proof: "crates" }, cookie)).json();
-  assert.deepEqual(await guess(), { correct: false });
-  assert.deepEqual(await guess(), { correct: false });
+  assert.deepEqual(await guess(), { correct: false, strikesLeft: 2 });
+  assert.deepEqual(await guess(), { correct: false, strikesLeft: 1 });
   assert.deepEqual(await guess(), { correct: false, reset: true });
   assert.equal(await caseRun(visitorOf(cookie), "red-sands"), run + 1);
   const progress = await (await fetch(`${base}/api/bounties/red-sands/progress`, { headers: { Cookie: cookie } })).json();
   assert.deepEqual(progress.found, {});
   // Strikes start over with the new deal, and the first collection's seal and credits stay.
   await investigate("red-sands", cookie);
-  assert.deepEqual(await guess(), { correct: false });
+  assert.deepEqual(await guess(), { correct: false, strikesLeft: 2 });
   const player = await (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
   assert.ok(player.cleanBounties.includes("red-sands"));
 });

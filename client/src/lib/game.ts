@@ -144,7 +144,9 @@ export async function replayBounty(bountyId: string): Promise<void> {
 // Name a suspect with a found clue as proof. Returns the case solution (showdown + outro)
 // when both are right, else null (a wrong guess costs the Clean Case seal, never credits).
 // On a replay, the third wrong name tears up the notebook: "reset", with the cache emptied.
-export async function accuse(bountyId: string, suspect: string, proof: string, proof2?: string): Promise<CaseSolution | "reset" | null> {
+export type AccuseResult = CaseSolution | "reset" | { wrong: true; strikesLeft?: number };
+
+export async function accuse(bountyId: string, suspect: string, proof: string, proof2?: string): Promise<AccuseResult> {
   const res = await apiRequest("POST", `/api/bounties/${bountyId}/accuse`, { suspect, proof, ...(proof2 ? { proof2 } : {}) });
   const body = await res.json();
   if (body.reset) {
@@ -155,7 +157,7 @@ export async function accuse(bountyId: string, suspect: string, proof: string, p
     queryClient.invalidateQueries({ queryKey: key });
     return "reset";
   }
-  if (!body.correct) return null;
+  if (!body.correct) return { wrong: true, ...(typeof body.strikesLeft === "number" ? { strikesLeft: body.strikesLeft } : {}) };
   const solution: CaseSolution = { showdown: body.showdown, outro: body.outro };
   await rememberAccusation(bountyId, suspect, solution);
   return solution;
@@ -183,7 +185,7 @@ export function openDraw(bountyId: string): Promise<Response> {
   return apiRequest("POST", `/api/bounties/${bountyId}/draw`);
 }
 
-export async function landShot(bountyId: string): Promise<{ won: boolean }> {
+export async function landShot(bountyId: string): Promise<{ won: boolean; elapsed?: number | null }> {
   const res = await apiRequest("POST", `/api/bounties/${bountyId}/shot`);
   return res.json();
 }
