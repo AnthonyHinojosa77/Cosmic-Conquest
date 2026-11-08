@@ -179,10 +179,16 @@ const ADDED_COLUMNS: { table: string; column: string; ddl: string }[] = [
 ];
 
 export async function upgradeColumns(c: Pick<Client, "execute">): Promise<void> {
+  const has = async (table: string, column: string) =>
+    (await c.execute(`PRAGMA table_info(\`${table}\`)`)).rows.some((r) => r.name === column);
   for (const { table, column, ddl } of ADDED_COLUMNS) {
-    const info = await c.execute(`PRAGMA table_info(\`${table}\`)`);
-    if (info.rows.some((r) => r.name === column)) continue;
-    await c.execute(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${ddl}`);
+    if (await has(table, column)) continue;
+    try {
+      await c.execute(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${ddl}`);
+    } catch (err) {
+      // Another instance starting at the same moment may have added it first. That's fine.
+      if (!(await has(table, column))) throw err;
+    }
   }
 }
 

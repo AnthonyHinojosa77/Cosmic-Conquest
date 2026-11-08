@@ -1739,6 +1739,28 @@ test("game: a press under 100 ms is a jump on the duel screen, and older databas
   assert.equal(row.runs, 2);
   assert.equal(row.strikes, 0);
   old.close();
+
+  // Two instances upgrading at once: the one that loses the race to ALTER still starts.
+  const raced = createClient({ url: "file:" + path.join(dbDir, "raced.db") });
+  await raced.execute("CREATE TABLE case_runs (visitor_id text NOT NULL, bounty_id text NOT NULL, runs integer DEFAULT 0 NOT NULL)");
+  let altered = false;
+  const loser = {
+    // Sees the old table, then finds the column already added by the other instance.
+    execute: async (sql: string) => {
+      if (sql.startsWith("ALTER") && !altered) {
+        altered = true;
+        await raced.execute(sql);
+        return raced.execute(sql); // the second ALTER fails: duplicate column
+      }
+      return raced.execute(sql);
+    },
+  };
+  await upgradeColumns(loser as unknown as Parameters<typeof upgradeColumns>[0]);
+  assert.ok((await raced.execute("PRAGMA table_info(case_runs)")).rows.some((r) => r.name === "strikes"));
+  // A real failure still throws.
+  const broken = { execute: async (sql: string) => (sql.startsWith("ALTER") ? Promise.reject(new Error("disk full")) : raced.execute(sql.replace("case_runs", "nope"))) };
+  await assert.rejects(upgradeColumns(broken as unknown as Parameters<typeof upgradeColumns>[0]), /disk full/);
+  raced.close();
 });
 
 test("game: every variant's changed words really differ from the first run", async () => {
