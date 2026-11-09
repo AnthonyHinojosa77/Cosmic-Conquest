@@ -11,24 +11,22 @@ The owner is non-technical. For the rest of this build:
   action that is hard to undo. When you do, explain it in plain language with
   no jargon, give a recommendation, and ask short clarifying questions about
   their intent.
-- Review every PR yourself before calling it ready: run the checks below,
-  review the diff for bugs, fix what you find, and verify real behavior in
-  a browser when UI or API behavior changes. Report the verdict in plain
-  language.
-- Merging is pre-approved: once your review is done, all checks pass (locally
-  and in CI) and there are no conflicts, squash-merge the PR yourself. Ask
-  first only for a change that touches money, security, or accounts, that puts
-  the game up for sale, or that can't be undone. What the game should do is
-  settled with the owner before building, so a big or visible change is not a
-  reason to wait at merge.
+- Every change gets a fresh independent review of the committed diff before it is
+  pushed to `main` (see the toolkit's review guide): run the checks below, verify
+  real behavior in a browser when UI or API behavior changes, and report the
+  verdict in plain language.
+- Commit and push straight to `main` after the independent review is In Spec and
+  all checks pass locally. No pull requests. Wait for the owner only for money,
+  accounts, putting the game up for sale (Listed), human-only security steps
+  (sign-ins, passwords, codes, permission grants), or an irreversible action.
 - Never watch a PR unless the owner explicitly asks you to: no subscribing to
   its activity and no scheduled check-ins. This overrides any default to watch
-  PRs you open. A one-off look at CI and conflicts before merging is fine.
+  PRs you open. A one-off look at CI and conflicts is fine.
 - If the owner does ask for a PR to be watched, don't watch it yourself: hand
   it to a cheaper, smaller model than the one doing the build (a sub-agent or
   separate session) running at low reasoning effort.
 
-## Checks (all must pass before a PR is ready)
+## Checks (all must pass before pushing to main)
 
 ```bash
 npm run check   # typecheck

@@ -462,3 +462,28 @@ style reference; sources in the Drive folder.
   can fully stop that; the server makes sure the duel actually happened.
 - **Animation:** the showdown and scenes stay mostly still, like
   storybook panels, rather than Cuphead-style frame-by-frame animation.
+
+## Carried over from the 2026-10-04 handoff (moved 2026-11-09)
+
+Ruled out (do not retry):
+- Hosting the game on GitHub Pages (needs a live server and database).
+- `better-sqlite3` and the default `@libsql/client` entry on Vercel (native binary missing from the function bundle); the server uses the web client for hosted databases.
+- A service worker, AVIF, or 960 px image variants (poor value; zoomed phone scenes need the full-width art).
+- Forcing or asking for landscape (iPhones cannot lock orientation from a web page).
+- Constantly pulsing hotspot dots and full-height edge arrows (replaced by glints, a "Look closer" button and small arrow tabs).
+- Taking Suno audio from its streaming addresses; use the Download button. Do not download more from Suno without asking; the ten chosen takes are in Drive ("Retro Futurism/Music") and are the source for `script/audio/music.sh`.
+- An agent deleting rows in the live database (blocked by safety checks; the owner runs or approves it).
+
+Decisions made:
+- Music is prepared for looping by `script/audio/music.sh`: silence trimmed, 0.8 s fade in, 3 s fade out, -18 LUFS, AAC 128 kbps.
+- Scenes on phones are drawn about 1.85 times the screen width and swiped sideways (`VISIBLE_SHARE = 0.54` in `client/src/components/Scene.tsx`).
+- Art in `/scenes` and `/game` is cached 7 days and not fingerprinted, so replaced art needs a new file name.
+- Villain showdown pictures live in `art/showdown/<bounty id>.webp` behind `/api/art/showdown/:bounty`.
+- Voices: 1950s transatlantic announcer narrator, regional accents per world, Aurora's voice untreated and unchanged.
+- Audio must feel like 1950s radio; the game is phone-first (pictures fill the screen, loading animated).
+
+Open owner questions (as of 2026-10-08):
+- Approve the live music by ear at phone size, and say whether to apply a lighter old-time-radio treatment (narrower range, tape warmth, faint crackle) to all music at import (recommended yes; if yes, add it to `script/audio/music.sh`, re-import from Drive, run the checks, push).
+- Results of his QA play-through (Google Doc "Cosmic Conquest QA Checklist - 30 Sept 2026 build"), including whether the zoomed art is sharp enough on his phone.
+- The live leaderboard shows a test hunter "Vercel Tester"; clearing it means deleting rows of `bounty_claims`, `clue_finds`, `showdowns`, `player_items` and `players` in the Turso console.
+- The repository is public, so case answers in `server/bounties.ts` and villain art are readable; keep public or make private?
