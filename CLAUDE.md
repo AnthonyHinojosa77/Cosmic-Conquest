@@ -6,11 +6,10 @@ The owner is non-technical. For the rest of this build:
 
 - Make technical decisions yourself, using sound judgement and the conventions
   of similar small web products (security, data safety, simplicity first).
-- Only bring a decision to the owner when it's genuinely theirs: product
-  direction, anything user-visible they'd care about, spending money, or an
-  action that is hard to undo. When you do, explain it in plain language with
-  no jargon, give a recommendation, and ask short clarifying questions about
-  their intent.
+- Decide as the owner would from his recorded choices. Ask only for spending,
+  irreversible actions, external messages, or a product-direction decision no
+  recorded choice covers. When you do, explain it in plain language with no
+  jargon and give a recommendation.
 - Every change gets a fresh independent review of the committed diff before it is
   pushed to `main` (see the toolkit's review guide): run the checks below, verify
   real behavior in a browser when UI or API behavior changes, and report the
