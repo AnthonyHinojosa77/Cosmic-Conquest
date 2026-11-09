@@ -1,15 +1,15 @@
 {
-  "content_sha256": "5d1bb3337fd13bce3826c63091900c76901b34bd22726bce4ea25c1cbb2f84b8",
+  "content_sha256": "4f7687216fb95c684049376796d542588d83e34d6020d8bf85ffd9c400947ef5",
   "files": {
     ".agents/skills/adhd/SKILL.md": "afb8e6a0d8d605b41c09e59e0efca83e7b76bd1484b8afd28139e140a9bdb3f8",
     ".agents/skills/adhd/agents/openai.yaml": "2e553bb6081fbe4668f62b55ac67cd7f0b76bef0fc3fc82dee4f58955481c0c7",
-    ".agents/skills/babysit-pr/SKILL.md": "5ac3d11c2479bf0d5f8e9bffa9992e50072ffa2efeb4253fb491291b2c240dc7",
+    ".agents/skills/babysit-pr/SKILL.md": "0dca3a1402bc33cbf9fe7be2e1e8d14040e55453398db747e82636724cb9b91f",
     ".agents/skills/babysit-pr/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
     ".agents/skills/brief-me/SKILL.md": "c02e75a328af57bd77222aa9f40561469f12929949071f6500de5e7147a992d9",
     ".agents/skills/brief-me/agents/openai.yaml": "f6702cb097c04ad0148f3338ea7d26187f9e45c910d0077e7a490a5e013ff740",
     ".agents/skills/capability-check/SKILL.md": "4fc82c0dabc3b8fd8ed4867a89f05491b56b1f4e9afc4eb50a39fa79616635f1",
     ".agents/skills/capability-check/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
-    ".agents/skills/file-pr/SKILL.md": "63d67101789a3f974f15d8718e330169515bf01ff7cd40b90a85e6c09ecc7ddb",
+    ".agents/skills/file-pr/SKILL.md": "50b3676fe586b88bfeaf0ba85430f0175ebe22ac44b0799fe2fe5a0e049bf77f",
     ".agents/skills/file-pr/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
     ".agents/skills/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     ".agents/skills/frontend-design/SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
@@ -21,10 +21,10 @@
     ".agents/skills/teardown/SKILL.md": "ca6bc809f1e8249be9c9fda74b681c1638ff123ba3ab0f6e527f996c15d40c16",
     ".agents/skills/teardown/agents/openai.yaml": "d7cf4c19ba855ff83779594dd53192fdb7ef6a41003a7f4419245059c9410906",
     ".claude/skills/adhd/SKILL.md": "1f39b1b790e48c7e67aef2b3b8b00142bf6bcb4eafc35721781359f6abd29b65",
-    ".claude/skills/babysit-pr/SKILL.md": "1ac38166543984784f2a69060263395da0d0deb808a31565aeb3bad63a521a1f",
+    ".claude/skills/babysit-pr/SKILL.md": "4d1bd73c8aa7f27115a8b5c72cfac80c11036d7104903b00f8f72d05ea0964a4",
     ".claude/skills/brief-me/SKILL.md": "c02e75a328af57bd77222aa9f40561469f12929949071f6500de5e7147a992d9",
     ".claude/skills/capability-check/SKILL.md": "d3770ce8a5d62572592a6f3ecc32cbdb0bfdccbf79bca97641850dde4d48f63a",
-    ".claude/skills/file-pr/SKILL.md": "8540e16fcaa362c4adbd4bf9016df9a3f6ace1d59b14ab3e42f3e26d3475032a",
+    ".claude/skills/file-pr/SKILL.md": "91dbb28383abd8ac0674903c5052511d05c9e9e6ca316494e99b10b6b13be13c",
     ".claude/skills/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
     ".claude/skills/frontend-design/SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3",
     ".claude/skills/html-communication/SKILL.md": "a4b1cb0668cbe955b5693f1c385eb4b51b6f2527f29e5db26bafd828fa17d3b1",
@@ -50,7 +50,7 @@
     "talk-normal",
     "brief-me"
   ],
-  "source_commit": "7450df66247b0fc4c85486de9d358d3dd0b7eea0",
+  "source_commit": "8a59020f22fb964bdbb03b08646edf2d51502e52",
   "source_repository": "https://github.com/AnthonyHinojosa77/ai-agent-system",
   "toolkit_version": "4.0.0"
 }

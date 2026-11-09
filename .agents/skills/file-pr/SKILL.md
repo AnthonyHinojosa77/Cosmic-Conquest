@@ -1,22 +1,21 @@
 ---
 name: file-pr
-description: Ship a finished change through a pull request, with a branch named for the tracker issue, a plain-language description, a reviewer agent, a bounded wait for checks, and a merge only where the owner has authorized agents to merge.
+description: Deliver a finished, authorized change through proportional validation and a fresh independent review of the committed change, then push straight to the default branch on an In Spec verdict. Pull requests only where the task or repository requires one; no auto-merge or standing watchers.
 ---
 
-# Ship Through a Pull Request
+# Deliver a Finished Change
 
-Finish and validate the work before opening the pull request. Changes reach the default branch through a pull request; whether an agent may merge it is the owner's decision.
+Finish and validate the work before delivery. A change reaches the default branch by a direct push after a fresh independent reviewer finds the committed change In Spec; no routine pull request is needed.
 
-1. **Branch.** Start from the latest default branch. Work on a branch named with the project's tracker issue identifier when there is one, for example `abc-123-fix-checkout`. When the harness assigns a branch name, keep it and put the identifier in the pull request title. Confirm the branch holds only changes that belong to the requested outcome.
-2. **Push.** Commit and push the branch.
-3. **Open the pull request** when the work is ready; a draft while it is still in progress is fine. Check first whether the branch already has an open pull request and update that one instead of opening a duplicate. Follow the repository's pull-request template when it has one.
-   - Title: the outcome in plain words, plus the issue identifier when there is one.
-   - Description: a plain-language report: what changes for the user, what was checked and whether it passed, risks, and the preview link when the host gives one. Reference the tracker issue in the form the tracker recognizes, so it links the pull request and closes the issue only when the pull request finishes it.
-   - Footer: one short provenance line naming the harness and model when available.
-4. **Review.** After the last commit, have a reviewer agent in a fresh context check the committed diff against the issue or request, and post its verdict, pass or fail with evidence per item, as a pull request comment. On fail, find the cause, fix, push, and have it check again until it passes; contact the owner only when they alone can fix what remains. On pass, merge without waiting on the owner, except where an owner approval gate applies.
-5. **Checks.** Wait for the pull request's checks inside the same session with a bounded wait, about 30 minutes per wait; fix failing checks the same way as review findings. Never subscribe to pull-request activity or leave a standing watcher.
-6. **Merge.** Only where the owner has authorized agents to merge: when the checks pass, or the repository has none, and the review passed, merge it (squash) and delete the branch. Otherwise leave it open for the owner and say so.
-7. **Owner gate.** Even with that authorization, leave a pull request that touches money or accounts, releases a product to buyers, or needs a security step only a human can do (signing in, passwords, codes, approval prompts, credential or permission grants), for the owner. Security-related code that passes an independent review is merged like any other change, without the owner's review. Say in one plain sentence what the owner is approving and what happens on approval.
-8. **Direct push.** The first commit of an empty repository has nothing to open a pull request against and may go straight to the default branch.
+1. **Prepare.** Start from the latest default branch and work on it. Keep only changes that belong to the requested outcome and preserve unrelated work. When the task or the repository's own delivery rules require a pull request, use the pull-request exception below instead of steps 5 and 6.
+2. **Validate.** Run the project's checks that this change and its real risks need, and inspect the result the user will see. Stop once further checks would not change the decision.
+3. **Commit.** Write a plain-language message: what changes for the user and what was checked. End with one short provenance line naming the harness and model when available.
+4. **Review the committed change.** After the last commit, have a reviewer agent in a fresh context, never the builder, check that full commit against the request and return **In Spec** or **Out Of Spec** with evidence per item. On Out Of Spec, find the cause, fix, commit and have the new commit checked again, with no round limit. Contact the owner only when they alone can fix what remains.
+5. **Push.** On In Spec, push straight to the default branch with a normal fast-forward push. If the remote moved, reconcile safely, rerun the affected checks and have the resulting commit reviewed again before pushing. Never force-push the default branch. A deployment that the push triggers automatically is part of this delivery.
+6. **Owner gate.** Hold a change that spends money, touches accounts, makes a product publicly listed for sale, or needs a security step only a human can do (signing in, passwords, codes, approval prompts, credential or permission grants). Say in one plain sentence what the owner is approving and what happens on approval, and continue unaffected work. Security-related code that passes an independent In Spec review ships like any other change, without the owner's review.
 
-Return the pull request's URL and its final state: merged, or left open and why. Use `babysit-pr` only after the user explicitly asks to watch a pull request.
+## Pull-request exception
+
+Only when the task or the repository requires a pull request: update an existing one rather than opening a duplicate, have the final head reviewed as in step 4, wait for required checks inside the session with a bounded wait, and merge only where the owner has authorized agents to merge, applying the owner gate. Otherwise leave it open and say why. No auto-merge, no subscribing to pull-request activity, no standing watcher.
+
+Report the pushed commit, or the pull request and its final state. Use `babysit-pr` only after the user explicitly asks to watch a specific pull request.
