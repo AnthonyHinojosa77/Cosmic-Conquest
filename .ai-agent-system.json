@@ -1,5 +1,5 @@
 {
-  "content_sha256": "1e952e39d08a8527f1894952e37603e199d8e1b82ab791b57b56bcae65dd51f9",
+  "content_sha256": "5d1bb3337fd13bce3826c63091900c76901b34bd22726bce4ea25c1cbb2f84b8",
   "files": {
     ".agents/skills/adhd/SKILL.md": "afb8e6a0d8d605b41c09e59e0efca83e7b76bd1484b8afd28139e140a9bdb3f8",
     ".agents/skills/adhd/agents/openai.yaml": "2e553bb6081fbe4668f62b55ac67cd7f0b76bef0fc3fc82dee4f58955481c0c7",
@@ -30,8 +30,8 @@
     ".claude/skills/html-communication/SKILL.md": "a4b1cb0668cbe955b5693f1c385eb4b51b6f2527f29e5db26bafd828fa17d3b1",
     ".claude/skills/talk-normal/SKILL.md": "0e9eeb4ac66b8760002a738dc8ba316babbf9b91bd90d3b97ba72d68252c0c3b",
     ".claude/skills/teardown/SKILL.md": "9b9999532c2a5664ac07fd706c4f861133abec55b6a7e6c4bbe591a60ea5a4a0",
-    "AGENTS.md": "4d8c9e8fdf9a181ac0cf5efbb1c09e81b3c10f81d53ec8b9f82ab574e2b179a2",
-    "CLAUDE.md": "95c4432e445bcdc4602a379d10e21e329f9dd85c8351868add4335348fe2d47b"
+    "AGENTS.md": "39adebc0ff9975276f402b114403b224bf7d49c3fb9d7edbd6f3631ea9ce062e",
+    "CLAUDE.md": "d85acd6c8e715416c69bad75a0ad9eeee549d92b0fb8a25529790705f52fe7e1"
   },
   "profile": "public-safe",
   "runtimes": [
@@ -50,7 +50,7 @@
     "talk-normal",
     "brief-me"
   ],
-  "source_commit": "2ab586c63bc5963893699fd2dc4287983dd9dceb",
+  "source_commit": "7450df66247b0fc4c85486de9d358d3dd0b7eea0",
   "source_repository": "https://github.com/AnthonyHinojosa77/ai-agent-system",
   "toolkit_version": "4.0.0"
 }
