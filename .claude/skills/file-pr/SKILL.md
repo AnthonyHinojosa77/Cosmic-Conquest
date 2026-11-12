@@ -15,7 +15,7 @@ Follow the repository's authorized delivery policy. The default here is a direct
 5. **Push.** On In Spec, push straight to the default branch with a normal fast-forward push. If the remote moved, reconcile safely, rerun the affected checks and have the resulting commit reviewed again before pushing. Never force-push the default branch. A cloud thread that starts on its own side branch commits as it goes and pushes that branch before every turn ends, pushing more often only where a push starts no build; the default branch still moves only after In Spec, and the side branch is deleted once the default branch holds the reviewed work. A deployment that the push triggers automatically is part of this delivery.
 ## Owner gates
 
-Check authorization before any dependent step: spending, account changes, publicly listing a product and human-only sign-in, passwords, codes, approval prompts or credential/permission grants need the owner. State the precise need and continue unaffected work. Security-related code ships after In Spec without extra owner review.
+Check authorization before any dependent step: spending, account changes, irreversible actions, external messages, publishing, trading, production deployment, publicly listing a product, ongoing monitoring, new recurring automation and human-only sign-in, passwords, codes, approval prompts or credential/permission grants need authorization covering that action. Authorized read-only account checks do not require a new approval. An authorized push covers its automatic deployment. State the precise need and continue unaffected work. Security-related code ships after In Spec without extra owner review.
 
 ## Pull-request exception
 

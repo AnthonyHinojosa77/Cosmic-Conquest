@@ -1,6 +1,6 @@
 ---
 name: teardown
-description: Turn raw incident notes, error logs, and execution bottlenecks from AI agent workflows into an unbranded, publish-safe operational teardown in four parts (system context and goal, failure mechanics and bottleneck, architectural resolution, one generalized operating rule). Invoke with /teardown. Never load it on your own; run it only when the user asks for it.
+description: Turn agent incident notes into a generalized operational teardown only when /teardown or explicitly requested; never auto-trigger.
 disable-model-invocation: true
 ---
 
