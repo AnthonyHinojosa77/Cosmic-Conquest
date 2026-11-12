@@ -28,7 +28,7 @@ Never invent progress, numbers or status. If something cannot be checked, show i
 The goal is where the owner wants the project to end up, in the owner's words. It lives in the brief.
 
 - If the brief already has a goal, keep it word for word. Only the owner changes it.
-- If there is no goal yet, ask the owner at most three plain questions, one at a time, about what the finished project should be and do (in the spirit of `grill-me`, if installed). Write the answer in their words. Do not build the rest of the brief on a guessed goal.
+- If there is no goal in the brief, first look for the owner's stated goal in the current request and project records and reuse their exact words. Only if it remains unknown, ask the owner at most three plain questions, one at a time, about what the finished project should be and do (in the spirit of `grill-me`, if installed). Write the answer in their words. Do not build the rest of the brief on a guessed goal.
 
 ## 3. Build the page
 

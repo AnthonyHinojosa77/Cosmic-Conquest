@@ -1,38 +1,18 @@
 ---
 name: adhd
-description: 'Manual only: run when the user types /adhd. Gathers everything the agent sent since the user''s last message (every progress update, interim note, question and the final reply) and replaces it with one message shaped for a reader with ADHD, following the i-have-adhd skill: next action first, numbered steps, current state restated, tangents cut, wins visible.'
+description: 'Manual only: /adhd condenses the agent messages since the preceding user request into one clear message, preserving sources and current state. It performs no new work.'
 ---
 
 # adhd
 
-Run this only when the user types `/adhd`. It does no new work. It turns a pile of messages into one message the user can read and act on.
+Run only when the user types `/adhd`. Gather every agent message since the user's preceding request, including progress, questions and the final answer. If that is only one short message, include the turn before it. Use only facts already reported or shown by conversation tool results; do no new work.
 
-## 1. Gather
+Keep the latest supported state, concrete results, remaining work and any actual owner need. Drop repeated status, superseded claims, irrelevant finished steps, tangents and narration of intended actions. If claims conflict, retain the latest supported fact and briefly state what changed. Preserve sources, uncertainty labels and necessary context so the message stands alone.
 
-Collect every message you sent after the user's last message before `/adhd`: progress updates, interim notes, status lines, questions, and the final reply. If that is a single short message, also take the turn before it. Note only what you actually reported or what the tool results in the conversation show; add nothing new.
+Write one message in plain words:
 
-## 2. Sort
+1. Lead with the actual next action and its owner, or the completed result if none remains.
+2. State useful current progress; use step counts only when established, and "Done" only when nothing remains.
+3. Use at most five short numbered points if needed, concrete results first, then open work. Define necessary technical terms inline. Give timing only if an existing measurement or supported estimate is available.
 
-- **Next action:** the one thing to do next, and who does it.
-- **State:** where the work stands now, as "Step N of M done: <what>", or "Done" when nothing is left.
-- **Wins:** what now works, in concrete terms.
-- **Drop:** tangents, repeated status, retracted claims, narration of what you were about to do. If messages contradict each other, keep only the latest fact and say in one clause what changed.
-
-## 3. Write one message
-
-Shape it as the `i-have-adhd` skill does:
-
-1. First line: the next action. If it is the user's, say exactly what to do; if nothing needs them, say "Nothing needs you."
-2. Second line: the state ("Step 3 of 5 done: ...").
-3. Then at most five numbered points: wins first, then anything still open. One idea per line, short sentences.
-4. Give a specific time estimate when something is still running or waiting.
-
-Rules:
-
-- Define any technical term in plain words the first time it appears.
-- Never point back to earlier messages ("as I said above"). Restate what matters.
-- Keep the source or the "unverified" label on every checkable claim you carry over.
-- No preamble, no recap pleasantries, no closing "anything else?".
-- Send this single message and nothing else in the turn.
-
-If the full `i-have-adhd` skill is installed, follow its formatting rules too. This skill's gather-and-replace steps take precedence over its "no recap" rule, because condensing the pile is the point here.
+No preamble or closing offer. This summary replaces the message pile; it does not cancel or pause previously authorized work. Send only the summary for this command.

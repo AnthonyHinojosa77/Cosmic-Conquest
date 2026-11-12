@@ -1,37 +1,19 @@
 ---
 name: talk-normal
-description: 'Manual only: run when the user types /talk-normal. Gathers everything the agent sent since the user''s last message (every progress update, interim note, question and the final reply) and replaces it with one message in plain, normal language, following the work mode of the can-you-please-speak-like-a-normal-person skill, so the user reads one message instead of many.'
+description: 'Manual only: /talk-normal condenses the agent messages since the preceding user request into one clear message, preserving sources and current state. It performs no new work.'
 disable-model-invocation: true
 ---
 
 # talk-normal
 
-Run this only when the user types `/talk-normal`. It does no new work. It turns a pile of messages into one message the user can read and act on.
+Run only when the user types `/talk-normal`. Gather every agent message since the user's preceding request, including progress, questions and the final answer. If that is only one short message, include the turn before it. Use only facts already reported or shown by conversation tool results; do no new work.
 
-## 1. Gather
+Keep the latest supported state, concrete results, remaining work and any actual owner need. Drop repeated status, superseded claims, irrelevant finished steps, tangents and narration of intended actions. If claims conflict, retain the latest supported fact and briefly state what changed. Preserve sources, uncertainty labels and necessary context so the message stands alone.
 
-Collect every message you sent after the user's last message before `/talk-normal`: progress updates, interim notes, status lines, questions, and the final reply. If that is a single short message, also take the turn before it. Note only what you actually reported or what the tool results in the conversation show; add nothing new.
+Write one message in plain words:
 
-## 2. Sort
+1. Lead with the bottom line: the answer or what happened and what it means.
+2. State any genuine owner need once; do not invent a question or require a "Nothing needs you" line.
+3. Use at most five short numbered points if needed, concrete results first, then open work. Define necessary technical terms inline. Give timing only if an existing measurement or supported estimate is available.
 
-- **Current truth:** what is true now. If messages contradict each other, keep only the latest fact and say in one clause what changed.
-- **Needs the user:** at most one thing, the most important one. If nothing needs them, say so.
-- **Drop:** finished steps that no longer matter, repeated status, retracted claims, narration of what you were about to do.
-
-## 3. Write one message
-
-Use plain words the user already uses, as in the work mode of `can-you-please-speak-like-a-normal-person`:
-
-1. First line: the bottom line in one sentence (the answer, or what happened and what it means for them).
-2. Second: what needs them, as one plain question or "Nothing needs you."
-3. Then at most five numbered points, action or result first, one idea each.
-
-Rules:
-
-- Define any technical term in plain words the first time it appears.
-- Never point back to earlier messages ("as I said above"). Restate what matters.
-- Keep the source or the "unverified" label on every checkable claim you carry over.
-- No preamble, no recap pleasantries, no closing offer list.
-- Send this single message and nothing else in the turn.
-
-If the full `can-you-please-speak-like-a-normal-person` skill is installed, follow its work-mode wording rules too. This skill's gather-and-replace steps take precedence over that skill's "do not summarize" rule, because summarizing the pile is the point here.
+No preamble or closing offer. This summary replaces the message pile; it does not cancel or pause previously authorized work. Send only the summary for this command.

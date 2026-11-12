@@ -31,7 +31,7 @@ Visual structure is information. Structural devices like outlines, borders, numb
 
 Use non-user-triggered motion sparingly and deliberately, only to draw attention. A single orchestrated moment — one page-load sequence or one reveal — lands better than scattered effects; fade-and-slide-up entrances on each section and hover transitions on every card are the generic default and read as AI-generated. Motion that answers a person's action (opening, expanding, confirming) is welcome when it shows what changed.
 
-Consider written content carefully. Often a design brief may not contain real content, and it's up to you to come up with copy and placeholder content. Copy can make a design feel as templated as the design itself. See the below section on writing for more guidance.
+Consider written content carefully. When a design brief lacks copy, draft copy that fits the brief. Use sample content only for an authorized mockup and label it clearly; never invent factual claims, metrics or working capabilities. Copy can make a design feel as templated as the design itself. See the below section on writing for more guidance.
 
 ## Process: plan, review against the brief, build, critique
 
