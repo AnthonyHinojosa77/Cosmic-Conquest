@@ -32,6 +32,6 @@ Rules:
 - Never point back to earlier messages ("as I said above"). Restate what matters.
 - Keep the source or the "unverified" label on every checkable claim you carry over.
 - No preamble, no recap pleasantries, no closing offer list.
-- Send this single message and nothing else in the turn. If the host has a pre-send check (for example the ai-agent-system hook's `precheck`), run it on the draft and send the draft exactly as checked.
+- Send this single message and nothing else in the turn.
 
 If the full `can-you-please-speak-like-a-normal-person` skill is installed, follow its work-mode wording rules too. This skill's gather-and-replace steps take precedence over that skill's "do not summarize" rule, because summarizing the pile is the point here.

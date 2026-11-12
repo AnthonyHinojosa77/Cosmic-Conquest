@@ -34,6 +34,6 @@ Rules:
 - Never point back to earlier messages ("as I said above"). Restate what matters.
 - Keep the source or the "unverified" label on every checkable claim you carry over.
 - No preamble, no recap pleasantries, no closing "anything else?".
-- Send this single message and nothing else in the turn. If the host has a pre-send check (for example the ai-agent-system hook's `precheck`), run it on the draft and send the draft exactly as checked.
+- Send this single message and nothing else in the turn.
 
 If the full `i-have-adhd` skill is installed, follow its formatting rules too. This skill's gather-and-replace steps take precedence over its "no recap" rule, because condensing the pile is the point here.
