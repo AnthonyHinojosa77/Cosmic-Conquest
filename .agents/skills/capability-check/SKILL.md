@@ -1,11 +1,11 @@
 ---
 name: capability-check
-description: Verify whether an AI skill, model, connector, MCP, provider, automation, or account feature actually works in a named target surface.
+description: Verify a disputed or untested tool, model, connector, automation, or account capability in its actual target surface.
 ---
 
 # Capability Check
 
-Start by naming the exact product, app, account, host, runtime, and intended operation. Never transfer a capability conclusion from one surface to another.
+Identify the target and intended operation, including the account, host or runtime where it affects the result. Never transfer a capability conclusion from one surface to another.
 
 Check the applicable states independently:
 
@@ -20,4 +20,4 @@ Check the applicable states independently:
 
 Use a non-destructive test with a concrete expected result. For skills, restart or open a fresh task when discovery is cached. For connectors and providers, use their native status plus one harmless call. For automations, distinguish saved schedule, eligible execution, completed run, and notification delivery.
 
-Report each state as `Confirmed`, `Failed`, `Pending`, or `Unknown`, with the test, timestamp, and limitation. A saved file, installed package, visible setting, successful login page, or agent progress indicator establishes only its own state.
+Report only states material to the requested outcome, using `Confirmed`, `Failed`, `Pending`, or `Unknown` where useful, with the relevant test, time and limitation. Do not turn a simple lookup into a full state checklist. A saved file, installed package, visible setting, successful login page, or agent progress indicator establishes only its own state.

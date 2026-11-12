@@ -1,6 +1,6 @@
 ---
 name: brief-me
-description: Show BRIEFME.html by link; create it when missing and update it after project changes, a project's visual briefing page for the owner and for agents, then share its link. Use when the user types /brief-me, after any work that changes a project that has a BRIEFME.html, and read BRIEFME.html first when starting work in a project you have not worked in yet.
+description: Show or update the project visual brief, BRIEFME.html, when requested or when project changes make its status stale.
 ---
 
 # brief-me
@@ -38,7 +38,7 @@ Every brief has the same sections, in this order, so the reader always knows whe
 2. **What this project is.** One plain sentence, then a diagram of the project's main parts and how they connect.
 3. **The goal.** In the owner's words.
 4. **Where it stands.** Each main part with its status in a few plain words used the same way across the page (for example working, partly working, broken, not started, unverified), each with its source. Include a visual of progress from where it is now to the goal.
-5. **Next three steps.** Each step as an action, with who does it (the owner, a named agent, or "any agent").
+5. **Next steps.** Only agreed remaining actions, with who does them (the owner, a named agent, or "any agent"). If none remain, say so; do not invent work to fill the section.
 6. **Waiting on you.** What only the owner can do or decide, or "Nothing is waiting on you."
 
 Design:
@@ -58,7 +58,7 @@ Open the page at phone width and at desktop width and look at it (a headless bro
 ## 5. Save and share
 
 - Commit `BRIEFME.html` with the project's normal review and delivery rules.
-- If the host can publish a private web page (for example a claude.ai Artifact), publish this same page there. When the host wraps pages in its own document (claude.ai Artifacts do), publish a copy without the outer `<!doctype>`, `<html>`, `<head>` and `<body>` tags, keeping the title, meta tags, style and content. Reuse the same link on later refreshes: keep it in the page as `<meta name="brief-me-link" content="<url>">` and update that page instead of making a new one. If the host cannot publish, give the file's location instead and say no link was made.
+- If publication is authorized by the task and the host supports it, publish this same page there. When the host wraps pages in its own document (claude.ai Artifacts do), publish a copy without the outer `<!doctype>`, `<html>`, `<head>` and `<body>` tags, keeping the title, meta tags, style and content. Reuse the same link on later refreshes: keep it in the page as `<meta name="brief-me-link" content="<url>">` and update that page instead of making a new one. Otherwise, share the saved file through an available link or give its location; do not claim it was published.
 - Reply with one message: the link (or file location), the most important change, and what is waiting on the owner.
 
 
@@ -66,4 +66,4 @@ Open the page at phone width and at desktop width and look at it (a headless bro
 
 After any work that changes the project, add a short dated entry: what happened, where things stand, what is next. Keep it generalized, summarized, easy to read, visually clear and forward facing for the owner and agents. Update stale status rather than piling entries over it. Keep personal goals out of project briefs; preserve the existing project-goal step above. A smaller model drafts entries and the working agent proofreads against the owner's words and agreements.
 
-A plan is finished only with evidence that its agreed result happened (a test result, live page or merged change). Record that evidence in the brief; an empty next-steps list is not proof. The agent completing the last part then asks what the owner wants to do now and gives three researched recommendations: what each is, how it moves the goals, and what it takes. Use the gap-filling research pipeline when available, with ambitious proposals and checked current sources. These are requested recommendations, not unsolicited alternatives. Show the brief by link, never by pasting its text. Copying rules alone does not rewrite other project briefs.
+A plan is finished only with evidence that its agreed result happened (a test result, live page or merged change). Record that evidence in the brief; an empty next-steps list is not proof. Report the completed result and agreed remaining work. At the end of an agreed project plan, honor the owner's standing request: ask what they want to do next and give three researched recommendations explaining what each is, how it advances the goals, and what it takes. This trigger does not apply to every edit, subtask or status update. Show the brief by link, never by pasting its text. Copying rules alone does not rewrite other project briefs.
