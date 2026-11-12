@@ -16,8 +16,8 @@ npm run build
 
 ## Project facts
 
-- Express + React (Vite) single server; SQLite via better-sqlite3 + Drizzle.
-- Tables are created on boot in `server/storage.ts` — when adding a table or
+- Express + React (Vite) single server; Drizzle with @libsql/client, using a local SQLite file or hosted Turso/libSQL. The Database and Vercel notes below define the current modes.
+- Tables are created by `dbReady()` before routes use them in `server/storage.ts` — when adding a table or
   index to `shared/schema.ts`, add the matching `CREATE ... IF NOT EXISTS`
   there too (copy the DDL drizzle-kit generates). Column changes need
   `npm run db:push`.

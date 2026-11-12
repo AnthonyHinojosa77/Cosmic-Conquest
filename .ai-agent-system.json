@@ -1,5 +1,5 @@
 {
-  "content_sha256": "c508db8ddc23c661b31434ca322fc290d30e8d3cd604c1dfd8ae832cf787b89e",
+  "content_sha256": "4267b79201d0dffff7a7374560f24ecb93ae9c6caa959a4106761ca87bd730a0",
   "files": {
     ".agents/skills/adhd/SKILL.md": "960f63d380447ee81da2d86bb1b9fc808dc21f1d6d0fe5e5bd93a2f0d14cf956",
     ".agents/skills/adhd/agents/openai.yaml": "2e553bb6081fbe4668f62b55ac67cd7f0b76bef0fc3fc82dee4f58955481c0c7",
@@ -31,7 +31,7 @@
     ".claude/skills/talk-normal/SKILL.md": "379b8b1e790538f8318b759d5ae5c823652bd62254f3c40bb7f6c917491a5d90",
     ".claude/skills/teardown/SKILL.md": "62d3ee76af493565316fac03e946529874c3ef9cb53add95bd93116bb9b55508",
     "AGENTS.md": "ec66790fefa28ead4f1b1aa809ca20e9422b442b94b72d37032419d1ddfc028d",
-    "CLAUDE.md": "15008c856facad4c50ad4acf98664778e44b2bb9ed18d849a14a0f49331f54a6"
+    "CLAUDE.md": "09be78d4c37f45cdf4a65f5a358ded51660fe3592a0567d7191299ab7d21b4a9"
   },
   "profile": "public-safe",
   "runtimes": [
@@ -50,7 +50,7 @@
     "talk-normal",
     "brief-me"
   ],
-  "source_commit": "efa37889891a10dc1f4a2922f33aeb79fad8ed3d",
+  "source_commit": "c72bf35585141ff8bcbbfa125751641bcf06da15",
   "source_repository": "https://github.com/AnthonyHinojosa77/ai-agent-system",
   "toolkit_version": "4.0.0"
 }

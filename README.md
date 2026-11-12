@@ -8,7 +8,7 @@ leave postcards, predictions, menu items, and a visitor tally that other players
 
 - **Client:** React 18, Vite 7, Tailwind CSS v3, Wouter (routing), TanStack Query, Radix UI primitives
 - **Server:** Express 5 (serves both the API and the built client on a single port)
-- **Data:** SQLite via `better-sqlite3` + Drizzle ORM (`drizzle-kit` for migrations)
+- **Data:** Drizzle ORM with `@libsql/client`: a local SQLite file for local use, or hosted Turso/libSQL for Vercel
 - **Language:** TypeScript end to end (shared schema in `shared/`)
 
 > The animations are CSS-driven (keyframes in `client/src/index.css`). See [`DESIGN.md`](./DESIGN.md)
@@ -51,10 +51,7 @@ anonymous `rf_vid` cookie to identify visitors for one-vote-per-item deduplicati
 
 ## Deployment
 
-This is a **stateful Express server with a local SQLite file** (`better-sqlite3` runs
-in-process) plus WAL sidecar files. It is **not serverless-friendly** — it needs a
-long-lived process and a persistent writable disk. Deploy it to a container/VM target
-such as Docker, Fly.io, Railway, Render, or a plain VPS.
+With a **local SQLite file**, this Express server needs persistent writable storage; use a container/VM target such as Docker, Fly.io, Railway, Render, or a plain VPS. The same application supports serverless Vercel with hosted Turso/libSQL instead; follow "Vercel (the public game)" below for that mode.
 
 ### Build & run
 
@@ -86,7 +83,6 @@ every restart/redeploy.
 
 ```dockerfile
 FROM node:20-slim
-# better-sqlite3 is a native module; build deps are needed at install time
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package*.json ./
