@@ -1,11 +1,11 @@
 {
-  "content_sha256": "4267b79201d0dffff7a7374560f24ecb93ae9c6caa959a4106761ca87bd730a0",
+  "content_sha256": "fe7c0a93b0e201e227015bd08664b439c6aad6f7df48c220c2cbdc6e01aa794c",
   "files": {
     ".agents/skills/adhd/SKILL.md": "960f63d380447ee81da2d86bb1b9fc808dc21f1d6d0fe5e5bd93a2f0d14cf956",
     ".agents/skills/adhd/agents/openai.yaml": "2e553bb6081fbe4668f62b55ac67cd7f0b76bef0fc3fc82dee4f58955481c0c7",
     ".agents/skills/babysit-pr/SKILL.md": "0dca3a1402bc33cbf9fe7be2e1e8d14040e55453398db747e82636724cb9b91f",
     ".agents/skills/babysit-pr/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
-    ".agents/skills/brief-me/SKILL.md": "d2f1ec35e5bac53692b26fd0c484b4caabb7ce809446f6c67bbbddd1270b3793",
+    ".agents/skills/brief-me/SKILL.md": "f367a553a1898d085b00b77e352e5d2228b464810873f5781a45a7ba7d3f9877",
     ".agents/skills/brief-me/agents/openai.yaml": "f6702cb097c04ad0148f3338ea7d26187f9e45c910d0077e7a490a5e013ff740",
     ".agents/skills/capability-check/SKILL.md": "d7cbbea5bd0ed7252908818a25d008aad398577dfdcbeda24be26620dc949028",
     ".agents/skills/capability-check/agents/openai.yaml": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94",
@@ -22,7 +22,7 @@
     ".agents/skills/teardown/agents/openai.yaml": "d7cf4c19ba855ff83779594dd53192fdb7ef6a41003a7f4419245059c9410906",
     ".claude/skills/adhd/SKILL.md": "1c3e71b9f4de31a79ff0e34204e1f00bd25527ce43698a1b18a71747beefc936",
     ".claude/skills/babysit-pr/SKILL.md": "4d1bd73c8aa7f27115a8b5c72cfac80c11036d7104903b00f8f72d05ea0964a4",
-    ".claude/skills/brief-me/SKILL.md": "d2f1ec35e5bac53692b26fd0c484b4caabb7ce809446f6c67bbbddd1270b3793",
+    ".claude/skills/brief-me/SKILL.md": "f367a553a1898d085b00b77e352e5d2228b464810873f5781a45a7ba7d3f9877",
     ".claude/skills/capability-check/SKILL.md": "6fe68643173cbfa3e4cde8433aeaebb96b160be918e92a85d3266f6cc27ec57d",
     ".claude/skills/file-pr/SKILL.md": "15ee232e0b0529ed0c660ae637c1ebe493b89a4187c132f2484a2aeff6fd46f3",
     ".claude/skills/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
@@ -50,7 +50,7 @@
     "talk-normal",
     "brief-me"
   ],
-  "source_commit": "c72bf35585141ff8bcbbfa125751641bcf06da15",
+  "source_commit": "151756a33b088c38ee6a4c5e48f71aff4285b3bc",
   "source_repository": "https://github.com/AnthonyHinojosa77/ai-agent-system",
   "toolkit_version": "4.0.0"
 }
