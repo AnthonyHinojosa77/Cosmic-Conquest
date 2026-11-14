@@ -13,6 +13,9 @@ Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
 3. > I like the sound of this, could we add a social deduction genre portion to the game as well?
 4. > Based on that, is the optimal strategy to implement into Cosmic Conquest one of those four, or a combination of them, to risk trying to go for something that is new and exciting?
 5. > Why don't you have an Sonnet 5.5 Medium agent check the market then
+6. > Yes
+
+Message 6 answered the offer to send the research agent back to identify the courtroom deckbuilder.
 
 ### What was proposed (not yet approved to build)
 
@@ -22,13 +25,15 @@ Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
 - Suggested order: 1) Standoff on Luna, 2) replays that re-deal the villain's deck across all five cases, 3) mole bounty.
 - Owner's reaction to the Standoff sketch: "I like the sound of this". No build has been authorized.
 
-### Market check (2026-11-13, run by a research agent, limited search)
+### Market check (2026-11-13, follow-up 2026-11-14, run by a research agent, limited search)
 
 - Full combination (investigation + deckbuilding + hidden traitor): not found.
 - Evidence-as-cards is partly done: Card Detective (2023, Steam, $3.99, 145 reviews, 73% positive, confirmed from its store page) and One Show Only (2016).
 - Traitor corrupting a shared card pool is done in board games (Unfathomable, 2021) but not in a mystery game.
 - No asynchronous social deduction app with real traction was found; forum Mafia is the long-running exception.
-- Not verified: a "courtroom deckbuilder" covered by PC Gamer that could be a closer match; sales and owner numbers are third-party estimates.
+- Follow-up: the "courtroom deckbuilder" covered by PC Gamer is All Will Rise (Speculative Agency, Steam, unreleased, free demo, no release date or price listed). Its investigation shapes the courtroom deck through unlocked cards and "claims"; it is not one card per clue, has no lie-catching mechanic found, no re-dealt cases and no multiplayer. It is a fixed branching story about persuading a court, not a whodunit. So it overlaps part of the deck-from-investigation idea only.
+- Other titles seen in the follow-up but not opened: Hillthorn (clue cards, due November 2026), Detective 26 (card-based deduction), Interrogator 2, Desktop Detective.
+- Not verified: the full PC Gamer article, All Will Rise's Kickstarter result and wishlist numbers; sales and owner numbers elsewhere are third-party estimates.
 
 ### Approved gap-fills
 
