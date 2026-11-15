@@ -70,7 +70,9 @@ export function createApp(): Express {
   registerRoutes(app);
 
   // An /api path no route answered: say so in JSON, not Express's HTML page.
-  app.use("/api", (_req, res) => {
+  // (OPTIONS is left to Express, which answers it with the path's allowed methods.)
+  app.use("/api", (req, res, next) => {
+    if (req.method === "OPTIONS") return next();
     res.status(404).json({ error: "No such endpoint" });
   });
 
@@ -79,12 +81,13 @@ export function createApp(): Express {
   return app;
 }
 
-// Every failure answers in the shape the game reads: { error }. What went wrong
-// inside the server (a database message, a stack) is logged, never sent.
+// A request that failed outside a route's own checks (a broken body, something thrown)
+// answers in the shape the game reads: { error }. What went wrong inside the server (a
+// database message, a stack) is logged, never sent.
 export function sendError(err: any, _req: Request, res: Response, next: NextFunction) {
   const status = Number(err?.status || err?.statusCode) || 500;
 
-  console.error("Internal Server Error:", err);
+  console.error(status >= 500 ? "Internal Server Error:" : `Request refused (${status}):`, err);
 
   if (res.headersSent) {
     return next(err);

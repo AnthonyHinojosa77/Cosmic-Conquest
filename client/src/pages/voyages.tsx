@@ -292,7 +292,7 @@ export default function Voyages() {
                   {postcards.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <h4 className="pulp-title text-xs text-[hsl(0,72%,48%)] tracking-wider">
-                        Postcard Wall ({feedCount(postcards.length, "latest")} sent)
+                        Postcard Wall ({feedCount(postcards.length)} sent)
                       </h4>
                       {postcards.map(pc => (
                         <div key={pc.id} className="comic-panel p-3 bg-[hsl(38,35%,88%)]" data-testid={`card-postcard-${pc.id}`}>

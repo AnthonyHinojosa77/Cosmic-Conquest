@@ -38,6 +38,12 @@ let client: Client | undefined;
 let database: LibSQLDatabase | undefined;
 
 async function connect(): Promise<void> {
+  // A second try after a failed start: let go of the first connection.
+  try {
+    client?.close();
+  } catch {
+    // already closed
+  }
   const [{ createClient }, { drizzle }] = useRemote
     ? await Promise.all([import("@libsql/client/web"), import("drizzle-orm/libsql/web")])
     : await Promise.all([import("@libsql/client"), import("drizzle-orm/libsql")]);
@@ -80,7 +86,6 @@ const SCHEMA = `
     \`votes\` integer DEFAULT 0 NOT NULL,
     \`created_at\` text NOT NULL
   );
-  CREATE INDEX IF NOT EXISTS \`predictions_votes_id_idx\` ON \`predictions\` (\`votes\`,\`id\`);
   CREATE TABLE IF NOT EXISTS \`menu_items\` (
     \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     \`visitor_name\` text NOT NULL,
@@ -89,7 +94,6 @@ const SCHEMA = `
     \`votes\` integer DEFAULT 0 NOT NULL,
     \`created_at\` text NOT NULL
   );
-  CREATE INDEX IF NOT EXISTS \`menu_items_votes_id_idx\` ON \`menu_items\` (\`votes\`,\`id\`);
   CREATE TABLE IF NOT EXISTS \`visitors\` (
     \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     \`visitor_id\` text NOT NULL,
@@ -277,6 +281,12 @@ export interface IStorage {
   recordVote(vote: InsertVote): Promise<Vote>;
 }
 
+// The voted feeds show their newest entries with the most-voted first, and the older
+// first among equals (the order these pages have always had).
+function byVotes<T extends { id: number; votes: number }>(newest: T[]): T[] {
+  return newest.sort((a, b) => b.votes - a.votes || a.id - b.id);
+}
+
 export class DatabaseStorage implements IStorage {
   getPostcards(): Promise<Postcard[]> {
     return db.select().from(postcards).orderBy(desc(postcards.id)).limit(FEED_LIMIT).all();
@@ -286,8 +296,8 @@ export class DatabaseStorage implements IStorage {
     return db.insert(postcards).values({ ...postcard, createdAt: new Date().toISOString() }).returning().get();
   }
 
-  getPredictions(): Promise<Prediction[]> {
-    return db.select().from(predictions).orderBy(desc(predictions.votes), desc(predictions.id)).limit(FEED_LIMIT).all();
+  async getPredictions(): Promise<Prediction[]> {
+    return byVotes(await db.select().from(predictions).orderBy(desc(predictions.id)).limit(FEED_LIMIT).all());
   }
 
   createPrediction(prediction: InsertPrediction): Promise<Prediction> {
@@ -303,8 +313,8 @@ export class DatabaseStorage implements IStorage {
         .get());
   }
 
-  getMenuItems(): Promise<MenuItem[]> {
-    return db.select().from(menuItems).orderBy(desc(menuItems.votes), desc(menuItems.id)).limit(FEED_LIMIT).all();
+  async getMenuItems(): Promise<MenuItem[]> {
+    return byVotes(await db.select().from(menuItems).orderBy(desc(menuItems.id)).limit(FEED_LIMIT).all());
   }
 
   createMenuItem(item: InsertMenuItem): Promise<MenuItem> {

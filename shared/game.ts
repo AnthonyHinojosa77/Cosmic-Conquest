@@ -881,14 +881,14 @@ export function claimWithoutShowdown(hasReceipt: boolean): "already_collected" |
   return hasReceipt ? "already_collected" : "name_the_culprit";
 }
 
-// The public feeds (postcards, predictions, community menu) return this many entries at
-// most: the newest postcards, and the most-voted predictions and dishes (newest first
-// among equals). Every open page re-reads its feed, so an uncapped feed grows without end.
+// The public feeds (postcards, predictions, community menu) return their newest entries,
+// this many at most. Every open page re-reads its feed, so an uncapped feed grows without
+// end. A new post is always among them; one with 50 newer than it is no longer shown.
 export const FEED_LIMIT = 50;
 
-// The heading beside a feed: how many there are, or that only the cap is shown.
-export function feedCount(shown: number, capped: "latest" | "top"): string {
-  return shown >= FEED_LIMIT ? `${capped} ${FEED_LIMIT}` : String(shown);
+// The heading beside a feed: how many there are, or that only the newest are shown.
+export function feedCount(shown: number): string {
+  return shown >= FEED_LIMIT ? `latest ${FEED_LIMIT}` : String(shown);
 }
 
 // A failed request, as words for the player. `raw` is the thrown message: "<status>: <body>"
@@ -897,7 +897,13 @@ export function feedCount(shown: number, capped: "latest" | "top"): string {
 // page, a database message) is never shown.
 export function apiErrorMessage(raw: string): string {
   const status = Number(/^(\d{3}):/.exec(raw)?.[1] ?? 0);
-  if (!status) return "Couldn't reach the game. Check your connection.";
+  // No status: the request never arrived (each browser words that differently), or the
+  // answer could not be read.
+  if (!status) {
+    return /fetch|network|load failed|connection|offline|timed? ?out/i.test(raw)
+      ? "Couldn't reach the game. Check your connection."
+      : "Something went wrong. Try again.";
+  }
   try {
     const body = JSON.parse(raw.replace(/^\d{3}:\s*/, ""));
     if (typeof body?.error === "string" && body.error.trim()) return body.error;

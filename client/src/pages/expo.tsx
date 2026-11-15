@@ -298,7 +298,7 @@ export default function Expo() {
                   {predictions.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <h4 className="pulp-title text-xs text-[hsl(0,72%,48%)] tracking-wider">
-                        Predictions ({feedCount(predictions.length, "top")})
+                        Predictions ({feedCount(predictions.length)})
                       </h4>
                       {predictions.map(pred => (
                         <div key={pred.id} className="comic-panel p-3 bg-[hsl(38,35%,88%)] flex items-start gap-3" data-testid={`card-prediction-${pred.id}`}>

@@ -22,7 +22,7 @@ Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
 
 ### Approved gap-fills
 
-- The two voted feeds (predictions, community menu) show the most-voted 50, newest first among equals, not the newest 50, so a flood of new posts cannot push voted ones off the page. Postcards show the newest 50.
+- All three feeds show the newest 50, as approved. Predictions and dishes are still listed most-voted first. (A first build showed the most-voted 50 for those two; the independent review found that could hide a new post, so it was changed back to the approved wording before release.)
 - The library update was limited to `body-parser` (and what it depends on), not every available update.
 
 ### Open questions for the owner

@@ -3,8 +3,8 @@ import { randomUUID } from "crypto";
 import type { Request, Response, NextFunction } from "express";
 
 // General API rate limit — 600 requests per 15 min per IP.
-// World pages poll every 5s (~180 req / 15 min per tab) and the hub every 8s,
-// so this leaves headroom for a few open tabs while still capping abuse.
+// World pages and the hub re-read their feeds every 25s (~36 req / 15 min per tab),
+// so this leaves headroom for many open tabs while still capping abuse.
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 600,

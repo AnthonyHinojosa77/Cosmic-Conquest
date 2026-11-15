@@ -48,10 +48,12 @@ npm run build
   gate: today only replays of `heart-of-luna`. The result changes the draw window through
   `duelWindowMs` (shared), used by the duel screen and by `/shot`.
 - Public feeds and errors: `/api/postcards`, `/api/predictions` and `/api/menu-items`
-  return at most `FEED_LIMIT` entries (`shared/game.ts`; the voted two read through the
-  `*_votes_id_idx` indexes), and pages re-read them every `FEED_REFRESH_MS`. Every API
-  error is `{ error }` JSON (`sendError` in `server/app.ts`, which never sends internals);
-  the browser shows errors through `apiErrorMessage` (shared), never raw response text.
+  return their newest `FEED_LIMIT` entries (`shared/game.ts`; the voted two are then put
+  most-voted first), and pages re-read them every `FEED_REFRESH_MS`. A route's own
+  refusals are `{ error }` JSON; so are unknown `/api` paths and anything thrown
+  (`sendError` in `server/app.ts`, which never sends internals). The voice and art routes
+  answer a bare 404. The browser shows errors through `apiErrorMessage` (shared), never
+  raw response text.
   Do not import values from `shared/schema.ts` in the client (types only): it would pull
   the database library into the bundle.
 - Scenes and pictures: use `Scene` (explorable, edge to edge, swipeable on phones),

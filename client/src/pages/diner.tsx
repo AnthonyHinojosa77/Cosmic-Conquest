@@ -316,7 +316,7 @@ export default function Diner() {
                   {communityItems.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <h4 className="pulp-title text-xs text-[hsl(195,65%,38%)] tracking-wider">
-                        Community Menu ({feedCount(communityItems.length, "top")})
+                        Community Menu ({feedCount(communityItems.length)})
                       </h4>
                       {communityItems.map(item => (
                         <div key={item.id} className="comic-panel p-3 bg-[hsl(38,35%,88%)] flex items-start gap-3" data-testid={`card-menu-${item.id}`}>

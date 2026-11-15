@@ -2120,61 +2120,63 @@ test("standoff: a replay of another case has no cards, and the result reaches th
 
 // --- Stability: capped feeds, a database start that retries, errors in plain words ---
 
-test("feeds: the public pages get at most 50 entries, read through an index", async () => {
+test("feeds: the public pages get the newest 50 entries, and a new post is always among them", async () => {
   const { storage } = await import("./storage.js");
   const { FEED_LIMIT, feedCount } = await import("../shared/game.js");
   assert.equal(FEED_LIMIT, 50);
+  const ids = (rows: { id: number }[]) => rows.map((r) => r.id);
 
   // Postcards: the newest 50, newest first.
   const cards = [];
   for (let i = 0; i < FEED_LIMIT + 5; i++) cards.push(await storage.createPostcard({ visitorName: "Flood", destination: "Mars", message: `card ${i}` }));
   const wall = await (await fetch(base + "/api/postcards")).json();
-  assert.equal(wall.length, FEED_LIMIT);
-  assert.equal(wall[0].id, cards[cards.length - 1].id);
-  assert.deepEqual(wall.map((c: { id: number }) => c.id), [...wall].map((c: { id: number }) => c.id).sort((a, b) => b - a));
-  assert.equal(wall.some((c: { id: number }) => c.id === cards[0].id), false);
+  assert.deepEqual(ids(wall), ids(cards).reverse().slice(0, FEED_LIMIT));
 
-  // Predictions and dishes: the most-voted 50, newest first among equals. A voted entry
-  // stays on the list however many newer ones arrive.
-  const first = await storage.createPrediction({ visitorName: "Flood", prediction: "voted, then buried" });
-  const voted = await storage.votePrediction(first.id, "feed-test-voter");
-  assert.equal(voted.status, "ok");
-  const later = [];
-  for (let i = 0; i < FEED_LIMIT + 5; i++) later.push(await storage.createPrediction({ visitorName: "Flood", prediction: `prediction ${i}` }));
-  const predictions = await (await fetch(base + "/api/predictions")).json();
-  assert.equal(predictions.length, FEED_LIMIT);
-  assert.ok(predictions.some((p: { id: number }) => p.id === first.id), "a voted prediction is not pushed out by newer ones");
-  for (let i = 1; i < predictions.length; i++) {
-    const a = predictions[i - 1], b = predictions[i];
-    assert.ok(a.votes > b.votes || (a.votes === b.votes && a.id > b.id), `order at ${i}`);
+  // Predictions and dishes: the newest 50, shown most-voted first and older first among
+  // equals (the order these pages had before there was a cap).
+  for (const [url, create, vote] of [
+    ["/api/predictions", (i: number) => storage.createPrediction({ visitorName: "Flood", prediction: `prediction ${i}` }), (id: number) => storage.votePrediction(id, "feed-test-voter")],
+    ["/api/menu-items", (i: number) => storage.createMenuItem({ visitorName: "Flood", dishName: `dish ${i}`, description: "x" }), (id: number) => storage.voteMenuItem(id, "feed-test-voter")],
+  ] as const) {
+    const made = [];
+    for (let i = 0; i < FEED_LIMIT + 5; i++) made.push(await create(i));
+    // Votes for one that will stay on the page, and for one that 50 newer posts push off it.
+    const kept = made[20], buried = made[2];
+    assert.equal((await vote(kept.id)).status, "ok");
+    assert.equal((await vote(buried.id)).status, "ok");
+    const feed = await (await fetch(base + url)).json();
+    const newest = made.slice(-FEED_LIMIT);
+    assert.equal(feed.length, FEED_LIMIT, url);
+    assert.deepEqual(ids(feed), [kept.id, ...ids(newest).filter((id) => id !== kept.id)], url);
+    assert.equal(feed[0].votes, 1);
+    assert.equal(ids(feed).includes(buried.id), false);
+    // However many entries hold votes, a post made now is on the page.
+    for (const entry of newest.slice(0, 30)) await vote(entry.id);
+    const mine = await create(999);
+    const after = await (await fetch(base + url)).json();
+    assert.ok(ids(after).includes(mine.id), `${url}: a new post shows`);
+    assert.equal(after.length, FEED_LIMIT);
+    for (let i = 1; i < after.length; i++) {
+      const a = after[i - 1], b = after[i];
+      assert.ok(a.votes > b.votes || (a.votes === b.votes && a.id < b.id), `${url} order at ${i}`);
+    }
   }
-  assert.equal(predictions.filter((p: { votes: number }) => p.votes === 0)[0].id, later[later.length - 1].id);
 
-  for (let i = 0; i < FEED_LIMIT + 5; i++) await storage.createMenuItem({ visitorName: "Flood", dishName: `dish ${i}`, description: "x" });
-  const menu = await (await fetch(base + "/api/menu-items")).json();
-  assert.equal(menu.length, FEED_LIMIT);
-  for (let i = 1; i < menu.length; i++) {
-    const a = menu[i - 1], b = menu[i];
-    assert.ok(a.votes > b.votes || (a.votes === b.votes && a.id > b.id), `menu order at ${i}`);
-  }
-
-  // The two voted feeds are answered from their index: 50 rows read, not the whole table.
+  // Each feed is read from the newest end of its table: no sort over the whole table.
   const { createClient } = await import("@libsql/client");
   const direct = createClient({ url: "file:" + process.env.DATABASE_PATH });
-  for (const table of ["predictions", "menu_items"]) {
-    const plan = await direct.execute(`EXPLAIN QUERY PLAN SELECT * FROM ${table} ORDER BY votes DESC, id DESC LIMIT 50`);
+  for (const table of ["postcards", "predictions", "menu_items"]) {
+    const plan = await direct.execute(`EXPLAIN QUERY PLAN SELECT * FROM ${table} ORDER BY id DESC LIMIT 50`);
     const detail = plan.rows.map((r) => String(r.detail)).join(" | ");
-    assert.match(detail, new RegExp(`USING INDEX ${table}_votes_id_idx`), detail);
     assert.equal(/TEMP B-TREE/.test(detail), false, detail);
   }
   direct.close();
 
-  // The heading says when it is showing the cap rather than a count.
-  assert.equal(feedCount(0, "latest"), "0");
-  assert.equal(feedCount(49, "top"), "49");
-  assert.equal(feedCount(50, "latest"), "latest 50");
-  assert.equal(feedCount(50, "top"), "top 50");
-  for (const [page, call] of [["voyages.tsx", 'feedCount(postcards.length, "latest")'], ["expo.tsx", 'feedCount(predictions.length, "top")'], ["diner.tsx", 'feedCount(communityItems.length, "top")']]) {
+  // The heading says when it is showing only the newest rather than a count.
+  assert.equal(feedCount(0), "0");
+  assert.equal(feedCount(49), "49");
+  assert.equal(feedCount(50), "latest 50");
+  for (const [page, call] of [["voyages.tsx", "feedCount(postcards.length)"], ["expo.tsx", "feedCount(predictions.length)"], ["diner.tsx", "feedCount(communityItems.length)"]]) {
     assert.ok(readFileSync(path.join("client/src/pages", page), "utf8").includes(call), page);
   }
 });
@@ -2219,6 +2221,11 @@ test("errors: the server answers in the game's own JSON and keeps its insides to
     assert.match(missing.headers.get("content-type") ?? "", /application\/json/);
     assert.deepEqual(await missing.json(), { error: "No such endpoint" });
     assert.equal((await fetch(at + "/api/no-such-thing", { method: "POST" })).status, 404);
+    // Express still answers OPTIONS for a real path with the methods it takes.
+    const options = await fetch(at + "/api/postcards", { method: "OPTIONS" });
+    assert.equal(options.status, 200);
+    assert.match(options.headers.get("allow") ?? "", /GET/);
+    assert.match(options.headers.get("allow") ?? "", /POST/);
     // A body that isn't JSON: a plain line, not the parser's message.
     const garbled = await fetch(at + "/api/postcards", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{not json" });
     assert.equal(garbled.status, 400);
@@ -2262,6 +2269,9 @@ test("errors: the game shows its own messages and never raw server text", async 
   for (const offline of ["Failed to fetch", "Load failed", "NetworkError when attempting to fetch resource."]) {
     assert.equal(apiErrorMessage(offline), "Couldn't reach the game. Check your connection.");
   }
+  // The answer arrived but could not be read: not a connection problem, and not shown raw.
+  assert.equal(apiErrorMessage("Unexpected token '<', \"<html>\" is not valid JSON"), "Something went wrong. Try again.");
+  assert.equal(apiErrorMessage("undefined is not an object"), "Something went wrong. Try again.");
   for (const shown of ["<html", "SQLITE", "Bad Gateway", "Cannot POST"]) {
     for (const raw of ["502: <html><title>502 Bad Gateway</title>", '500: {"message":"SQLITE_BUSY"}', "404: Cannot POST /api/x"]) {
       assert.equal(apiErrorMessage(raw).includes(shown), false);

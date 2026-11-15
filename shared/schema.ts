@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, uniqueIndex, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { SUIT_IDS } from "./game.js";
@@ -27,10 +27,7 @@ export const predictions = sqliteTable("predictions", {
   prediction: text("prediction").notNull(),
   votes: integer("votes").notNull().default(0),
   createdAt: text("created_at").notNull(),
-}, (table) => [
-  // The feed is "most votes, then newest": read from the end of this index.
-  index("predictions_votes_id_idx").on(table.votes, table.id),
-]);
+});
 
 export const insertPredictionSchema = createInsertSchema(predictions).omit({ id: true, votes: true, createdAt: true }).extend({
   visitorName: z.string().min(1).max(50),
@@ -47,9 +44,7 @@ export const menuItems = sqliteTable("menu_items", {
   description: text("description").notNull(),
   votes: integer("votes").notNull().default(0),
   createdAt: text("created_at").notNull(),
-}, (table) => [
-  index("menu_items_votes_id_idx").on(table.votes, table.id),
-]);
+});
 
 export const insertMenuItemSchema = createInsertSchema(menuItems).omit({ id: true, votes: true, createdAt: true }).extend({
   visitorName: z.string().min(1).max(50),

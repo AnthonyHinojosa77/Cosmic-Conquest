@@ -489,15 +489,18 @@ style reference; sources in the Drive folder.
 ## Survey of 2026-11-15: fixed, and still open
 
 Fixed the same day (owner's pick, "stability fixes"):
-- The three public feeds return at most 50 entries (`FEED_LIMIT`): the newest postcards,
-  and the most-voted predictions and dishes, newest first among equals. The voted feeds
-  read through an index, so a flooded table costs 50 row reads, not the whole table.
-- Open pages re-read a feed every 25 seconds, not every 5 (`FEED_REFRESH_MS`). A player's
-  own post still shows at once.
+- The three public feeds return their newest 50 entries (`FEED_LIMIT`), read by id, so a
+  flooded table costs 50 row reads, not the whole table. Predictions and dishes are shown
+  most-voted first as before. An entry with 50 newer than it is no longer shown, votes
+  or not; keeping the best-voted ones on the page belongs with the moderation work below.
+- Open pages re-read a feed every 25 seconds, not every 5 (`FEED_REFRESH_MS`). The page
+  that sends a post re-reads at once, and a new post is always among the newest 50.
 - A database that can't be reached at start-up is tried again by the next request
   (before, that server instance answered errors until it was recycled).
-- Errors are always the game's own `{ error }` JSON with nothing internal in them, and
-  the browser shows a plain line, never a host's error page or a database message.
+- Unknown `/api` paths, broken request bodies and anything thrown inside the server now
+  answer `{ error }` JSON with nothing internal in it, and the browser shows a plain
+  line, never a host's error page or a database message. (The voice and art routes still
+  answer a bare 404.)
 - `body-parser` updated to 2.4.0 (a denial-of-service fix).
 
 Still open, not started (the owner has seen the list):
@@ -514,8 +517,11 @@ Still open, not started (the owner has seen the list):
 - **Link preview.** `client/index.html` has no preview picture, and its description still
   mentions a "Time Capsule".
 - **Phone Back** leaves a case rather than closing the open sheet or stage.
-- **Libraries:** `drizzle-orm` below 0.45.2 has an advisory that this code does not
-  trigger (no identifiers built from user input); the upgrade is a breaking one.
+- **Libraries:** `npm audit` still lists other advisories. Some have non-breaking fixes
+  (`proxy-addr`, `nanoid`, `postcss` and others; only `body-parser` was in the approved
+  scope). `drizzle-orm` below 0.45.2 and `zod` need breaking upgrades. The survey judged
+  none of them triggered by this code as configured; that judgment has not been
+  independently checked.
 - **The repository is public** and `server/bounties.ts` holds every answer (already an
   open owner question below).
 
