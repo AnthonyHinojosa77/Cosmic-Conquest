@@ -20,6 +20,8 @@ export function standoffApplies(bountyId: string, run: number): boolean {
 }
 
 export interface StandoffState {
+  // The run of the case this was dealt for. One left over from an earlier run is re-dealt.
+  run: number;
   // Cards the hunter has played. Saved beside the state so a double tap plays once.
   turn: number;
   nerve: number;
@@ -72,10 +74,12 @@ export function dealStandoff(opts: {
   villain: readonly VillainCard[];
   owned: readonly string[];
   seed: number;
+  run: number;
 }): StandoffState {
   const cards = shuffled([...opts.clues, ...opts.gotchas, ...BASIC_IDS], opts.seed);
   const size = HAND_SIZE + (opts.owned.includes("raygun") ? 1 : 0);
   return {
+    run: opts.run,
     turn: 0,
     nerve: STANDOFF_NERVE,
     composure: STANDOFF_COMPOSURE,

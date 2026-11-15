@@ -74,10 +74,10 @@ function HeroCard() {
       </p>
       <RankBadge bounties={player.completedBounties.length} />
       {player.owned.includes("raygun") && (
-        <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Packing the Lucky Ray-Gun</p>
+        <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Packing the Lucky Ray-Gun. One more card in a Standoff.</p>
       )}
       {player.owned.includes("holster") && (
-        <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Hair-Trigger Holster on the hip</p>
+        <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Hair-Trigger Holster on the hip. First card in a Standoff.</p>
       )}
       {player.owned.includes("bandana") && (
         <p className="marker-text text-xs text-[hsl(0,72%,40%)] mt-1">★ Red bandana, gold star at the collar. The painting does not change. One early shot forgiven.</p>

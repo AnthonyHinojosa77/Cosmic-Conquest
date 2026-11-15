@@ -1801,7 +1801,8 @@ test("standoff: the rules engine deals the notebook and scores every card the sa
   const { standoffDeckFor } = await import("./bounties.js");
   const villain = standoffDeckFor("heart-of-luna", 1)!; // alibi, bluster, alibi, bluster, alibi
   const clues = ["dome", "robot", "videophone", "mixer", "servo", "jukebox"];
-  const deal = (owned: string[] = [], seed = 7) => dealStandoff({ clues, gotchas: ["breakthrough-1"], villain, owned, seed });
+  const deal = (owned: string[] = [], seed = 7) => dealStandoff({ clues, gotchas: ["breakthrough-1"], villain, owned, seed, run: 1 });
+  assert.equal(deal().run, 1);
 
   assert.equal(standoffApplies("heart-of-luna", 0), false);
   assert.equal(standoffApplies("heart-of-luna", 1), true);
@@ -1916,6 +1917,11 @@ test("standoff: the villain's cards and what breaks them stay on the server", as
       for (const card of deck ?? []) {
         assert.equal(shipped.includes(quoted(card.text)), false, card.text.slice(0, 40));
         assert.equal(source.includes(quoted(card.text)), false, card.text.slice(0, 40));
+        // However the line was quoted or escaped, its opening words give it away.
+        const opening = card.text.replace(/"/g, "").split(/[.!?]/)[0];
+        assert.ok(opening.length > 12, opening);
+        assert.equal(source.includes(opening), false, opening);
+        assert.equal(shipped.includes(opening), false, opening);
         if (card.kind !== "alibi") continue;
         assert.ok(card.brokenBy.length > 0, `${id}: every alibi can be broken`);
         for (const clue of card.brokenBy) {
@@ -1950,8 +1956,9 @@ test("standoff: a Luna replay plays cards before the draw; a first play and othe
   assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 200);
   assert.equal(await standoffOf(visitorOf(cookie), "heart-of-luna"), null);
 
-  // The replay: Gearhart, and his cards.
+  // The replay: Gearhart, and his cards. The first payout buys a Lucky Ray-Gun: a fifth card.
   resetLimits();
+  assert.equal((await post("/api/shop/raygun/buy", {}, cookie)).status, 200);
   await post("/api/bounties/heart-of-luna/replay", {}, cookie);
   await investigate("heart-of-luna", cookie);
   const named = await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie);
@@ -1962,8 +1969,9 @@ test("standoff: a Luna replay plays cards before the draw; a first play and othe
   assert.equal(standoff.rounds, 5);
   assert.equal(standoff.nerve, 5);
   assert.equal(standoff.composure, 3);
-  assert.equal(standoff.hand.length, 4);
-  assert.equal(standoff.deckLeft, 6); // six clues, one caught lie, three basics
+  assert.equal(standoff.hand.length, 5);
+  assert.equal(standoff.deckLeft, 5); // six clues, one caught lie, three basics
+  assert.equal(standoff.opening, undefined);
   assert.equal(standoff.villain.kind, "alibi");
   assert.equal(standoff.outcome, undefined);
   const deck = STANDOFF_DECKS["heart-of-luna"][1]!;
@@ -2017,12 +2025,23 @@ test("standoff: a Luna replay plays cards before the draw; a first play and othe
   assert.equal((await progressOf("heart-of-luna", cookie)).standoff, undefined);
   assert.equal(await standoffOf(visitorOf(cookie), "heart-of-luna"), null);
 
-  // The next replay is Cookie's deck, and starting over clears a Standoff in progress.
+  // The next replay is Cookie's deck. With a Hair-Trigger Holster the hunter plays first.
   resetLimits();
+  const { claimBounty } = await import("./gameStorage.js");
+  await claimBounty(visitorOf(cookie), "red-sands", 2000); // credits for the holster
+  assert.equal((await post("/api/shop/holster/buy", {}, cookie)).status, 200);
   await post("/api/bounties/heart-of-luna/replay", {}, cookie);
   await investigate("heart-of-luna", cookie);
   const cook = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "servo" }, cookie)).json();
-  assert.equal(cook.standoff.villain.text, STANDOFF_DECKS["heart-of-luna"][0]![0].text);
+  assert.equal(cook.standoff.opening, true);
+  assert.equal(cook.standoff.villain, null);
+  assert.equal(cook.standoff.hand.length, 5);
+  const opened = await (await play({ card: cook.standoff.hand[0].id, turn: 0 })).json();
+  assert.equal(opened.last.against, "opening");
+  assert.equal(opened.opening, undefined);
+  assert.equal(opened.round, 1); // the free play is not one of the five
+  assert.equal(opened.villain.text, STANDOFF_DECKS["heart-of-luna"][0]![0].text);
+  // Starting over clears a Standoff in progress.
   assert.notEqual(await standoffOf(visitorOf(cookie), "heart-of-luna"), null);
   await post("/api/bounties/heart-of-luna/replay", {}, cookie);
   assert.equal(await standoffOf(visitorOf(cookie), "heart-of-luna"), null);
@@ -2054,11 +2073,20 @@ test("standoff: a replay of another case has no cards, and the result reaches th
   resetLimits();
   await post("/api/bounties/heart-of-luna/replay", {}, cookie);
   await investigate("heart-of-luna", cookie);
-  const dealt = dealStandoff({ clues: ["dome"], gotchas: [], villain: standoffDeckFor("heart-of-luna", 1)!, owned: [], seed: 1 });
-  await openStandoff(visitor, "heart-of-luna", { ...dealt, outcome: "held" });
+  // Cards left over from an earlier run are dealt over, not played.
+  const stale = dealStandoff({ clues: ["dome"], gotchas: [], villain: standoffDeckFor("heart-of-luna", 0)!, owned: [], seed: 1, run: 0 });
+  await openStandoff(visitor, "heart-of-luna", { ...stale, outcome: "broke" });
+  const fresh = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie)).json();
+  assert.equal(fresh.standoff.outcome, undefined);
+  assert.equal(fresh.standoff.hand.length + fresh.standoff.deckLeft, 10);
+  assert.equal(fresh.standoff.villain.text, standoffDeckFor("heart-of-luna", 1)![0].text);
+  const mine = (await standoffOf(visitor, "heart-of-luna"))!;
+  assert.equal(mine.run, 1);
+  // Now set this run's ending by hand: the hunter lost their composure (-100 ms).
+  assert.equal(await saveStandoff(visitor, "heart-of-luna", mine.turn, { ...mine, outcome: "rattled" }), true);
   const right = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie)).json();
-  assert.equal(right.standoff.outcome, "held"); // the one on record, not a new deal
-  // 1.6 s after the draw: too late for the plain 500 ms window and its 1 s allowance...
+  assert.equal(right.standoff.outcome, "rattled"); // the one on record, not a new deal
+  // 1.55 s after the draw: too late for a rattled 400 ms window and its 1 s allowance...
   const shoot = async () => {
     let draw = await post("/api/bounties/heart-of-luna/draw", {}, cookie);
     if (draw.status === 409) {
@@ -2066,11 +2094,11 @@ test("standoff: a replay of another case has no cards, and the result reaches th
       draw = await post("/api/bounties/heart-of-luna/draw", {}, cookie);
     }
     assert.equal(draw.status, 200);
-    await wait(1600);
+    await wait(1550);
     return (await (await post("/api/bounties/heart-of-luna/shot", {}, cookie)).json()).won;
   };
   assert.equal(await shoot(), false);
-  // ...and in time once the villain's nerve has broken (+200 ms).
+  // ...and in time once the villain's nerve has broken (700 ms and the allowance).
   const held = (await standoffOf(visitor, "heart-of-luna"))!;
   assert.equal(await saveStandoff(visitor, "heart-of-luna", held.turn, { ...held, outcome: "broke" }), true);
   assert.equal(await saveStandoff(visitor, "heart-of-luna", held.turn + 1, held), false); // a stale save loses

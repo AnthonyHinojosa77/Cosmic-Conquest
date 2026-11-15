@@ -808,6 +808,15 @@
   .standoff-card:focus-visible { outline: 3px solid hsl(45 90% 62%); outline-offset: 2px; }
   .standoff-card:disabled { opacity: 0.6; }
   .standoff-words { font-size: 0.95rem; line-height: 1.4; }
+  .standoff-last:focus { outline: none; }
+  .standoff-against {
+    margin-top: 0.75rem;
+    padding-left: 0.6rem;
+    border-left: 3px solid hsl(25 40% 18% / 0.35);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: hsl(25 20% 30%);
+  }
 
   /* ---- The quick-draw: a full-screen stage -------------------------------- */
   .duel-stage {

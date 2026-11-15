@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArtImage } from "@/components/ArtImage";
 import { Sheet } from "@/components/Sheet";
 import { errorMessage, playStandoffCard } from "@/lib/game";
@@ -43,8 +43,14 @@ function lastLine(last: StandoffPlay): string {
   const nerve = last.nerve < 0 ? ` Nerve ${minus(last.nerve)}.` : "";
   const composure = last.composure < 0 ? ` Composure ${minus(last.composure)}.` : last.composure > 0 ? ` Composure +${last.composure}.` : "";
   if (last.against === "opening") return last.hit ? `A jab before they can speak.${nerve}` : "You set that card aside and take another.";
-  if (last.against === "alibi") return last.hit ? `That breaks the alibi.${nerve}` : `That doesn't touch the alibi.${composure}`;
+  if (last.against === "alibi") {
+    if (!last.hit) return `That doesn't touch the alibi.${composure}`;
+    // Only a caught lie hits this hard
+    return last.nerve <= -3 ? `Their own lie breaks the alibi.${nerve}` : `That breaks the alibi.${nerve}`;
+  }
   if (!last.hit) return `Bluster doesn't care about evidence.${composure}`;
+  // Evidence never answers Bluster, so a card that did and isn't a basic is a caught lie
+  if (!(last.card in STANDOFF_BASICS)) return `You throw their own lie back at them.${nerve}`;
   if (last.card === "steady-hand") return `You let it roll off you.${composure || " Composure is already full."}`;
   if (last.card === "tip-of-the-hat") return "You tip your hat and take two more cards.";
   return `You stare it down.${nerve}`;
@@ -98,6 +104,16 @@ export function Standoff({
     window.scrollTo({ top: 0 });
   }, []);
 
+  // After a card is played it is gone from the hand, so keyboard focus moves to what
+  // happened next: the result line, or the way into the street once it's over.
+  const lastRef = useRef<HTMLParagraphElement>(null);
+  const continueRef = useRef<HTMLButtonElement>(null);
+  const turnAtMount = useRef(view.turn);
+  useEffect(() => {
+    if (view.turn === turnAtMount.current) return;
+    (view.outcome ? continueRef.current : lastRef.current)?.focus({ preventScroll: true });
+  }, [view.turn, view.outcome]);
+
   const picked = view.hand.find((c) => c.id === selected) ?? null;
   const pickedFace = picked ? faceOf(picked, entries) : null;
 
@@ -140,7 +156,7 @@ export function Standoff({
       </div>
 
       {/* What the last card did, then what the villain says next */}
-      <p className="standoff-last text-sm text-center" role="status" aria-live="polite" data-testid="text-standoff-last">
+      <p ref={lastRef} tabIndex={-1} className="standoff-last text-sm text-center" role="status" aria-live="polite" data-testid="text-standoff-last">
         {view.last ? lastLine(view.last) : ""}
       </p>
 
@@ -152,7 +168,7 @@ export function Standoff({
             {windowMs} ms to draw
             {change !== 0 && <span className="text-[hsl(25,15%,38%)]"> ({change > 0 ? `+${change}` : minus(change)} ms)</span>}
           </p>
-          <button className="retro-btn gold mt-3 w-full sm:w-auto" onClick={onDone} data-testid="button-standoff-continue">
+          <button ref={continueRef} className="retro-btn gold mt-3 w-full sm:w-auto" onClick={onDone} data-testid="button-standoff-continue">
             Step into the street
           </button>
         </div>
@@ -230,6 +246,12 @@ export function Standoff({
               returnFocusTo={`button-standoff-card-${picked.id}`}
             >
               <p className="text-sm leading-relaxed" data-testid="text-standoff-card">{pickedFace.text}</p>
+              {view.villain && (
+                // On a small phone this sheet covers the table, so their words come along
+                <p className="standoff-against" data-testid="text-standoff-against">
+                  <strong>Against their {view.villain.kind === "alibi" ? "Alibi" : "Bluster"}:</strong> {view.villain.text}
+                </p>
+              )}
               <button
                 className="retro-btn gold w-full mt-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={play}

@@ -387,11 +387,15 @@ export async function standoffOf(visitorId: string, bountyId: string): Promise<S
 
 // Deal a Standoff once. Naming the culprit again finds the same cards, so a lost
 // Standoff can't be re-dealt. Returns the one on record.
-export async function openStandoff(visitorId: string, bountyId: string, dealt: StandoffState): Promise<StandoffState> {
-  await db.insert(standoffs)
-    .values({ visitorId, bountyId, turn: dealt.turn, state: JSON.stringify(dealt) })
-    .onConflictDoNothing()
-    .run();
+// `replace`: the one on record is left over from an earlier run of the case, so deal over it.
+export async function openStandoff(visitorId: string, bountyId: string, dealt: StandoffState, replace = false): Promise<StandoffState> {
+  const values = { visitorId, bountyId, turn: dealt.turn, state: JSON.stringify(dealt) };
+  const insert = db.insert(standoffs).values(values);
+  if (replace) {
+    await insert.onConflictDoUpdate({ target: [standoffs.visitorId, standoffs.bountyId], set: { turn: values.turn, state: values.state } }).run();
+  } else {
+    await insert.onConflictDoNothing().run();
+  }
   return (await standoffOf(visitorId, bountyId)) ?? dealt;
 }
 

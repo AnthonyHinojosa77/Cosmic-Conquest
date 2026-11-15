@@ -135,7 +135,8 @@ async function standoffFor(visitorId: string, bounty: Bounty, run: number, found
   const villain = standoffDeckFor(bounty.id, run);
   if (!villain) return undefined;
   const saved = await standoffOf(visitorId, bounty.id);
-  if (saved) return saved;
+  // A request that straddled a replay can leave the last run's cards behind. Deal over them.
+  if (saved && saved.run === run) return saved;
   const ids = found ?? await foundClues(visitorId, bounty.id);
   const scene = new Set((bounty.locations ?? []).flatMap((l) => l.clues).map((c) => c.id));
   const lies = bounty.breakthroughs ?? [];
@@ -146,7 +147,8 @@ async function standoffFor(visitorId: string, bounty: Bounty, run: number, found
     villain,
     owned,
     seed: randomInt(2 ** 31),
-  }));
+    run,
+  }), saved !== null);
 }
 
 async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProgress> {

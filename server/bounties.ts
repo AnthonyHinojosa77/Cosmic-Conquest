@@ -395,17 +395,17 @@ export const STANDOFF_DECKS: Record<string, (readonly VillainCard[] | undefined)
     [
       { kind: "alibi", text: "\"I was at my grill till closing, same as every night. I never set foot in that Expo.\"", brokenBy: ["servo", "robot"] },
       { kind: "bluster", text: "\"You want to accuse a working man on an empty stomach? Sit down. Have a burger. Think it over.\"" },
-      { kind: "alibi", text: "\"I never touched that rock. Never been near moon dust in my life, and nothing out of my kitchen was ever near that dome.\"", brokenBy: ["mixer", "dome"] },
+      { kind: "alibi", text: "\"I never touched that rock. Never been near moon dust in my life, and nothing out of my kitchen was ever near that dome.\"", brokenBy: ["mixer", "dome", "jukebox"] },
       { kind: "bluster", text: "\"Twenty years I've fed this colony, hunter. Who are they going to believe? Me, or a drifter in a fishbowl?\"" },
       { kind: "alibi", text: "\"I've got nothing to hide and nowhere to be. I left that diner the way I always leave it, and I'll be back on shift like always.\"", brokenBy: ["jukebox", "servo"] },
     ],
-    // Gearhart did it and framed Cookie: the wiped tape, the planted cap, the square screws.
+    // Gearhart did it and framed Cookie: the wiped tape, the planted cap, the robot oil on a screw.
     [
       { kind: "alibi", text: "\"I was home in my workshop from six o'clock on. Nobody saw me near the Expo last night, and no record says otherwise.\"", brokenBy: ["robot", "servo"] },
       { kind: "bluster", text: "\"Thirty years of patents, hunter, and you come at me with a notebook? Put it away before you embarrass yourself.\"" },
-      { kind: "alibi", text: "\"The cook did it! His cap behind the jukebox, moon dust in his mixer. The proof is all over his diner.\"", brokenBy: ["jukebox", "mixer"] },
+      { kind: "alibi", text: "\"The cook did it! His cap behind the jukebox, moon dust in his mixer. The proof is all over his diner.\"", brokenBy: ["jukebox", "mixer", "servo"] },
       { kind: "bluster", text: "\"They gave a rock a dome and my butler a corner. You would understand, if you had ever built anything.\"" },
-      { kind: "alibi", text: "\"A clumsy thief opened that dome. Sticky fingers and a butter knife. That is not the work of an engineer.\"", brokenBy: ["dome"] },
+      { kind: "alibi", text: "\"Whoever opened that dome left nothing of themselves behind. You have a tidy panel, hunter, and nobody's name on it.\"", brokenBy: ["dome"] },
     ],
   ],
 };

@@ -36,6 +36,7 @@ import {
   ITEMS,
   shiftLetters,
   type SuitId,
+  type StandoffOutcome,
   type StandoffView,
 } from "@shared/game";
 import NotFound from "@/pages/not-found";
@@ -1146,6 +1147,7 @@ export default function BountyPage() {
   const [sceneSrc, setSceneSrc] = useState<string | undefined>(bounty?.locations?.[0]?.image);
   const doneTimer = useRef<ReturnType<typeof setTimeout>>();
   const drawGate = useRef<Promise<void>>(Promise.resolve());
+  const duelOutcome = useRef<StandoffOutcome>();
 
   useEffect(() => () => clearTimeout(doneTimer.current), []);
 
@@ -1183,7 +1185,11 @@ export default function BountyPage() {
 
   const owned = player?.owned ?? [];
   const baseWindowMs = drawWindowMs(owned);
-  const windowMs = duelWindowMs(owned, standoff?.outcome);
+  // A won replay duel clears the cards from the notebook while the duel is still on
+  // screen. Keep the result they gave until the hunter is back in the case file.
+  if (standoff) duelOutcome.current = standoff.outcome;
+  else if (stage !== "showdown" && stage !== "done") duelOutcome.current = undefined;
+  const windowMs = duelWindowMs(owned, duelOutcome.current);
   const firstPlace = bounty.locations?.[0];
   const backdrop = stage === "standoff" || stage === "showdown" || stage === "done" ? solution?.showdown.scene ?? sceneSrc : sceneSrc;
 
