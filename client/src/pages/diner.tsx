@@ -142,7 +142,7 @@ export default function Diner() {
         markVoted(id);
         return;
       }
-      setVoteErrors((current) => ({ ...current, [id]: `${errorMessage(err)} Try again.` }));
+      setVoteErrors((current) => ({ ...current, [id]: errorMessage(err) }));
     },
     onSettled: (_data, _err, id) => {
       setPendingVotes((current) => trackVote(current, id, false));
@@ -296,7 +296,7 @@ export default function Diner() {
                     {submitDish.isPending ? "Adding..." : "★ Add to Menu"}
                   </button>
                   {submitDish.isError && (
-                    <p className="text-xs text-[hsl(0,65%,40%)]" role="alert">{errorMessage(submitDish.error)} Try again.</p>
+                    <p className="text-xs text-[hsl(0,65%,40%)]" role="alert">{errorMessage(submitDish.error)}</p>
                   )}
 
                   {showSuccess && (

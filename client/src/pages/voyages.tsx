@@ -270,7 +270,7 @@ export default function Voyages() {
                         {sendPostcard.isPending ? "Sending..." : "★ Send Postcard"}
                       </button>
                       {sendPostcard.isError && (
-                        <p className="text-xs text-[hsl(0,65%,40%)]" role="alert">{errorMessage(sendPostcard.error)} Try again.</p>
+                        <p className="text-xs text-[hsl(0,65%,40%)]" role="alert">{errorMessage(sendPostcard.error)}</p>
                       )}
                     </>
                   )}

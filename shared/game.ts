@@ -898,7 +898,8 @@ export function feedCount(shown: number): string {
 export function apiErrorMessage(raw: string): string {
   const status = Number(/^(\d{3}):/.exec(raw)?.[1] ?? 0);
   // No status: the request never arrived (each browser words that differently), or the
-  // answer could not be read.
+  // answer could not be read. Every line here says what to do next, so a page shows it
+  // as it is and adds nothing after it.
   if (!status) {
     return /fetch|network|load failed|connection|offline|timed? ?out/i.test(raw)
       ? "Couldn't reach the game. Check your connection."
@@ -912,8 +913,8 @@ export function apiErrorMessage(raw: string): string {
   }
   if (status === 429) return "Easy there, hunter. Too many requests. Try again in a few minutes.";
   return status >= 500
-    ? "The game's server is having trouble. Give it a moment."
-    : "That didn't go through.";
+    ? "The game's server is having trouble. Give it a moment, then try again."
+    : "That didn't go through. Try again.";
 }
 
 export function creditsLabel(credits: number | null, failed = false): string {

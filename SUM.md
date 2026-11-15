@@ -2,6 +2,30 @@
 
 Newest first. Owner's words are quoted exactly.
 
+## 2026-11-15 (evening): stability fixes went live; wording fix and the keep-your-hunter code chosen
+
+Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
+
+### Owner's words (in order)
+
+1. > Yes
+
+Message 1 answered: "Want me to fix the doubled "Try again" wording, or start one of the three open items?" Because that offered two things, the owner was asked which.
+
+### Owner's decisions (answered in the question dialog, 2026-11-15)
+
+- "Wording + hunter code (Recommended)": fix the doubled "Try again" wording on the world pages, then build the keep-your-hunter code, with the design choices brought to the owner before building.
+
+### What happened
+
+- The stability fixes were pushed to `main` at commit `233bc1d` after a second independent review came back In Spec. The live site served that build, and an unknown API path on the live server answered with the new JSON reply.
+- The wording fix: the world pages no longer add "Try again." after an error line, because every error line already says what to do next.
+
+### Open questions for the owner
+
+- The design choices for the keep-your-hunter code (to be asked before building).
+- Everything still listed as open in the two entries below.
+
 ## 2026-11-15 (later): the Standoff went live; survey of other work; stability fixes chosen
 
 Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe

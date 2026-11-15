@@ -141,7 +141,7 @@ export default function Expo() {
         markVoted(id);
         return;
       }
-      setVoteErrors((current) => ({ ...current, [id]: `${errorMessage(err)} Try again.` }));
+      setVoteErrors((current) => ({ ...current, [id]: errorMessage(err) }));
     },
     onSettled: (_data, _err, id) => {
       setPendingVotes((current) => trackVote(current, id, false));
@@ -278,7 +278,7 @@ export default function Expo() {
                     {submitPrediction.isPending ? "Sending..." : "★ Send it down the walk"}
                   </button>
                   {submitPrediction.isError && (
-                    <p className="text-xs text-[hsl(0,65%,40%)]" role="alert">{errorMessage(submitPrediction.error)} Try again.</p>
+                    <p className="text-xs text-[hsl(0,65%,40%)]" role="alert">{errorMessage(submitPrediction.error)}</p>
                   )}
 
                   {showSuccess && (

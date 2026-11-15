@@ -2259,11 +2259,11 @@ test("errors: the game shows its own messages and never raw server text", async 
   assert.equal(apiErrorMessage('409: {"error":"Win the showdown first"}'), "Win the showdown first");
   assert.equal(apiErrorMessage('429: {"error":"Easy there, hunter — too many actions. Try again in a few minutes."}'), "Easy there, hunter — too many actions. Try again in a few minutes.");
   // A host's error page, a bare status, or the old { message } shape never reach the player.
-  assert.equal(apiErrorMessage("502: <html><head><title>502 Bad Gateway</title></head></html>"), "The game's server is having trouble. Give it a moment.");
-  assert.equal(apiErrorMessage('500: {"message":"SQLITE_BUSY: database is locked"}'), "The game's server is having trouble. Give it a moment.");
-  assert.equal(apiErrorMessage("504: Gateway Timeout"), "The game's server is having trouble. Give it a moment.");
-  assert.equal(apiErrorMessage("404: <!DOCTYPE html><pre>Cannot POST /api/x</pre>"), "That didn't go through.");
-  assert.equal(apiErrorMessage('400: {"error":""}'), "That didn't go through.");
+  assert.equal(apiErrorMessage("502: <html><head><title>502 Bad Gateway</title></head></html>"), "The game's server is having trouble. Give it a moment, then try again.");
+  assert.equal(apiErrorMessage('500: {"message":"SQLITE_BUSY: database is locked"}'), "The game's server is having trouble. Give it a moment, then try again.");
+  assert.equal(apiErrorMessage("504: Gateway Timeout"), "The game's server is having trouble. Give it a moment, then try again.");
+  assert.equal(apiErrorMessage("404: <!DOCTYPE html><pre>Cannot POST /api/x</pre>"), "That didn't go through. Try again.");
+  assert.equal(apiErrorMessage('400: {"error":""}'), "That didn't go through. Try again.");
   assert.equal(apiErrorMessage("429: Too Many Requests"), "Easy there, hunter. Too many requests. Try again in a few minutes.");
   // The request never arrived (each browser words this differently).
   for (const offline of ["Failed to fetch", "Load failed", "NetworkError when attempting to fetch resource."]) {
@@ -2272,6 +2272,15 @@ test("errors: the game shows its own messages and never raw server text", async 
   // The answer arrived but could not be read: not a connection problem, and not shown raw.
   assert.equal(apiErrorMessage("Unexpected token '<', \"<html>\" is not valid JSON"), "Something went wrong. Try again.");
   assert.equal(apiErrorMessage("undefined is not an object"), "Something went wrong. Try again.");
+  // The world pages show the line as it is: nothing tacked on after it.
+  for (const page of ["voyages.tsx", "expo.tsx", "diner.tsx"]) {
+    const source = readFileSync(path.join("client/src/pages", page), "utf8");
+    assert.equal(/errorMessage\([^)]*\)\}? Try again/.test(source), false, page);
+  }
+  for (const line of ["502: <html>", "404: nope", "Failed to fetch", "garbled reply", "429: slow down"]) {
+    assert.equal(/try again|check your connection/i.test(apiErrorMessage(line)), true, line);
+    assert.equal((apiErrorMessage(line).match(/try again/gi) ?? []).length <= 1, true, line);
+  }
   for (const shown of ["<html", "SQLITE", "Bad Gateway", "Cannot POST"]) {
     for (const raw of ["502: <html><title>502 Bad Gateway</title>", '500: {"message":"SQLITE_BUSY"}', "404: Cannot POST /api/x"]) {
       assert.equal(apiErrorMessage(raw).includes(shown), false);
