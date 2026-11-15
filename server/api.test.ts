@@ -8,6 +8,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import type { AddressInfo } from "net";
 import { BOUNTIES, bountyById, cluesNeeded } from "../shared/game.js";
+import type { StandoffState } from "./standoff.js";
 
 const dbDir = mkdtempSync(path.join(tmpdir(), "cosmic-conquest-test-"));
 process.env.DATABASE_PATH = path.join(dbDir, "test.db");
@@ -121,8 +122,27 @@ async function solve(bountyId: string, suspect: string, cookie: string) {
   return post(`/api/bounties/${bountyId}/claim`, { suspect }, cookie);
 }
 
+// A line of dialogue as it appears inside JSON (and in a .ts source file): quotes escaped.
+const quoted = (text: string) => JSON.stringify(text).slice(1, -1);
+
+const progressOf = async (bountyId: string, cookie: string) =>
+  (await fetch(`${base}/api/bounties/${bountyId}/progress`, { headers: { Cookie: cookie } })).json();
+
+// Where this run has a Standoff, play it out (the first card in hand each turn) so the
+// draw can open. Returns how it ended, or undefined where there was none.
+async function finishStandoff(bountyId: string, cookie: string): Promise<string | undefined> {
+  for (let plays = 0; plays < 12; plays++) {
+    const { standoff } = await progressOf(bountyId, cookie);
+    if (!standoff || standoff.outcome) return standoff?.outcome;
+    const res = await post(`/api/bounties/${bountyId}/standoff/play`, { card: standoff.hand[0].id, turn: standoff.turn }, cookie);
+    assert.equal(res.status, 200, `${bountyId} standoff play`);
+  }
+  assert.fail(`${bountyId} standoff never ended`);
+}
+
 // The server pays only after it has recorded a shot inside the draw window.
 async function winDuel(bountyId: string, cookie: string) {
+  await finishStandoff(bountyId, cookie);
   let draw = await post(`/api/bounties/${bountyId}/draw`, {}, cookie);
   if (draw.status === 409) {
     await wait(850);
@@ -1772,4 +1792,287 @@ test("game: every variant's changed words really differ from the first run", asy
       }
     });
   }
+});
+
+// --- The Standoff (card duel before the draw) ----------------------------------------
+
+test("standoff: the rules engine deals the notebook and scores every card the same way each time", async () => {
+  const { dealStandoff, playCard, viewOf, standoffApplies } = await import("./standoff.js");
+  const { standoffDeckFor } = await import("./bounties.js");
+  const villain = standoffDeckFor("heart-of-luna", 1)!; // alibi, bluster, alibi, bluster, alibi
+  const clues = ["dome", "robot", "videophone", "mixer", "servo", "jukebox"];
+  const deal = (owned: string[] = [], seed = 7) => dealStandoff({ clues, gotchas: ["breakthrough-1"], villain, owned, seed });
+
+  assert.equal(standoffApplies("heart-of-luna", 0), false);
+  assert.equal(standoffApplies("heart-of-luna", 1), true);
+  assert.equal(standoffApplies("heart-of-luna", 2), true);
+  assert.equal(standoffApplies("red-sands", 1), false);
+
+  // The same seed deals the same cards; the whole notebook plus the three basics is in play.
+  assert.deepEqual(deal(), deal());
+  assert.notDeepEqual([...deal([], 7).hand, ...deal([], 7).draw], [...deal([], 8).hand, ...deal([], 8).draw]);
+  const fresh = deal();
+  assert.equal(fresh.hand.length, 4);
+  assert.deepEqual([...fresh.hand, ...fresh.draw].sort(), [...clues, "breakthrough-1", "stare-down", "steady-hand", "tip-of-the-hat"].sort());
+  assert.equal(deal(["raygun"]).hand.length, 5);
+  assert.equal(deal(["raygun"]).draw.length, 5);
+  assert.equal(fresh.opening, false);
+  assert.equal(viewOf(fresh).villain?.kind, "alibi");
+  assert.equal(viewOf(fresh).round, 1);
+  assert.equal(viewOf(fresh).rounds, 5);
+
+  // A known hand, so each row of the rules can be checked on its own.
+  const hand = ["robot", "videophone", "breakthrough-1", "stare-down", "steady-hand", "tip-of-the-hat"];
+  const set = (over: Partial<StandoffState> = {}): StandoffState => ({ ...deal(), hand, draw: ["dome", "mixer", "servo", "jukebox"], ...over });
+  const play = (card: string, over: Partial<StandoffState> = {}) => playCard(set(over), card)!;
+
+  // Against an Alibi (broken by the robot's tape or Servo's word).
+  assert.deepEqual(play("robot").last, { card: "robot", against: "alibi", hit: true, nerve: -2, composure: 0 });
+  assert.deepEqual(play("videophone").last, { card: "videophone", against: "alibi", hit: false, nerve: 0, composure: -1 });
+  assert.deepEqual(play("breakthrough-1").last, { card: "breakthrough-1", against: "alibi", hit: true, nerve: -3, composure: 0 });
+  for (const basic of ["stare-down", "steady-hand", "tip-of-the-hat"]) {
+    assert.deepEqual(play(basic).last, { card: basic, against: "alibi", hit: false, nerve: 0, composure: -1 }, basic);
+  }
+  // Against Bluster.
+  assert.deepEqual(play("robot", { at: 1 }).last, { card: "robot", against: "bluster", hit: false, nerve: 0, composure: -1 });
+  assert.deepEqual(play("breakthrough-1", { at: 1 }).last, { card: "breakthrough-1", against: "bluster", hit: true, nerve: -1, composure: 0 });
+  assert.deepEqual(play("stare-down", { at: 1 }).last, { card: "stare-down", against: "bluster", hit: true, nerve: -1, composure: 0 });
+  assert.equal(play("steady-hand", { at: 1, composure: 2 }).composure, 3);
+  assert.equal(play("steady-hand", { at: 1 }).composure, 3); // never above the start
+  assert.equal(play("steady-hand", { at: 1 }).last!.hit, true);
+  // One card out, one drawn; Tip of the Hat draws two more.
+  assert.deepEqual(play("robot").hand, ["videophone", "breakthrough-1", "stare-down", "steady-hand", "tip-of-the-hat", "dome"]);
+  assert.deepEqual(play("tip-of-the-hat", { at: 1 }).hand, ["robot", "videophone", "breakthrough-1", "stare-down", "steady-hand", "dome", "mixer", "servo"]);
+  assert.deepEqual(play("tip-of-the-hat", { at: 1 }).draw, ["jukebox"]);
+  // Each play turns the villain's next card and counts a turn.
+  assert.equal(play("robot").at, 1);
+  assert.equal(play("robot").turn, 1);
+
+  // The Holster's free play comes before the villain's first card and costs nothing.
+  const quick = deal(["holster"]);
+  assert.equal(quick.opening, true);
+  assert.equal(viewOf(quick).villain, null);
+  assert.equal(viewOf(quick).opening, true);
+  const jab = play("stare-down", { opening: true });
+  assert.deepEqual(jab.last, { card: "stare-down", against: "opening", hit: true, nerve: -1, composure: 0 });
+  assert.equal(jab.at, 0);
+  assert.equal(jab.opening, false);
+  assert.equal(viewOf(jab).villain?.kind, "alibi");
+  assert.deepEqual(play("robot", { opening: true }).last, { card: "robot", against: "opening", hit: false, nerve: 0, composure: 0 });
+
+  // The three endings.
+  assert.equal(play("robot").outcome, undefined);
+  assert.equal(play("robot", { nerve: 2 }).outcome, "broke");
+  assert.equal(play("videophone", { composure: 1 }).outcome, "rattled");
+  assert.equal(play("videophone", { at: 4 }).outcome, "held");
+  assert.equal(play("breakthrough-1", { at: 4, nerve: 3, composure: 1 }).outcome, "broke");
+  // A card that isn't in the hand, and any card once it's over, change nothing.
+  assert.equal(playCard(set(), "dome"), null);
+  assert.equal(playCard(play("robot", { nerve: 2 }), "videophone"), null);
+
+  // The browser's view holds the face-up card only: no answers, no later cards.
+  const seen = JSON.stringify(viewOf(set()));
+  assert.equal(seen.includes("brokenBy"), false);
+  assert.equal(seen.includes(quoted(villain[0].text)), true);
+  for (const later of villain.slice(1)) assert.equal(seen.includes(quoted(later.text)), false);
+  const over = viewOf(play("robot", { nerve: 2 }));
+  assert.equal(over.outcome, "broke");
+  assert.equal(over.villain, null);
+});
+
+test("standoff: winning the cards widens the draw, losing narrows it, and never below 400 ms", async () => {
+  const { duelWindowMs, drawWindowMs, duelStage, closeReplayDuel, withAccusation } = await import("../shared/game.js");
+  assert.equal(duelWindowMs([]), drawWindowMs([]));
+  assert.equal(duelWindowMs([], "held"), 500);
+  assert.equal(duelWindowMs([], "broke"), 700);
+  assert.equal(duelWindowMs([], "rattled"), 400);
+  assert.equal(duelWindowMs(["raygun"], "rattled"), 650);
+  assert.equal(duelWindowMs(["raygun", "holster"], "broke"), 1100);
+  assert.equal(duelWindowMs(["raygun", "holster"]), 900);
+
+  const view = { turn: 0, round: 1, rounds: 5, nerve: 5, composure: 3, hand: [], deckLeft: 0, villain: null };
+  assert.equal(duelStage(undefined), "showdown");
+  assert.equal(duelStage(view), "standoff");
+  assert.equal(duelStage({ ...view, outcome: "held" }), "showdown");
+  const solution = { showdown: { opponent: "x", image: "y", taunt: "z" }, outro: "o" };
+  const open = withAccusation({ found: {}, canAccuse: true, needsLie: false }, "gearhart", solution, true, view);
+  assert.deepEqual(open.standoff, view);
+  assert.equal(closeReplayDuel(open).standoff, undefined);
+});
+
+test("standoff: the villain's cards and what breaks them stay on the server", async () => {
+  const { BOUNTIES, STANDOFF_BASICS } = await import("../shared/game.js");
+  const { STANDOFF_DECKS, VARIANTS, CLUES, standoffDeckFor } = await import("./bounties.js");
+  const { standoffApplies } = await import("./standoff.js");
+  const source = readFileSync(path.join(import.meta.dirname, "..", "shared", "game.ts"), "utf8");
+  assert.equal(source.includes("STANDOFF_DECKS"), false);
+  assert.equal(source.includes("brokenBy"), false);
+  const shipped = JSON.stringify(BOUNTIES);
+  for (const [id, decks] of Object.entries(STANDOFF_DECKS)) {
+    assert.equal(decks.length, VARIANTS[id]?.length, `${id} decks match its variants`);
+    const bounty = BOUNTIES.find((b) => b.id === id)!;
+    for (const lie of bounty.breakthroughs ?? []) assert.equal(lie in STANDOFF_BASICS, false, lie);
+    for (const deck of decks) {
+      for (const card of deck ?? []) {
+        assert.equal(shipped.includes(quoted(card.text)), false, card.text.slice(0, 40));
+        assert.equal(source.includes(quoted(card.text)), false, card.text.slice(0, 40));
+        if (card.kind !== "alibi") continue;
+        assert.ok(card.brokenBy.length > 0, `${id}: every alibi can be broken`);
+        for (const clue of card.brokenBy) {
+          assert.ok(CLUES[id][clue], `${id}: ${clue} is a real clue`);
+          assert.equal(clue in STANDOFF_BASICS, false, clue);
+        }
+      }
+    }
+  }
+  // Wherever a Standoff runs, there is a deck to run it with.
+  for (const b of BOUNTIES) {
+    for (let run = 0; run < 6; run++) {
+      if (standoffApplies(b.id, run)) assert.ok(standoffDeckFor(b.id, run)?.length, `${b.id} run ${run} has a deck`);
+    }
+  }
+});
+
+test("standoff: a Luna replay plays cards before the draw; a first play and other cases never do", async () => {
+  const { standoffOf } = await import("./gameStorage.js");
+  const { STANDOFF_DECKS } = await import("./bounties.js");
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const play = (body: unknown) => post("/api/bounties/heart-of-luna/standoff/play", body, cookie);
+
+  // First play of Luna: exactly as before.
+  await investigate("heart-of-luna", cookie);
+  assert.equal((await play({ card: "dome", turn: 0 })).status, 409); // nobody named yet
+  const first = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "servo" }, cookie)).json();
+  assert.deepEqual(Object.keys(first).sort(), ["correct", "outro", "showdown"]);
+  assert.equal((await progressOf("heart-of-luna", cookie)).standoff, undefined);
+  assert.equal((await play({ card: "dome", turn: 0 })).status, 404);
+  await winDuel("heart-of-luna", cookie);
+  assert.equal((await post("/api/bounties/heart-of-luna/claim", { suspect: "cookie" }, cookie)).status, 200);
+  assert.equal(await standoffOf(visitorOf(cookie), "heart-of-luna"), null);
+
+  // The replay: Gearhart, and his cards.
+  resetLimits();
+  await post("/api/bounties/heart-of-luna/replay", {}, cookie);
+  await investigate("heart-of-luna", cookie);
+  const named = await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie);
+  const raw = await named.text();
+  const { standoff } = JSON.parse(raw);
+  assert.equal(standoff.turn, 0);
+  assert.equal(standoff.round, 1);
+  assert.equal(standoff.rounds, 5);
+  assert.equal(standoff.nerve, 5);
+  assert.equal(standoff.composure, 3);
+  assert.equal(standoff.hand.length, 4);
+  assert.equal(standoff.deckLeft, 6); // six clues, one caught lie, three basics
+  assert.equal(standoff.villain.kind, "alibi");
+  assert.equal(standoff.outcome, undefined);
+  const deck = STANDOFF_DECKS["heart-of-luna"][1]!;
+  assert.equal(standoff.villain.text, deck[0].text);
+  assert.equal(raw.includes("brokenBy"), false);
+  assert.equal(raw.includes(quoted(deck[0].text)), true);
+  for (const later of deck.slice(1)) assert.equal(raw.includes(quoted(later.text)), false);
+
+  // The draw stays shut until the cards are played, however long the hunter waits.
+  await wait(850);
+  const shut = await post("/api/bounties/heart-of-luna/draw", {}, cookie);
+  assert.equal(shut.status, 409);
+  assert.match((await shut.json()).error, /Finish the standoff/);
+
+  // A refresh finds the same cards.
+  assert.deepEqual((await progressOf("heart-of-luna", cookie)).standoff, standoff);
+  // Bad plays.
+  assert.equal((await play({ card: "dome" })).status, 400);
+  const missing = await play({ card: "not-a-card", turn: 0 });
+  assert.equal(missing.status, 409);
+  assert.match((await missing.json()).error, /isn't in your hand/);
+
+  // One card, played once: a repeat of the same turn (a double tap) changes nothing.
+  const card = standoff.hand[0].id;
+  const after = await (await play({ card, turn: 0 })).json();
+  assert.equal(after.turn, 1);
+  assert.equal(after.last.card, card);
+  assert.equal(after.hand.some((c: { id: string }) => c.id === card), false);
+  const again = await play({ card: after.hand[0].id, turn: 0 });
+  assert.equal(again.status, 200);
+  assert.deepEqual(await again.json(), after);
+  const seen = JSON.stringify(after);
+  assert.equal(seen.includes("brokenBy"), false);
+  assert.equal(seen.includes(quoted(deck[1].text)), true);
+  for (const later of deck.slice(2)) assert.equal(seen.includes(quoted(later.text)), false);
+
+  // Naming the culprit again does not deal a new hand.
+  const renamed = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie)).json();
+  assert.deepEqual(renamed.standoff, after);
+
+  // Play it out, then the duel runs as ever. A replay pays nothing and clears the cards.
+  const outcome = await finishStandoff("heart-of-luna", cookie);
+  assert.ok(["broke", "held", "rattled"].includes(outcome!), outcome);
+  const done = (await progressOf("heart-of-luna", cookie)).standoff;
+  assert.equal(done.villain, null);
+  assert.deepEqual(await (await play({ card: done.hand[0]?.id ?? "dome", turn: done.turn })).json(), done);
+  await winDuel("heart-of-luna", cookie);
+  const claim = await post("/api/bounties/heart-of-luna/claim", { suspect: "gearhart" }, cookie);
+  assert.equal(claim.status, 409);
+  assert.match((await claim.json()).error, /already collected/);
+  assert.equal((await progressOf("heart-of-luna", cookie)).standoff, undefined);
+  assert.equal(await standoffOf(visitorOf(cookie), "heart-of-luna"), null);
+
+  // The next replay is Cookie's deck, and starting over clears a Standoff in progress.
+  resetLimits();
+  await post("/api/bounties/heart-of-luna/replay", {}, cookie);
+  await investigate("heart-of-luna", cookie);
+  const cook = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "cookie", proof: "servo" }, cookie)).json();
+  assert.equal(cook.standoff.villain.text, STANDOFF_DECKS["heart-of-luna"][0]![0].text);
+  assert.notEqual(await standoffOf(visitorOf(cookie), "heart-of-luna"), null);
+  await post("/api/bounties/heart-of-luna/replay", {}, cookie);
+  assert.equal(await standoffOf(visitorOf(cookie), "heart-of-luna"), null);
+  assert.equal((await progressOf("heart-of-luna", cookie)).standoff, undefined);
+});
+
+test("standoff: a replay of another case has no cards, and the result reaches the server's draw clock", async () => {
+  const { openStandoff, saveStandoff, standoffOf } = await import("./gameStorage.js");
+  const { dealStandoff } = await import("./standoff.js");
+  const { standoffDeckFor } = await import("./bounties.js");
+
+  // Mars, replayed: straight to the draw.
+  const mars = cookieOf(await fetch(base + "/api/player"));
+  assert.equal((await solve("red-sands", "quill", mars)).status, 200);
+  resetLimits();
+  await post("/api/bounties/red-sands/replay", {}, mars);
+  await investigate("red-sands", mars);
+  const named = await (await post("/api/bounties/red-sands/accuse", { suspect: "quill", ...(await evidenceFor("red-sands")) }, mars)).json();
+  assert.deepEqual(Object.keys(named).sort(), ["correct", "outro", "showdown"]);
+  assert.equal((await progressOf("red-sands", mars)).standoff, undefined);
+  assert.equal((await post("/api/bounties/red-sands/standoff/play", { card: "pad", turn: 0 }, mars)).status, 404);
+  await winDuel("red-sands", mars);
+
+  // Luna, replayed, with the Standoff's ending set by hand so the clock can be checked.
+  resetLimits();
+  const cookie = cookieOf(await fetch(base + "/api/player"));
+  const visitor = visitorOf(cookie);
+  assert.equal((await solve("heart-of-luna", "cookie", cookie)).status, 200);
+  resetLimits();
+  await post("/api/bounties/heart-of-luna/replay", {}, cookie);
+  await investigate("heart-of-luna", cookie);
+  const dealt = dealStandoff({ clues: ["dome"], gotchas: [], villain: standoffDeckFor("heart-of-luna", 1)!, owned: [], seed: 1 });
+  await openStandoff(visitor, "heart-of-luna", { ...dealt, outcome: "held" });
+  const right = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie)).json();
+  assert.equal(right.standoff.outcome, "held"); // the one on record, not a new deal
+  // 1.6 s after the draw: too late for the plain 500 ms window and its 1 s allowance...
+  const shoot = async () => {
+    let draw = await post("/api/bounties/heart-of-luna/draw", {}, cookie);
+    if (draw.status === 409) {
+      await wait(850);
+      draw = await post("/api/bounties/heart-of-luna/draw", {}, cookie);
+    }
+    assert.equal(draw.status, 200);
+    await wait(1600);
+    return (await (await post("/api/bounties/heart-of-luna/shot", {}, cookie)).json()).won;
+  };
+  assert.equal(await shoot(), false);
+  // ...and in time once the villain's nerve has broken (+200 ms).
+  const held = (await standoffOf(visitor, "heart-of-luna"))!;
+  assert.equal(await saveStandoff(visitor, "heart-of-luna", held.turn, { ...held, outcome: "broke" }), true);
+  assert.equal(await saveStandoff(visitor, "heart-of-luna", held.turn + 1, held), false); // a stale save loses
+  assert.equal(await shoot(), true);
 });

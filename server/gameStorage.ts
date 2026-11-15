@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { and, eq, desc, sql, inArray } from "drizzle-orm";
-import { players, bountyClaims, playerItems, clueFinds, showdowns, replayReceipts, duelShots, bountyAttempts, caseRuns, type Player } from "../shared/schema.js";
+import { players, bountyClaims, playerItems, clueFinds, showdowns, replayReceipts, duelShots, bountyAttempts, caseRuns, standoffs, type Player } from "../shared/schema.js";
 import {
   DEFAULT_SUIT,
   ownsSuit,
@@ -20,6 +20,7 @@ import {
   type WireEntry,
 } from "../shared/game.js";
 import { db, type Db } from "./storage.js";
+import type { StandoffState } from "./standoff.js";
 
 // Stable per visitor, so the name shown before their first action is the one that gets saved.
 function defaultCallsign(visitorId: string): string {
@@ -317,6 +318,9 @@ export async function replayInvestigation(visitorId: string, bountyId: string): 
     await tx.delete(duelShots)
       .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
       .run();
+    await tx.delete(standoffs)
+      .where(and(eq(standoffs.visitorId, visitorId), eq(standoffs.bountyId, bountyId)))
+      .run();
     await tx.insert(caseRuns)
       .values({ visitorId, bountyId, runs: 1 })
       .onConflictDoUpdate({ target: [caseRuns.visitorId, caseRuns.bountyId], set: { runs: sql`${caseRuns.runs} + 1`, strikes: 0 } })
@@ -366,7 +370,39 @@ export async function closeShowdown(visitorId: string, bountyId: string): Promis
     await tx.delete(duelShots)
       .where(and(eq(duelShots.visitorId, visitorId), eq(duelShots.bountyId, bountyId)))
       .run();
+    await tx.delete(standoffs)
+      .where(and(eq(standoffs.visitorId, visitorId), eq(standoffs.bountyId, bountyId)))
+      .run();
   });
+}
+
+// The Standoff a hunter is in, or just finished. Null where none was dealt.
+export async function standoffOf(visitorId: string, bountyId: string): Promise<StandoffState | null> {
+  const row = await db.select({ state: standoffs.state })
+    .from(standoffs)
+    .where(and(eq(standoffs.visitorId, visitorId), eq(standoffs.bountyId, bountyId)))
+    .get();
+  return row ? JSON.parse(row.state) as StandoffState : null;
+}
+
+// Deal a Standoff once. Naming the culprit again finds the same cards, so a lost
+// Standoff can't be re-dealt. Returns the one on record.
+export async function openStandoff(visitorId: string, bountyId: string, dealt: StandoffState): Promise<StandoffState> {
+  await db.insert(standoffs)
+    .values({ visitorId, bountyId, turn: dealt.turn, state: JSON.stringify(dealt) })
+    .onConflictDoNothing()
+    .run();
+  return (await standoffOf(visitorId, bountyId)) ?? dealt;
+}
+
+// Save a played card, only if no other play got there first. False means it lost the race.
+export async function saveStandoff(visitorId: string, bountyId: string, fromTurn: number, next: StandoffState): Promise<boolean> {
+  const row = await db.update(standoffs)
+    .set({ turn: next.turn, state: JSON.stringify(next) })
+    .where(and(eq(standoffs.visitorId, visitorId), eq(standoffs.bountyId, bountyId), eq(standoffs.turn, fromTurn)))
+    .returning({ turn: standoffs.turn })
+    .get();
+  return row !== undefined;
 }
 
 export async function beginDraw(visitorId: string, bountyId: string): Promise<void> {

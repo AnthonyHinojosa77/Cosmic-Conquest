@@ -155,6 +155,17 @@ export const duelShots = sqliteTable("duel_shots", {
   uniqueIndex("duel_shots_visitor_bounty_unique").on(table.visitorId, table.bountyId),
 ]);
 
+// A Standoff (the card duel before the draw) in progress or just finished. `state` is the
+// rules engine's JSON (server/standoff.ts); `turn` lets a double tap play only once.
+export const standoffs = sqliteTable("standoffs", {
+  visitorId: text("visitor_id").notNull(),
+  bountyId: text("bounty_id").notNull(),
+  turn: integer("turn").notNull().default(0),
+  state: text("state").notNull(),
+}, (table) => [
+  uniqueIndex("standoffs_visitor_bounty_unique").on(table.visitorId, table.bountyId),
+]);
+
 // A finished replay whose showdown row is gone. A lost claim response can be retried.
 export const replayReceipts = sqliteTable("replay_receipts", {
   visitorId: text("visitor_id").notNull(),

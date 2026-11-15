@@ -58,6 +58,67 @@ export function drawWindowMs(owned: readonly string[]): number {
     + (owned.includes("holster") ? DRAW_WINDOW_HOLSTER_BONUS_MS : 0);
 }
 
+// The Standoff: a short card duel between naming the culprit and the quick-draw. The
+// hunter's cards are their notebook (clues are Evidence, caught lies are Gotchas) plus
+// three basics. Which evidence breaks which alibi stays server-side.
+export type StandoffOutcome = "broke" | "held" | "rattled";
+export type StandoffCardKind = "evidence" | "gotcha" | "basic";
+
+export const STANDOFF_BASICS = {
+  "stare-down": { name: "Stare Down", rule: "Answers Bluster and shakes their Nerve by 1. No use against an Alibi." },
+  "steady-hand": { name: "Steady Hand", rule: "Answers Bluster and wins back 1 Composure. No use against an Alibi." },
+  "tip-of-the-hat": { name: "Tip of the Hat", rule: "Answers Bluster and draws 2 extra cards. No use against an Alibi." },
+} as const;
+export type StandoffBasicId = keyof typeof STANDOFF_BASICS;
+
+export const STANDOFF_NERVE = 5;
+export const STANDOFF_COMPOSURE = 3;
+
+// What the last card did. `against` is what it was played into; the numbers are changes.
+export interface StandoffPlay {
+  card: string;
+  against: "alibi" | "bluster" | "opening";
+  // The card did its job: broke the alibi, answered the bluster, or landed an opening jab.
+  hit: boolean;
+  nerve: number;
+  composure: number;
+}
+
+// Everything the browser may see of a Standoff. The villain's later cards, and which
+// clue breaks an alibi, are never in here.
+export interface StandoffView {
+  // Cards played so far. Sent back with each play so a double tap plays only once.
+  turn: number;
+  // Which of the villain's cards is face up (1-based), and how many they hold in all.
+  round: number;
+  rounds: number;
+  nerve: number;
+  composure: number;
+  hand: { id: string; kind: StandoffCardKind }[];
+  deckLeft: number;
+  // The villain's face-up card. Null before a Holster's free opening play, and once it's over.
+  villain: { kind: "alibi" | "bluster"; text: string } | null;
+  // The Hair-Trigger Holster's free play is still to come.
+  opening?: boolean;
+  last?: StandoffPlay;
+  outcome?: StandoffOutcome;
+}
+
+// How the Standoff ends changes the quick-draw that follows. Losing only narrows it.
+export const STANDOFF_WINDOW_MS: Record<StandoffOutcome, number> = { broke: 200, held: 0, rattled: -100 };
+export const DRAW_WINDOW_FLOOR_MS = 400;
+
+// The hunter's draw window for this duel: gear, then the Standoff's result if there was one.
+export function duelWindowMs(owned: readonly string[], outcome?: StandoffOutcome): number {
+  const base = drawWindowMs(owned);
+  return outcome ? Math.max(DRAW_WINDOW_FLOOR_MS, base + STANDOFF_WINDOW_MS[outcome]) : base;
+}
+
+// Where a named culprit leads: the cards first, where a Standoff is still open.
+export function duelStage(standoff?: StandoffView): "standoff" | "showdown" {
+  return standoff && !standoff.outcome ? "standoff" : "showdown";
+}
+
 // The Red Bandana changes the showdown itself: one early shot is ignored.
 // It does not widen the draw window.
 export function bandanaSteadies(owned: readonly string[]): boolean {
@@ -1030,14 +1091,23 @@ export interface BountyProgress {
   // How many finds count toward naming someone (scene clues plus required lies; optional
   // lies don't count). Only the server knows which lies are required.
   counted?: number;
+  // The card duel before the quick-draw, where this run of the case has one.
+  standoff?: StandoffView;
 }
 
 // Remember a correct accusation in the notebook the case file already has open.
-export function withAccusation(progress: BountyProgress, suspect: string, solution: CaseSolution, replayDuel = progress.replayDuel): BountyProgress {
+export function withAccusation(
+  progress: BountyProgress,
+  suspect: string,
+  solution: CaseSolution,
+  replayDuel = progress.replayDuel,
+  standoff = progress.standoff,
+): BountyProgress {
   return {
     ...progress,
     accused: { suspect, showdown: solution.showdown, outro: solution.outro },
     ...(replayDuel ? { replayDuel: true } : {}),
+    ...(standoff ? { standoff } : {}),
   };
 }
 
@@ -1045,6 +1115,7 @@ export function withAccusation(progress: BountyProgress, suspect: string, soluti
 export function closeReplayDuel(progress: BountyProgress): BountyProgress {
   const next: BountyProgress = { ...progress, replayDuel: false };
   delete next.accused;
+  delete next.standoff;
   return next;
 }
 

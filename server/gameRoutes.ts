@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { randomInt } from "crypto";
 import { z } from "zod";
 import { updatePlayerSchema } from "../shared/schema.js";
 import {
@@ -12,14 +13,16 @@ import {
   AURELIA_INVITE_FRAGMENTS,
   onChart,
   claimWithoutShowdown,
-  drawWindowMs,
+  duelWindowMs,
   type Bounty,
   type BountyProgress,
+  type StandoffView,
   type ClueSearch,
 } from "../shared/game.js";
 import { aureliaFor } from "./aurelia.js";
 import { gameLimiter, clueLimiter } from "./middleware.js";
-import { secretFor, solutionFor, testimonyFor, type Solution } from "./bounties.js";
+import { secretFor, solutionFor, testimonyFor, standoffDeckFor, type Solution } from "./bounties.js";
+import { standoffApplies, dealStandoff, playCard, viewOf, type StandoffState } from "./standoff.js";
 import {
   getProfile,
   updateProfile,
@@ -45,6 +48,9 @@ import {
   resolveShot,
   caseRun,
   recordReplayStrike,
+  standoffOf,
+  openStandoff,
+  saveStandoff,
 } from "./gameStorage.js";
 
 const accusationSchema = z.object({
@@ -58,6 +64,8 @@ const decodeSchema = z.object({ key: z.number().int().min(0).max(25) });
 // A lock's digits, or a square on a sea chart ("C3")
 const unlockSchema = z.object({ code: z.string().regex(/^[0-9]{1,6}$|^[A-Z][1-9][0-9]?$/) });
 const presentSchema = z.object({ clue: z.string().min(1).max(50) });
+// One card from the hand, and the turn it is played on (a stale turn is a repeat tap).
+const standoffPlaySchema = z.object({ card: z.string().min(1).max(50), turn: z.number().int().min(0) });
 
 // The quick-draw can't end sooner than the shortest possible wait for DRAW!.
 // (SHOWDOWN_MIN_MS only exists so tests can shorten it; a bad value falls back.)
@@ -120,6 +128,27 @@ function textOf(bountyId: string, id: string, run: number): string | undefined {
   return undefined;
 }
 
+// The Standoff for a hunter who has named the culprit on this run: the one on record, or a
+// fresh deal from their notebook. Undefined where this run of the case has no Standoff.
+async function standoffFor(visitorId: string, bounty: Bounty, run: number, found?: string[]): Promise<StandoffState | undefined> {
+  if (!standoffApplies(bounty.id, run)) return undefined;
+  const villain = standoffDeckFor(bounty.id, run);
+  if (!villain) return undefined;
+  const saved = await standoffOf(visitorId, bounty.id);
+  if (saved) return saved;
+  const ids = found ?? await foundClues(visitorId, bounty.id);
+  const scene = new Set((bounty.locations ?? []).flatMap((l) => l.clues).map((c) => c.id));
+  const lies = bounty.breakthroughs ?? [];
+  const { owned } = await getProfile(visitorId);
+  return openStandoff(visitorId, bounty.id, dealStandoff({
+    clues: ids.filter((id) => scene.has(id)),
+    gotchas: ids.filter((id) => lies.includes(id)),
+    villain,
+    owned,
+    seed: randomInt(2 ** 31),
+  }));
+}
+
 async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProgress> {
   const found: Record<string, string> = {};
   const ids = await foundClues(visitorId, bounty.id);
@@ -141,6 +170,8 @@ async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProg
   const needsLie = (solution?.beforeAccusation ?? []).some((id) => !ids.includes(id));
   const counted = accusationCount(bounty, ids, solution?.beforeAccusation);
   const canAccuse = counted >= cluesNeeded(bounty) && !needsLie;
+  // A hunter already facing the culprit gets their cards here, so a refresh resumes the duel.
+  const standoff = accused ? await standoffFor(visitorId, bounty, run, ids) : undefined;
   return {
     found,
     canAccuse,
@@ -151,6 +182,7 @@ async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProg
     ...(accused && solution
       ? { accused: { suspect: solution.suspect, showdown: solution.showdown, outro: solution.outro } }
       : {}),
+    ...(standoff ? { standoff: viewOf(standoff) } : {}),
   };
 }
 
@@ -283,7 +315,8 @@ export function registerGameRoutes(app: Express) {
     const parsed = accusationSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const found = await foundClues(req.visitorId!, bounty.id);
-    const solution = solutionFor(bounty.id, await caseRun(req.visitorId!, bounty.id));
+    const run = await caseRun(req.visitorId!, bounty.id);
+    const solution = solutionFor(bounty.id, run);
     const ready = accusationCount(bounty, found, solution?.beforeAccusation) >= cluesNeeded(bounty)
       && (solution?.beforeAccusation ?? []).every((id) => found.includes(id));
     if (!ready) {
@@ -309,7 +342,34 @@ export function registerGameRoutes(app: Express) {
       return res.json({ correct: false });
     }
     await startShowdown(req.visitorId!, bounty.id);
-    res.json({ correct: true, showdown: solution.showdown, outro: solution.outro });
+    const standoff = await standoffFor(req.visitorId!, bounty, run, found);
+    res.json({
+      correct: true,
+      showdown: solution.showdown,
+      outro: solution.outro,
+      ...(standoff ? { standoff: viewOf(standoff) } : {}),
+    });
+  });
+
+  // Play one card in the Standoff. The server holds the villain's deck and decides the turn.
+  // A repeat of a turn already played (a double tap, a retried request) changes nothing.
+  app.post("/api/bounties/:id/standoff/play", clueLimiter, async (req, res) => {
+    const bounty = await openBounty(req, res);
+    if (!bounty) return;
+    const parsed = standoffPlaySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
+    if ((await showdownStartedAt(req.visitorId!, bounty.id)) === null) {
+      return res.status(409).json({ error: "Name the culprit first" });
+    }
+    const state = await standoffFor(req.visitorId!, bounty, await caseRun(req.visitorId!, bounty.id));
+    if (!state) return res.status(404).json({ error: "No standoff in this case" });
+    if (state.outcome || parsed.data.turn !== state.turn) return res.json(viewOf(state) satisfies StandoffView);
+    const next = playCard(state, parsed.data.card);
+    if (!next) return res.status(409).json({ error: "That card isn't in your hand" });
+    if (!(await saveStandoff(req.visitorId!, bounty.id, state.turn, next))) {
+      return res.json(viewOf((await standoffOf(req.visitorId!, bounty.id)) ?? state));
+    }
+    res.json(viewOf(next));
   });
 
   // Collected cases open again with an empty notebook. The payout and Clean Case seal stay.
@@ -328,6 +388,9 @@ export function registerGameRoutes(app: Express) {
     if (!bounty) return;
     const started = await showdownStartedAt(req.visitorId!, bounty.id);
     if (started === null) return res.status(409).json({ error: "Name the culprit before you collect" });
+    // Where there is a Standoff it comes first: skipping the cards must not beat losing them.
+    const standoff = await standoffFor(req.visitorId!, bounty, await caseRun(req.visitorId!, bounty.id));
+    if (standoff && !standoff.outcome) return res.status(409).json({ error: "Finish the standoff first" });
     if (Date.now() - started < SHOWDOWN_MIN_MS) return res.status(409).json({ error: "Win the showdown first" });
     if (!(await showdownWon(req.visitorId!, bounty.id))) await beginDraw(req.visitorId!, bounty.id);
     res.json({ ready: true });
@@ -340,7 +403,8 @@ export function registerGameRoutes(app: Express) {
     const started = await showdownStartedAt(req.visitorId!, bounty.id);
     if (started === null) return res.status(409).json({ error: "Name the culprit before you collect" });
     const profile = await getProfile(req.visitorId!);
-    res.json(await resolveShot(req.visitorId!, bounty.id, drawWindowMs(profile.owned), SHOT_GRACE_MS, SHOT_FLOOR_MS));
+    const standoff = await standoffFor(req.visitorId!, bounty, await caseRun(req.visitorId!, bounty.id));
+    res.json(await resolveShot(req.visitorId!, bounty.id, duelWindowMs(profile.owned, standoff?.outcome), SHOT_GRACE_MS, SHOT_FLOOR_MS));
   });
 
   // Pay out once per hunter, only after a correct accusation and a real showdown.
