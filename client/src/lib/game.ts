@@ -184,8 +184,15 @@ export async function rememberAccusation(bountyId: string, suspect: string, solu
 // Play one card in the Standoff. The server's reply is the whole table as it now stands.
 // `turn` is the turn the hunter saw, so a repeated tap plays only once.
 export async function playStandoffCard(bountyId: string, card: string, turn: number): Promise<StandoffView> {
-  const view = (await (await apiRequest("POST", `/api/bounties/${bountyId}/standoff/play`, { card, turn })).json()) as StandoffView;
   const key = progressKey(bountyId);
+  let view: StandoffView;
+  try {
+    view = (await (await apiRequest("POST", `/api/bounties/${bountyId}/standoff/play`, { card, turn })).json()) as StandoffView;
+  } catch (err) {
+    // The server didn't take the card: re-read the table, in case this hand is out of date.
+    queryClient.invalidateQueries({ queryKey: key });
+    throw err;
+  }
   await queryClient.cancelQueries({ queryKey: key });
   queryClient.setQueryData<BountyProgress>(key, (p) => (p ? { ...p, standoff: view } : p));
   return view;

@@ -809,6 +809,18 @@
   .standoff-card:disabled { opacity: 0.6; }
   .standoff-words { font-size: 0.95rem; line-height: 1.4; }
   .standoff-last:focus { outline: none; }
+  /* The Play button rides the bottom of the sheet. On phones the sound button sits in
+     that corner, so the row stops short of it. */
+  .standoff-play {
+    position: sticky;
+    bottom: -64px;
+    margin: 12px 0 -64px;
+    padding: 8px 76px 12px 0;
+    background: linear-gradient(hsl(38 35% 92% / 0), hsl(38 35% 92%) 10px);
+  }
+  @media (min-width: 768px) {
+    .standoff-play { bottom: -20px; margin-bottom: -20px; padding-right: 0; }
+  }
   .standoff-against {
     margin-top: 0.75rem;
     padding-left: 0.6rem;

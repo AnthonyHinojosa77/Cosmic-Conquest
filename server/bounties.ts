@@ -389,23 +389,43 @@ export type VillainCard =
   | { kind: "bluster"; text: string };
 
 // One deck per variant of the case, at the same index as the clue words and the culprit.
+//
+// Writing an Alibi: it states ONE fact that can be checked, and `brokenBy` lists every clue
+// of that variant whose own words say otherwise. No clue that says otherwise may be left
+// out, or a hunter is punished for a right answer. A clue that only points at the culprit,
+// without speaking to the fact the line claims, does not break it. Keep each line true to
+// what the culprit has already said when questioned (and, where the lie must be caught
+// before naming them, to what they then admitted). Recheck every Alibi against every clue
+// of its variant whenever either is reworded.
 export const STANDOFF_DECKS: Record<string, (readonly VillainCard[] | undefined)[]> = {
   "heart-of-luna": [
-    // Cookie did it: the early clock-out, the moon dust, the cap he left behind.
+    // Cookie did it.
     [
-      { kind: "alibi", text: "\"I was at my grill till closing, same as every night. I never set foot in that Expo.\"", brokenBy: ["servo", "robot"] },
+      // The claim: nothing links the diner's kitchen and the dome. Malt syrup is on the
+      // dome's screws, moon dust is in his mixer and on his cap, and a man in a diner cap,
+      // smelling of fry oil, was let into the Expo. (Servo speaks to his hours, not to the dome.)
+      { kind: "alibi", text: "\"There's not one thing tying my kitchen to that dome, hunter. Not one.\"", brokenBy: ["dome", "mixer", "jukebox", "robot"] },
       { kind: "bluster", text: "\"You want to accuse a working man on an empty stomach? Sit down. Have a burger. Think it over.\"" },
-      { kind: "alibi", text: "\"I never touched that rock. Never been near moon dust in my life, and nothing out of my kitchen was ever near that dome.\"", brokenBy: ["mixer", "dome", "jukebox"] },
+      // The claim: his cap is where it always is. It was behind the jukebox, and one like
+      // it was on the Expo's late visitor.
+      { kind: "alibi", text: "\"My cap's on its hook in the kitchen, where it hangs every night. I haven't lost a cap in twenty years.\"", brokenBy: ["jukebox", "robot"] },
       { kind: "bluster", text: "\"Twenty years I've fed this colony, hunter. Who are they going to believe? Me, or a drifter in a fishbowl?\"" },
-      { kind: "alibi", text: "\"I've got nothing to hide and nowhere to be. I left that diner the way I always leave it, and I'll be back on shift like always.\"", brokenBy: ["jukebox", "servo"] },
+      // The claim: he worked today. Servo says he never came in.
+      { kind: "alibi", text: "\"I was at my grill today, same as every day. Does that sound like a guilty man to you?\"", brokenBy: ["servo"] },
     ],
-    // Gearhart did it and framed Cookie: the wiped tape, the planted cap, the robot oil on a screw.
+    // Gearhart did it and framed Cookie. By now he has admitted wiping RB-9's tape
+    // ("routine"), so his cards shrink that admission and point at the cook.
     [
-      { kind: "alibi", text: "\"I was home in my workshop from six o'clock on. Nobody saw me near the Expo last night, and no record says otherwise.\"", brokenBy: ["robot", "servo"] },
+      // The claim: he wiped ten minutes. The tape is blank for twelve hours.
+      { kind: "alibi", text: "\"So I wiped a little tape. Ten minutes of an empty hall, a test loop. Hardly a crime, hunter.\"", brokenBy: ["robot"] },
       { kind: "bluster", text: "\"Thirty years of patents, hunter, and you come at me with a notebook? Put it away before you embarrass yourself.\"" },
-      { kind: "alibi", text: "\"The cook did it! His cap behind the jukebox, moon dust in his mixer. The proof is all over his diner.\"", brokenBy: ["jukebox", "mixer", "servo"] },
+      // The claim: the cap is the cook's and the glitter is moon dust. The cap is new and
+      // machine-stitched; the glitter is gift-shop sparkle.
+      { kind: "alibi", text: "\"That is the cook's own cap behind the jukebox, and that is moon dust in his mixer. Explain those away.\"", brokenBy: ["jukebox", "mixer"] },
       { kind: "bluster", text: "\"They gave a rock a dome and my butler a corner. You would understand, if you had ever built anything.\"" },
-      { kind: "alibi", text: "\"Whoever opened that dome left nothing of themselves behind. You have a tidy panel, hunter, and nobody's name on it.\"", brokenBy: ["dome"] },
+      // The claims: he used the front door, and he kept away from the dome. He asked Servo
+      // about the service door; his robot oil is on the dome's screws.
+      { kind: "alibi", text: "\"I came in by the front door with my own key, saw to my butler, and left. I never went near that dome.\"", brokenBy: ["servo", "dome"] },
     ],
   ],
 };

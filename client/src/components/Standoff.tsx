@@ -114,6 +114,13 @@ export function Standoff({
     (view.outcome ? continueRef.current : lastRef.current)?.focus({ preventScroll: true });
   }, [view.turn, view.outcome]);
 
+  // Picking a card opens its sheet; the keyboard goes straight to the Play button
+  // (Escape closes the sheet and hands focus back to the card).
+  const playRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (selected) playRef.current?.focus({ preventScroll: true });
+  }, [selected]);
+
   const picked = view.hand.find((c) => c.id === selected) ?? null;
   const pickedFace = picked ? faceOf(picked, entries) : null;
 
@@ -252,14 +259,18 @@ export function Standoff({
                   <strong>Against their {view.villain.kind === "alibi" ? "Alibi" : "Bluster"}:</strong> {view.villain.text}
                 </p>
               )}
-              <button
-                className="retro-btn gold w-full mt-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={play}
-                disabled={pending}
-                data-testid="button-standoff-play"
-              >
-                {pending ? "Playing…" : "Play this card"}
-              </button>
+              {/* Stays at the foot of the sheet however long the card's words run */}
+              <div className="standoff-play">
+                <button
+                  ref={playRef}
+                  className="retro-btn gold w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={play}
+                  disabled={pending}
+                  data-testid="button-standoff-play"
+                >
+                  {pending ? "Playing…" : "Play this card"}
+                </button>
+              </div>
             </Sheet>
           )}
         </>

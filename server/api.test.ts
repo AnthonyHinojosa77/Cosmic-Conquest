@@ -1890,6 +1890,14 @@ test("standoff: winning the cards widens the draw, losing narrows it, and never 
   assert.equal(duelWindowMs(["raygun"], "rattled"), 650);
   assert.equal(duelWindowMs(["raygun", "holster"], "broke"), 1100);
   assert.equal(duelWindowMs(["raygun", "holster"]), 900);
+  // Whatever the gear and however the cards fall, the window never drops under the floor.
+  const { DRAW_WINDOW_FLOOR_MS, STANDOFF_WINDOW_MS } = await import("../shared/game.js");
+  for (const owned of [[], ["raygun"], ["holster"], ["raygun", "holster"]]) {
+    for (const outcome of ["broke", "held", "rattled"] as const) {
+      assert.ok(duelWindowMs(owned, outcome) >= DRAW_WINDOW_FLOOR_MS, `${owned} ${outcome}`);
+      assert.ok(duelWindowMs(owned, outcome) >= drawWindowMs(owned) + STANDOFF_WINDOW_MS[outcome]);
+    }
+  }
 
   const view = { turn: 0, round: 1, rounds: 5, nerve: 5, composure: 3, hand: [], deckLeft: 0, villain: null };
   assert.equal(duelStage(undefined), "showdown");
