@@ -49,6 +49,56 @@ are charted, and sectors VI–XII stay blank.
 | 5. More worlds | Tomorrowland-style planets: Mars ("Rustlers of the Red Sands"), Venus ("The Venus Fog Phantom"), each with scenes, puzzles, a fragment and a showdown | **Mars, Venus, Saturn and Neptune built** (800 CR / II, 1,200 CR / III, 1,600 CR / IV, 2,000 CR / V; Neptune's art made and the bounty released 2026-09-29) |
 | 6. Deeper gear | Suits (**live**: red/teal/gold, worn in the office and in showdowns), weapons that change showdowns, gadgets, ship paint | **Started** — the Red Bandana (2,050 CR) forgives one jumpy draw and does not widen the window. The full Outfitters now costs the 6,100 CR the five contracts pay. Ray-gun and holster still only add draw time. |
 | 7. Co-op | Team up with friends on a bounty (shared clues, split reward) | Later, needs live multiplayer |
+| 8. The Standoff | A card duel between naming the culprit and the quick-draw: the hunter's deck is their notebook (see "The Standoff" below) | **Step 1 built** (2026-11-15): replays of the Heart of Luna only. Step 2 (every case, re-dealt villain decks, one twist per case) and step 3 (the mole bounty, which is phase 7's co-op played in turns) wait for the owner's play-test. |
+
+## The Standoff (owner's direction, 2026-11-13 to 2026-11-15)
+
+The direction: a game where **your deck is your notebook**. Deckbuilder, replays that deal
+differently each time, and later social deduction, built in three steps that each stand
+alone. Real-time action combat and turn-based strategy are out.
+
+**Step 1 (built): Luna replays.** After naming the culprit on a replay of the Heart of
+Luna, the hunter plays cards against them before the quick-draw.
+
+- The hunter's cards: each clue found is an Evidence card, a caught lie is a Gotcha, and
+  everyone holds three basics (Stare Down, Steady Hand, Tip of the Hat). Hand of four,
+  draw one after each play.
+- The culprit plays five cards face up, one a turn: Alibi, Bluster, Alibi, Bluster,
+  Alibi. An Alibi's wording hints at the clue that contradicts it.
+- Nerve 5, Composure 3. Against an Alibi: the right Evidence is Nerve −2, a Gotcha is
+  Nerve −3, anything else costs 1 Composure. Against Bluster: Stare Down or a Gotcha is
+  Nerve −1, Steady Hand wins back 1 Composure, Tip of the Hat draws 2 more, Evidence
+  costs 1 Composure.
+- How it ends changes the draw window: Nerve broken +200 ms, cards run out with neither
+  broken no change, Composure broken −100 ms (never below 400 ms). Losing never blocks
+  the draw (owner's call).
+- Gear: the Lucky Ray-Gun deals a fifth card; the Hair-Trigger Holster gets a free card
+  before the culprit speaks. The Red Bandana's take-back is not built yet.
+- A first play of Luna and every other case are unchanged (owner's call). First replay
+  is Gearhart's deck, the next is Cookie's.
+- All numbers are starting values, to tune after the owner's play-test. 400 ms is a
+  tight draw on a phone.
+- New villain lines are text only until voiced. No new art: cards are drawn in CSS.
+
+**Known limit.** The server cannot prove reaction time and allows 1 s of slack on every
+shot, so the wider or narrower window is felt by honest players but could be dodged by
+tampering with the browser. Acceptable while the Standoff is only on replays, which pay
+nothing. Revisit before it reaches first plays.
+
+**Step 2 (not started).** Villain decks become larger pools dealt differently each
+replay; the Standoff reaches all five cases with one twist each (Mars coded cards, Venus
+fog over the hand, Saturn two-card alibis, Neptune a hidden villain card); Bluff cards
+from the optional red-herring lies; the bandana take-back.
+
+**Step 3 (not started).** The mole bounty: 3 to 5 hunters share a notebook, the server
+secretly makes one the mole, who can plant a false clue and slip a bad card into the
+shared deck; the team votes on the accusation. Played in turns, not live. Needs a way to
+recognise a hunter across devices first.
+
+**Market check (2026-11-13/14, limited search).** No game found combining investigation,
+deckbuilding and a hidden traitor. Partial relatives: Card Detective (2023) and All Will
+Rise (unreleased) for evidence-shaped decks; Unfathomable (board game) for a traitor
+spoiling a shared pool.
 
 ## Story bible: the Sterling Legacy
 

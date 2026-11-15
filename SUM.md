@@ -2,6 +2,33 @@
 
 Newest first. Owner's words are quoted exactly.
 
+## 2026-11-15: plan approved, the Standoff built for Luna replays
+
+Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
+
+### Owner's words (in order)
+
+1. > Ok so what's a good plan for this design change?
+
+### Owner's decisions (answered in the question dialog, 2026-11-15)
+
+- Losing the Standoff: "Narrower draw (Recommended)". The quick-draw still happens with less time; losing never blocks the draw.
+- First release: "Luna replays only (Recommended)". A first play of Luna and every other case stay as they are.
+- The owner approved the written plan. That approval covered building step 1 and pushing it to `main` after an In Spec review, which deploys it to the live game.
+
+### Approved gap-fills
+
+- Starting numbers: Nerve 5, Composure 3, five villain cards (Alibi, Bluster, Alibi, Bluster, Alibi); draw window +200 ms / unchanged / -100 ms with a 400 ms floor. All to be tuned after the owner's play-test.
+- Gear: Lucky Ray-Gun deals a fifth card; Hair-Trigger Holster gets a free opening card. The Red Bandana's take-back is left out of step 1.
+- The window change is felt by honest players only, because the server cannot prove reaction time. Accepted while the Standoff is on replays, which pay nothing.
+- Cards are drawn in CSS with no new art; new villain lines are text only until voiced.
+
+### Open questions for the owner
+
+- After playing it: are the numbers right, and is 400 ms too tight on a phone?
+- Go on to step 2 (all five cases, re-dealt villain decks, one twist per case)?
+- Sketch a full round of the mole bounty (step 3)?
+
 ## 2026-11-13: game direction (deckbuilder, roguelite replays, mole co-op)
 
 Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe

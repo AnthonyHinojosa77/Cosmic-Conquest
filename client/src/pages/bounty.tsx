@@ -8,6 +8,8 @@ import {
   bountyById,
   bandanaSteadies,
   drawWindowMs,
+  duelWindowMs,
+  duelStage,
   duelPress,
   isBountyUnlocked,
   lockedLabel,
@@ -34,6 +36,7 @@ import {
   ITEMS,
   shiftLetters,
   type SuitId,
+  type StandoffView,
 } from "@shared/game";
 import NotFound from "@/pages/not-found";
 import { useMusic, useVoice } from "@/lib/sound";
@@ -43,11 +46,12 @@ import { Scene } from "@/components/Scene";
 import { SceneBackdrop } from "@/components/SceneBackdrop";
 import { Sheet } from "@/components/Sheet";
 import { ArtImage } from "@/components/ArtImage";
+import { Standoff } from "@/components/Standoff";
 import { loadArt, prefetchArt } from "@/lib/art";
 import { claimSearch, clueSheetKind, drawKeyPlan, replayArmed, trackPending } from "@/lib/votes";
 
 const INK = "hsl(25,40%,15%)";
-type Stage = "briefing" | "investigate" | "accuse" | "showdown" | "done";
+type Stage = "briefing" | "investigate" | "accuse" | "standoff" | "showdown" | "done";
 
 // "Breakthrough: Professor Orson Tuttle — Where were you last night?", from what the
 // server says was caught (shared data only holds bare breakthrough ids).
@@ -813,7 +817,8 @@ function Accusation({
   caughtTopics: Record<string, string>;
   collected: boolean;
   onBack: () => void;
-  onCorrect: (suspectId: string, solution: CaseSolution) => void;
+  // `standoff`: this run has a card duel before the draw, and here is the first hand
+  onCorrect: (suspectId: string, solution: CaseSolution, standoff?: StandoffView) => void;
   // A replay's third wrong name: the notebook was torn up
   onReset: () => void;
 }) {
@@ -836,7 +841,10 @@ function Accusation({
       else if ("wrong" in result) {
         const left = result.strikesLeft === undefined ? "" : ` ${result.strikesLeft === 1 ? "One more wrong name" : `${result.strikesLeft} more wrong names`} and he tears up your notebook.`;
         setMessage(`The sheriff isn't buying it: that evidence doesn't put ${suspect.name} behind this. Check your notebook and try again.${left}`);
-      } else onCorrect(suspect.id, result);
+      } else {
+        const { standoff, ...solution } = result;
+        onCorrect(suspect.id, solution, standoff);
+      }
     } catch (err) {
       setMessage(errorMessage(err));
     } finally {
@@ -949,6 +957,7 @@ function Showdown({
   showdown,
   windowMs,
   gear,
+  standoffMs,
   bandana,
   suit,
   onDraw,
@@ -958,6 +967,8 @@ function Showdown({
   windowMs: number;
   // Owned gear that widens the draw window, by name (null if none)
   gear: string | null;
+  // How many ms the Standoff added to (or took from) the window; 0 where there was none
+  standoffMs: number;
   bandana: boolean;
   onDraw: () => void;
   suit: SuitId;
@@ -1089,7 +1100,9 @@ function Showdown({
       </div>
       <p className="text-xs text-center text-[hsl(38,20%,65%)] mt-3 pl-4 pr-16 sm:px-4">
         {isTouch ? "Tap the button" : "Click (or press Space)"} the instant you see DRAW! You have {windowMs} ms
-        {gear ? ` thanks to ${gear}.` : ". Gear from the Outfitters buys you more time."}
+        {gear ? ` thanks to ${gear}.` : "."}
+        {standoffMs > 0 ? ` The Standoff won you ${standoffMs} ms of that.` : standoffMs < 0 ? ` The Standoff cost you ${-standoffMs} ms.` : ""}
+        {gear ? "" : " Gear from the Outfitters buys you more time."}
         {bandana && !spentPardon ? " The Red Bandana forgives one jumpy draw." : ""}
         {bandanaNote(spentPardon, state) ? " The bandana forgave that jump. The next early shot fails." : ""}
       </p>
@@ -1136,8 +1149,14 @@ export default function BountyPage() {
 
   useEffect(() => () => clearTimeout(doneTimer.current), []);
 
+  // The cards are the server's to deal. With none on record, go straight to the draw.
+  const standoff = progress?.standoff;
+  useEffect(() => {
+    if (stage === "standoff" && progress && !standoff) setStage("showdown");
+  }, [stage, progress, standoff]);
+
   // Each case can have its own music (Venus's lounge); every duel gets the showdown theme.
-  useMusic(!bounty?.available ? null : stage === "showdown" ? "showdown" : (bounty.music ?? "investigate"));
+  useMusic(!bounty?.available ? null : stage === "showdown" || stage === "standoff" ? "showdown" : (bounty.music ?? "investigate"));
   useVoice(
     !bounty?.available ? null
       : stage === "briefing" ? (unlocked ? `briefing/${bounty.id}` : null)
@@ -1163,9 +1182,10 @@ export default function BountyPage() {
   if (!bounty?.available) return <NotFound />;
 
   const owned = player?.owned ?? [];
-  const windowMs = drawWindowMs(owned);
+  const baseWindowMs = drawWindowMs(owned);
+  const windowMs = duelWindowMs(owned, standoff?.outcome);
   const firstPlace = bounty.locations?.[0];
-  const backdrop = stage === "showdown" || stage === "done" ? solution?.showdown.scene ?? sceneSrc : sceneSrc;
+  const backdrop = stage === "standoff" || stage === "showdown" || stage === "done" ? solution?.showdown.scene ?? sceneSrc : sceneSrc;
 
   return (
     <div className="game-page">
@@ -1278,11 +1298,11 @@ export default function BountyPage() {
                     const { suspect: id, ...sol } = progress.accused!;
                     setSuspect(id);
                     setSolution(sol);
-                    setStage("showdown");
+                    setStage(duelStage(standoff));
                   }}
                   data-testid="button-resume-showdown"
                 >
-                  Back to the showdown
+                  {duelStage(standoff) === "standoff" ? "Back to the standoff" : "Back to the showdown"}
                 </button>
               )}
             </div>
@@ -1317,15 +1337,28 @@ export default function BountyPage() {
             caughtTopics={progress?.caught ?? {}}
             collected={player?.completedBounties.includes(bounty.id) ?? false}
             onBack={() => setStage("investigate")}
-            onCorrect={(id, sol) => {
+            onCorrect={(id, sol, hand) => {
               setSuspect(id);
               setSolution(sol);
-              setStage("showdown");
+              setStage(duelStage(hand));
             }}
             onReset={() => {
               setResetNotice("Three wrong names. The sheriff tears up your notebook, and the case file is dealt again from the top.");
               setStage("investigate");
             }}
+          />
+        )}
+
+        {stage === "standoff" && solution && standoff && (
+          <Standoff
+            bountyId={bounty.id}
+            view={standoff}
+            entries={notebookEntries(bounty, progress?.found ?? {}, progress?.caught ?? {})}
+            opponent={solution.showdown.opponent}
+            portrait={bounty.suspects?.find((s) => s.id === suspect)?.portrait}
+            windowMs={windowMs}
+            baseMs={baseWindowMs}
+            onDone={() => setStage("showdown")}
           />
         )}
 
@@ -1336,6 +1369,7 @@ export default function BountyPage() {
               showdown={solution.showdown}
               windowMs={windowMs}
               gear={gearNames(owned)}
+              standoffMs={windowMs - baseWindowMs}
               bandana={bandanaSteadies(owned)}
               suit={player?.suit ?? DEFAULT_SUIT}
               onDraw={() => {

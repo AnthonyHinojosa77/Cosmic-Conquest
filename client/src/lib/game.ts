@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { arrivalName, finishVisit, shouldLogVisit } from "@/lib/visitor";
-import { BOUNTIES, closeReplayDuel, readyWithoutInterview, withAccusation, withCaught, type PlayerProfile, type LeaderboardEntry, type SuitId, type CaseSolution, type StarMapStatus, type BountyProgress, type ClueSearch, type AureliaLocation } from "@shared/game";
+import { BOUNTIES, closeReplayDuel, readyWithoutInterview, withAccusation, withCaught, type PlayerProfile, type LeaderboardEntry, type SuitId, type CaseSolution, type StarMapStatus, type BountyProgress, type ClueSearch, type AureliaLocation, type StandoffView } from "@shared/game";
 import { nameAfterReset } from "@/lib/votes";
 
 export const PLAYER_KEY = ["/api/player"];
@@ -144,7 +144,8 @@ export async function replayBounty(bountyId: string): Promise<void> {
 // Name a suspect with a found clue as proof. Returns the case solution (showdown + outro)
 // when both are right, else null (a wrong guess costs the Clean Case seal, never credits).
 // On a replay, the third wrong name tears up the notebook: "reset", with the cache emptied.
-export type AccuseResult = CaseSolution | "reset" | { wrong: true; strikesLeft?: number };
+// A correct name on a run with a Standoff also brings the hunter's first hand.
+export type AccuseResult = (CaseSolution & { standoff?: StandoffView }) | "reset" | { wrong: true; strikesLeft?: number };
 
 export async function accuse(bountyId: string, suspect: string, proof: string, proof2?: string): Promise<AccuseResult> {
   const res = await apiRequest("POST", `/api/bounties/${bountyId}/accuse`, { suspect, proof, ...(proof2 ? { proof2 } : {}) });
@@ -159,24 +160,35 @@ export async function accuse(bountyId: string, suspect: string, proof: string, p
   }
   if (!body.correct) return { wrong: true, ...(typeof body.strikesLeft === "number" ? { strikesLeft: body.strikesLeft } : {}) };
   const solution: CaseSolution = { showdown: body.showdown, outro: body.outro };
-  await rememberAccusation(bountyId, suspect, solution);
-  return solution;
+  const standoff: StandoffView | undefined = body.standoff;
+  await rememberAccusation(bountyId, suspect, solution, standoff);
+  return standoff ? { ...solution, standoff } : solution;
 }
 
 // The progress query does not refetch on its own, so a correct name has to be written
 // into the cache or "Back to the showdown" disappears until a full reload.
 // Cancel first: an older progress response can still be in flight, and infinite
 // freshness would keep that response and drop the showdown.
-export async function rememberAccusation(bountyId: string, suspect: string, solution: CaseSolution) {
+export async function rememberAccusation(bountyId: string, suspect: string, solution: CaseSolution, standoff?: StandoffView) {
   const key = progressKey(bountyId);
   await queryClient.cancelQueries({ queryKey: key });
   queryClient.setQueryData<BountyProgress>(key, (p) => {
     if (!p) return p;
     const player = queryClient.getQueryData<PlayerProfile>(PLAYER_KEY);
     const replayDuel = p.replayDuel === true || (player?.completedBounties.includes(bountyId) ?? false);
-    return withAccusation(p, suspect, solution, replayDuel);
+    return withAccusation(p, suspect, solution, replayDuel, standoff ?? p.standoff);
   });
   await queryClient.invalidateQueries({ queryKey: key });
+}
+
+// Play one card in the Standoff. The server's reply is the whole table as it now stands.
+// `turn` is the turn the hunter saw, so a repeated tap plays only once.
+export async function playStandoffCard(bountyId: string, card: string, turn: number): Promise<StandoffView> {
+  const view = (await (await apiRequest("POST", `/api/bounties/${bountyId}/standoff/play`, { card, turn })).json()) as StandoffView;
+  const key = progressKey(bountyId);
+  await queryClient.cancelQueries({ queryKey: key });
+  queryClient.setQueryData<BountyProgress>(key, (p) => (p ? { ...p, standoff: view } : p));
+  return view;
 }
 
 export type ClaimOutcome = "paid" | "already_claimed";

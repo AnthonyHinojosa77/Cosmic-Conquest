@@ -703,6 +703,112 @@
   @media (hover: hover) { .wanted-poster:hover { transform: translateY(-4px); } }
   .wanted-poster { transition: transform 0.2s; }
 
+  /* ---- The Standoff: cards across the table before the draw --------------- */
+  .standoff {
+    display: grid;
+    gap: 14px;
+    max-width: 640px;
+    margin: 0 auto;
+    /* Room at the foot for the sound button, so the last row of cards scrolls clear of it */
+    padding: 0.5rem 0 5rem;
+  }
+  .standoff-villain { display: flex; align-items: center; gap: 12px; }
+  .standoff-mug {
+    flex: none;
+    width: 68px;
+    height: 68px;
+    border: 3px solid hsl(25 40% 18%);
+    border-radius: 6px;
+    background: hsl(38 35% 88%);
+    box-shadow: 3px 3px 0 hsl(25 40% 8% / 0.5);
+    transform: rotate(-2deg);
+  }
+  .standoff-pips { display: inline-flex; gap: 5px; }
+  .standoff-pip {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid hsl(38 35% 88%);
+    transition: background-color 0.3s;
+  }
+  .standoff-pips.is-nerve .standoff-pip.is-full { background: hsl(0 72% 52%); }
+  .standoff-pips.is-composure .standoff-pip.is-full { background: hsl(195 65% 48%); }
+
+  /* What the villain just said: a slip slapped on the table, stamped with its kind */
+  .standoff-said {
+    position: relative;
+    margin-top: 12px;
+    padding: 26px 14px 12px;
+    background: hsl(38 35% 91%);
+    color: hsl(25 40% 15%);
+    border: 4px solid hsl(25 40% 18%);
+    border-radius: 6px;
+    box-shadow: 6px 6px 0 hsl(25 40% 8% / 0.55);
+    rotate: -0.8deg;
+  }
+  .standoff-stamp {
+    position: absolute;
+    top: -16px;
+    left: 12px;
+    padding: 1px 14px 0;
+    font-family: 'Bangers', cursive;
+    font-size: 1.35rem;
+    letter-spacing: 0.08em;
+    background: hsl(0 72% 48%);
+    color: hsl(40 40% 95%);
+    border: 3px solid hsl(25 40% 18%);
+    box-shadow: 3px 3px 0 hsl(25 40% 18% / 0.3);
+    rotate: -3deg;
+  }
+  .standoff-stamp.is-bluster { background: hsl(45 80% 52%); color: hsl(25 40% 12%); }
+  .standoff-stamp.is-opening { background: hsl(195 65% 38%); }
+  .standoff-last { min-height: 1.25rem; color: hsl(45 80% 70%); }
+
+  /* The hunter's hand: notebook pages, with a spine that tells the kind of card */
+  .standoff-hand {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  @media (min-width: 640px) {
+    .standoff-hand { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  .standoff-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-height: 68px;
+    padding: 8px 10px 8px 20px;
+    text-align: left;
+    background: hsl(38 35% 90%);
+    color: hsl(25 40% 15%);
+    border: 3px solid hsl(25 40% 18%);
+    border-radius: 6px;
+    box-shadow: 3px 3px 0 hsl(25 40% 8% / 0.5);
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .standoff-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 9px;
+    background: hsl(195 65% 38%);
+  }
+  .standoff-card.is-gotcha::before { background: hsl(45 80% 52%); }
+  .standoff-card.is-basic::before { background: hsl(0 72% 48%); }
+  .standoff-card-kind { font-size: 0.7rem; color: hsl(25 15% 38%); }
+  .standoff-card-title { font-family: 'Bangers', cursive; letter-spacing: 0.04em; font-size: 1rem; line-height: 1.15; }
+  .standoff-card[aria-pressed="true"] {
+    transform: translate(-2px, -4px);
+    box-shadow: 5px 7px 0 hsl(25 40% 8% / 0.5), 0 0 0 3px hsl(45 85% 55%);
+  }
+  .standoff-card:focus-visible { outline: 3px solid hsl(45 90% 62%); outline-offset: 2px; }
+  .standoff-card:disabled { opacity: 0.6; }
+  .standoff-words { font-size: 0.95rem; line-height: 1.4; }
+
   /* ---- The quick-draw: a full-screen stage -------------------------------- */
   .duel-stage {
     position: relative;
@@ -1001,7 +1107,9 @@
     }
     .hotspot,
     .hotspot::before,
-    .retro-btn {
+    .retro-btn,
+    .standoff-card,
+    .standoff-pip {
       transition-duration: 0.01ms !important;
     }
     /* Scenes: no drift, sheen, nudging arrows, iris or sliding; pictures still

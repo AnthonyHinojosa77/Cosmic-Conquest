@@ -40,6 +40,13 @@ npm run build
   So do villains' showdown cutouts: they live in `art/showdown/<bounty id>.webp` and are
   served by `/api/art/showdown/:bounty` only after a correct accusation (a public file
   named after a suspect would reveal the culprit by existing; a test checks this).
+- The Standoff (the card duel between naming the culprit and the quick-draw): rules in
+  `server/standoff.ts` (pure functions, no database), the villains' decks and which clue
+  breaks each alibi (`brokenBy`) in `server/bounties.ts` (`STANDOFF_DECKS`), state in the
+  `standoffs` table. The browser only ever gets `viewOf(state)`: the face-up card, never
+  the deck or `brokenBy` (tests check this). `standoffApplies(bountyId, run)` is the one
+  gate: today only replays of `heart-of-luna`. The result changes the draw window through
+  `duelWindowMs` (shared), used by the duel screen and by `/shot`.
 - Scenes and pictures: use `Scene` (explorable, edge to edge, swipeable on phones),
   `ArtImage`, `Sheet` and `SceneBackdrop` rather than plain `<img>` in framed boxes (see
   DESIGN.md "Immersive scenes and loading"). After adding art run
