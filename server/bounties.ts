@@ -390,8 +390,8 @@ export type VillainCard =
 
 // One deck per variant of the case, at the same index as the clue words and the culprit.
 //
-// Writing an Alibi: it states ONE fact that can be checked, and `brokenBy` lists every clue
-// of that variant whose own words say otherwise. No clue that says otherwise may be left
+// Writing an Alibi: it states one or two facts that can be checked, and `brokenBy` lists
+// every clue of that variant whose own words say otherwise. No clue that says otherwise may be left
 // out, or a hunter is punished for a right answer. A clue that only points at the culprit,
 // without speaking to the fact the line claims, does not break it. Keep each line true to
 // what the culprit has already said when questioned (and, where the lie must be caught
@@ -419,7 +419,7 @@ export const STANDOFF_DECKS: Record<string, (readonly VillainCard[] | undefined)
       // The claim: he wiped ten minutes. The tape is blank for twelve hours.
       { kind: "alibi", text: "\"So I wiped a little tape. Ten minutes of an empty hall, a test loop. Hardly a crime, hunter.\"", brokenBy: ["robot"] },
       { kind: "bluster", text: "\"Thirty years of patents, hunter, and you come at me with a notebook? Put it away before you embarrass yourself.\"" },
-      // The claim: the cap is the cook's and the glitter is moon dust. The cap is new and
+      // The claims: the cap is the cook's, and the glitter is moon dust. The cap is new and
       // machine-stitched; the glitter is gift-shop sparkle.
       { kind: "alibi", text: "\"That is the cook's own cap behind the jukebox, and that is moon dust in his mixer. Explain those away.\"", brokenBy: ["jukebox", "mixer"] },
       { kind: "bluster", text: "\"They gave a rock a dome and my butler a corner. You would understand, if you had ever built anything.\"" },

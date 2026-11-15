@@ -1993,6 +1993,10 @@ test("standoff: a Luna replay plays cards before the draw; a first play and othe
   const shut = await post("/api/bounties/heart-of-luna/draw", {}, cookie);
   assert.equal(shut.status, 409);
   assert.match((await shut.json()).error, /Finish the standoff/);
+  // A page loaded before the Standoff existed would shoot anyway: it is told to reload.
+  const blind = await post("/api/bounties/heart-of-luna/shot", {}, cookie);
+  assert.equal(blind.status, 409);
+  assert.match((await blind.json()).error, /Reload this page/);
 
   // A refresh finds the same cards.
   assert.deepEqual((await progressOf("heart-of-luna", cookie)).standoff, standoff);
@@ -2094,21 +2098,22 @@ test("standoff: a replay of another case has no cards, and the result reaches th
   assert.equal(await saveStandoff(visitor, "heart-of-luna", mine.turn, { ...mine, outcome: "rattled" }), true);
   const right = await (await post("/api/bounties/heart-of-luna/accuse", { suspect: "gearhart", proof: "robot" }, cookie)).json();
   assert.equal(right.standoff.outcome, "rattled"); // the one on record, not a new deal
-  // 1.55 s after the draw: too late for a rattled 400 ms window and its 1 s allowance...
-  const shoot = async () => {
+  // 1.45 s after the draw is too late for a rattled 400 ms window and its 1 s allowance
+  // (the plain 500 ms window would have taken it)...
+  const shoot = async (afterMs: number) => {
     let draw = await post("/api/bounties/heart-of-luna/draw", {}, cookie);
     if (draw.status === 409) {
       await wait(850);
       draw = await post("/api/bounties/heart-of-luna/draw", {}, cookie);
     }
     assert.equal(draw.status, 200);
-    await wait(1550);
+    await wait(afterMs);
     return (await (await post("/api/bounties/heart-of-luna/shot", {}, cookie)).json()).won;
   };
-  assert.equal(await shoot(), false);
-  // ...and in time once the villain's nerve has broken (700 ms and the allowance).
+  assert.equal(await shoot(1450), false);
+  // ...and 1.6 s is in time once the villain's nerve has broken (the plain window would have missed).
   const held = (await standoffOf(visitor, "heart-of-luna"))!;
   assert.equal(await saveStandoff(visitor, "heart-of-luna", held.turn, { ...held, outcome: "broke" }), true);
   assert.equal(await saveStandoff(visitor, "heart-of-luna", held.turn + 1, held), false); // a stale save loses
-  assert.equal(await shoot(), true);
+  assert.equal(await shoot(1600), true);
 });

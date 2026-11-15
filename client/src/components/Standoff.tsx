@@ -99,9 +99,12 @@ export function Standoff({
   const [selected, setSelected] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // The accusation above was a long page; the cards start at the top of the screen.
+  // The accusation above was a long page; the cards start at the top of the screen,
+  // and the keyboard starts at the heading.
+  const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     window.scrollTo({ top: 0 });
+    headingRef.current?.focus({ preventScroll: true });
   }, []);
 
   // After a card is played it is gone from the hand, so keyboard focus moves to what
@@ -143,7 +146,7 @@ export function Standoff({
 
   return (
     <section className="standoff" data-testid="panel-standoff" data-outcome={view.outcome ?? ""}>
-      <h2 className="pulp-title text-2xl text-center text-[hsl(45,80%,58%)] tracking-wider drop-shadow-lg">The Standoff</h2>
+      <h2 ref={headingRef} tabIndex={-1} className="standoff-heading pulp-title text-2xl text-center text-[hsl(45,80%,58%)] tracking-wider drop-shadow-lg">The Standoff</h2>
 
       <div className="standoff-villain">
         {portrait && (
@@ -240,13 +243,15 @@ export function Standoff({
           </div>
 
           <p className="marker-text text-xs text-center text-[hsl(38,30%,75%)]">Tap a card to read it, then play it.</p>
-          {error && <p className="text-sm text-center text-[hsl(0,65%,65%)]" role="alert">{error}</p>}
 
           {picked && pickedFace && (
             // The card's words slide up from the bottom, so the villain's card stays in view above
             <Sheet
               title={`${KIND_NAME[picked.kind]}: ${pickedFace.title}`}
-              onClose={() => setSelected(null)}
+              onClose={() => {
+                setSelected(null);
+                setError(null);
+              }}
               tone={KIND_TONE[picked.kind].tone}
               titleColor={KIND_TONE[picked.kind].title}
               testId="sheet-standoff-card"
@@ -261,6 +266,9 @@ export function Standoff({
               )}
               {/* Stays at the foot of the sheet however long the card's words run */}
               <div className="standoff-play">
+                {error && (
+                  <p className="text-sm text-[hsl(0,65%,40%)] mb-2" role="alert" data-testid="text-standoff-error">{error}</p>
+                )}
                 <button
                   ref={playRef}
                   className="retro-btn gold w-full disabled:opacity-50 disabled:cursor-not-allowed"

@@ -406,6 +406,8 @@ export function registerGameRoutes(app: Express) {
     if (started === null) return res.status(409).json({ error: "Name the culprit before you collect" });
     const profile = await getProfile(req.visitorId!);
     const standoff = await standoffFor(req.visitorId!, bounty, await caseRun(req.visitorId!, bounty.id));
+    // Only a page loaded before the Standoff existed gets here with the cards unplayed.
+    if (standoff && !standoff.outcome) return res.status(409).json({ error: "The Standoff comes before the draw now. Reload this page to play your cards." });
     res.json(await resolveShot(req.visitorId!, bounty.id, duelWindowMs(profile.owned, standoff?.outcome), SHOT_GRACE_MS, SHOT_FLOOR_MS));
   });
 

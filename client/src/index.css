@@ -808,7 +808,8 @@
   .standoff-card:focus-visible { outline: 3px solid hsl(45 90% 62%); outline-offset: 2px; }
   .standoff-card:disabled { opacity: 0.6; }
   .standoff-words { font-size: 0.95rem; line-height: 1.4; }
-  .standoff-last:focus { outline: none; }
+  .standoff-last:focus,
+  .standoff-heading:focus { outline: none; }
   /* The Play button rides the bottom of the sheet. On phones the sound button sits in
      that corner, so the row stops short of it. */
   .standoff-play {

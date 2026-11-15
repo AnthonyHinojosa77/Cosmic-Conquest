@@ -76,9 +76,9 @@ Luna, the hunter plays cards against them before the quick-draw.
   before the culprit speaks. The Red Bandana's take-back is not built yet.
 - A first play of Luna and every other case are unchanged (owner's call). First replay
   is Gearhart's deck, the next is Cookie's.
-- An Alibi states one fact that can be checked, and every clue whose own words say
-  otherwise must break it (`brokenBy`): a hunter is never punished for a right answer.
-  A clue that only points at the culprit, without speaking to that fact, does not.
+- An Alibi states one or two facts that can be checked, and every clue whose own words
+  say otherwise must break it (`brokenBy`): a hunter is never punished for a right answer.
+  A clue that only points at the culprit, without speaking to those facts, does not.
   Recheck every Alibi against every clue of its variant whenever either is reworded
   (the rule is written out above `STANDOFF_DECKS` in `server/bounties.ts`).
 - All numbers are starting values, to tune after the owner's play-test. 400 ms is a
