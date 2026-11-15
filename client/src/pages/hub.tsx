@@ -7,6 +7,7 @@ import { useTapWord } from "@/lib/device";
 import { Scene } from "@/components/Scene";
 import { SceneBackdrop } from "@/components/SceneBackdrop";
 import { usePlayer } from "@/lib/game";
+import { FEED_REFRESH_MS } from "@/lib/queryClient";
 import { BOUNTIES, chartLine, fragmentsFor, hunterRank, hubBadgeState, tickerLines, type WireEntry } from "@shared/game";
 
 // The Bounty Office entrance, with the hunter's standing once they've started playing.
@@ -90,7 +91,7 @@ export default function Hub() {
 
   const { data: recentVisitors, isError: visitorsError, refetch: refetchVisitors } = useQuery<Visitor[]>({
     queryKey: ["/api/visitors"],
-    refetchInterval: 8000,
+    refetchInterval: FEED_REFRESH_MS,
   });
   // A failed wire just leaves the arrivals; it is decoration, not a blocker.
   const { data: wire } = useQuery<WireEntry[]>({ queryKey: ["/api/wire"], refetchInterval: 30000 });

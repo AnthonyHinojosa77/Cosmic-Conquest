@@ -881,6 +881,35 @@ export function claimWithoutShowdown(hasReceipt: boolean): "already_collected" |
   return hasReceipt ? "already_collected" : "name_the_culprit";
 }
 
+// The public feeds (postcards, predictions, community menu) return this many entries at
+// most: the newest postcards, and the most-voted predictions and dishes (newest first
+// among equals). Every open page re-reads its feed, so an uncapped feed grows without end.
+export const FEED_LIMIT = 50;
+
+// The heading beside a feed: how many there are, or that only the cap is shown.
+export function feedCount(shown: number, capped: "latest" | "top"): string {
+  return shown >= FEED_LIMIT ? `${capped} ${FEED_LIMIT}` : String(shown);
+}
+
+// A failed request, as words for the player. `raw` is the thrown message: "<status>: <body>"
+// from the API helper, or the browser's own text when the request never arrived. The
+// game's own errors are JSON with an `error` line; anything else (a host's HTML error
+// page, a database message) is never shown.
+export function apiErrorMessage(raw: string): string {
+  const status = Number(/^(\d{3}):/.exec(raw)?.[1] ?? 0);
+  if (!status) return "Couldn't reach the game. Check your connection.";
+  try {
+    const body = JSON.parse(raw.replace(/^\d{3}:\s*/, ""));
+    if (typeof body?.error === "string" && body.error.trim()) return body.error;
+  } catch {
+    // not the game's JSON
+  }
+  if (status === 429) return "Easy there, hunter. Too many requests. Try again in a few minutes.";
+  return status >= 500
+    ? "The game's server is having trouble. Give it a moment."
+    : "That didn't go through.";
+}
+
 export function creditsLabel(credits: number | null, failed = false): string {
   if (credits === null && failed) return "? credits";
   return credits === null ? "…" : `${credits.toLocaleString()} credits`;

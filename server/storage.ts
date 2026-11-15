@@ -5,6 +5,7 @@ import {
   type Visitor, type InsertVisitor, visitors,
   type Vote, type InsertVote, votes,
 } from "../shared/schema.js";
+import { FEED_LIMIT } from "../shared/game.js";
 import type { Client } from "@libsql/client";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -79,6 +80,7 @@ const SCHEMA = `
     \`votes\` integer DEFAULT 0 NOT NULL,
     \`created_at\` text NOT NULL
   );
+  CREATE INDEX IF NOT EXISTS \`predictions_votes_id_idx\` ON \`predictions\` (\`votes\`,\`id\`);
   CREATE TABLE IF NOT EXISTS \`menu_items\` (
     \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     \`visitor_name\` text NOT NULL,
@@ -87,6 +89,7 @@ const SCHEMA = `
     \`votes\` integer DEFAULT 0 NOT NULL,
     \`created_at\` text NOT NULL
   );
+  CREATE INDEX IF NOT EXISTS \`menu_items_votes_id_idx\` ON \`menu_items\` (\`votes\`,\`id\`);
   CREATE TABLE IF NOT EXISTS \`visitors\` (
     \`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
     \`visitor_id\` text NOT NULL,
@@ -199,12 +202,20 @@ export async function upgradeColumns(c: Pick<Client, "execute">): Promise<void> 
   }
 }
 
-let ready: Promise<void> | undefined;
+// Run `start` once and share its result, but forget a failure so the next caller tries
+// again. (Keeping a rejected promise would fail every later call for good.)
+export function onceUntilItWorks<T>(start: () => Promise<T>): () => Promise<T> {
+  let going: Promise<T> | undefined;
+  return () => (going ??= start().catch((err) => {
+    going = undefined;
+    throw err;
+  }));
+}
 
 // Resolves once the schema exists. Runs once per process (once per warm instance
 // on serverless hosting); every request waits on it before touching the database.
-export function dbReady(): Promise<void> {
-  return (ready ??= (async () => {
+// If the database can't be reached, the next request tries again.
+export const dbReady: () => Promise<void> = onceUntilItWorks(async () => {
     await connect();
     if (!useRemote) await client!.execute("PRAGMA journal_mode = WAL");
     await client!.executeMultiple(SCHEMA);
@@ -219,8 +230,7 @@ export function dbReady(): Promise<void> {
     } catch (err) {
       console.warn("Could not create votes unique index (existing duplicate votes?):", err);
     }
-  })());
-}
+});
 
 // For the /health check: is the database answering?
 export async function pingDb(): Promise<boolean> {
@@ -269,7 +279,7 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   getPostcards(): Promise<Postcard[]> {
-    return db.select().from(postcards).orderBy(desc(postcards.id)).all();
+    return db.select().from(postcards).orderBy(desc(postcards.id)).limit(FEED_LIMIT).all();
   }
 
   createPostcard(postcard: InsertPostcard): Promise<Postcard> {
@@ -277,7 +287,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   getPredictions(): Promise<Prediction[]> {
-    return db.select().from(predictions).orderBy(desc(predictions.votes)).all();
+    return db.select().from(predictions).orderBy(desc(predictions.votes), desc(predictions.id)).limit(FEED_LIMIT).all();
   }
 
   createPrediction(prediction: InsertPrediction): Promise<Prediction> {
@@ -294,7 +304,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   getMenuItems(): Promise<MenuItem[]> {
-    return db.select().from(menuItems).orderBy(desc(menuItems.votes)).all();
+    return db.select().from(menuItems).orderBy(desc(menuItems.votes), desc(menuItems.id)).limit(FEED_LIMIT).all();
   }
 
   createMenuItem(item: InsertMenuItem): Promise<MenuItem> {

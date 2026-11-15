@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, FEED_REFRESH_MS } from "@/lib/queryClient";
+import { feedCount } from "@shared/game";
 import { getVotedIds, rememberVote } from "@/lib/visitor";
 import { errorMessage, useCallsignName } from "@/lib/game";
 import { keepDraft, showEmptyError, trackVote } from "@/lib/votes";
@@ -79,7 +80,7 @@ export default function Expo() {
 
   const { data: predictions = [], isError: predictionsError, refetch: refetchPredictions } = useQuery<Prediction[]>({
     queryKey: ["/api/predictions"],
-    refetchInterval: 5000,
+    refetchInterval: FEED_REFRESH_MS,
   });
 
   const draft = useRef({ name, prediction });
@@ -297,7 +298,7 @@ export default function Expo() {
                   {predictions.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <h4 className="pulp-title text-xs text-[hsl(0,72%,48%)] tracking-wider">
-                        Predictions ({predictions.length})
+                        Predictions ({feedCount(predictions.length, "top")})
                       </h4>
                       {predictions.map(pred => (
                         <div key={pred.id} className="comic-panel p-3 bg-[hsl(38,35%,88%)] flex items-start gap-3" data-testid={`card-prediction-${pred.id}`}>

@@ -40,6 +40,11 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+// How often an open page re-reads a public feed (postcards, predictions, the menu, the
+// hub's arrivals). Your own post shows at once; this is only for other people's.
+// Pauses while the tab is in the background.
+export const FEED_REFRESH_MS = 25_000;
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

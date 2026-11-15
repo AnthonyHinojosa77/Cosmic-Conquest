@@ -2,6 +2,35 @@
 
 Newest first. Owner's words are quoted exactly.
 
+## 2026-11-15 (later): the Standoff went live; survey of other work; stability fixes chosen
+
+Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
+
+### Owner's words (in order)
+
+1. > I don't have time to play right now so find other important things to work on here
+
+### Owner's decisions (answered in the question dialog, 2026-11-15)
+
+- Asked which of four pieces of work to take on (stability fixes, a keep-your-hunter code, link preview and pitch, abuse protection), the owner chose only "Stability fixes (Recommended)". The question said each chosen piece would be built, tested, independently reviewed and then pushed to the live game.
+- Earlier the same day the owner approved deleting the side branch `claude/confident-pasteur-np8n7a` once its commits were on `main`. The deletion was refused from the session three times, so the branch still exists on GitHub and was reused for the stability fixes.
+
+### What happened
+
+- The Standoff (step 1) was pushed to `main` at commit `f343df0` after a fourth independent review came back In Spec, and the live site served that build.
+- A survey of the project found the items now listed in GAME_PLAN.md under "Survey of 2026-11-15: fixed, and still open".
+
+### Approved gap-fills
+
+- The two voted feeds (predictions, community menu) show the most-voted 50, newest first among equals, not the newest 50, so a flood of new posts cannot push voted ones off the page. Postcards show the newest 50.
+- The library update was limited to `body-parser` (and what it depends on), not every available update.
+
+### Open questions for the owner
+
+- The play-test questions from the entry below still stand (difficulty numbers, the 400 ms draw, guessable villain lines).
+- Which of the still-open survey items to do next, if any: keep-your-hunter code, link preview and pitch, abuse protection.
+- Owner-only items: whether the public repository (which holds every case's answers) should be made private; Gearhart's duel pose art; voice recordings for the newer lines; approving the music by ear; removing the test hunter from the live leaderboard.
+
 ## 2026-11-15: plan approved, the Standoff built for Luna replays
 
 Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe

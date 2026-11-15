@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ContractLink } from "@/components/ContractLink";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, FEED_REFRESH_MS } from "@/lib/queryClient";
 import { BackButton } from "@/components/BackButton";
 import { errorMessage, useCallsignName, usePlayer } from "@/lib/game";
-import { cosmoLine } from "@shared/game";
+import { cosmoLine, feedCount } from "@shared/game";
 import { keepDraft, showEmptyError } from "@/lib/votes";
 import { useDiscovered, useRestoreFocus } from "@/lib/discovered";
 import type { Postcard } from "@shared/schema";
@@ -80,7 +80,7 @@ export default function Voyages() {
 
   const { data: postcards = [], isError: postcardsError, refetch: refetchPostcards } = useQuery<Postcard[]>({
     queryKey: ["/api/postcards"],
-    refetchInterval: 5000,
+    refetchInterval: FEED_REFRESH_MS,
   });
 
   const draft = useRef({ name, message, selectedDest });
@@ -292,7 +292,7 @@ export default function Voyages() {
                   {postcards.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <h4 className="pulp-title text-xs text-[hsl(0,72%,48%)] tracking-wider">
-                        Postcard Wall ({postcards.length} sent)
+                        Postcard Wall ({feedCount(postcards.length, "latest")} sent)
                       </h4>
                       {postcards.map(pc => (
                         <div key={pc.id} className="comic-panel p-3 bg-[hsl(38,35%,88%)]" data-testid={`card-postcard-${pc.id}`}>

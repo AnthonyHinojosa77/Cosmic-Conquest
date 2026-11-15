@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { arrivalName, finishVisit, shouldLogVisit } from "@/lib/visitor";
-import { BOUNTIES, closeReplayDuel, readyWithoutInterview, withAccusation, withCaught, type PlayerProfile, type LeaderboardEntry, type SuitId, type CaseSolution, type StarMapStatus, type BountyProgress, type ClueSearch, type AureliaLocation, type StandoffView } from "@shared/game";
+import { BOUNTIES, apiErrorMessage, closeReplayDuel, readyWithoutInterview, withAccusation, withCaught, type PlayerProfile, type LeaderboardEntry, type SuitId, type CaseSolution, type StarMapStatus, type BountyProgress, type ClueSearch, type AureliaLocation, type StandoffView } from "@shared/game";
 import { nameAfterReset } from "@/lib/votes";
 
 export const PLAYER_KEY = ["/api/player"];
@@ -78,15 +78,9 @@ function onProfile(profile: PlayerProfile) {
   queryClient.invalidateQueries({ queryKey: AURELIA_KEY }); // a new piece may earn the invitation
 }
 
-// "402: {...}" -> the server's error message, for friendly display
+// "402: {...}" -> the server's error message, for friendly display. Never raw server text.
 export function errorMessage(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err);
-  const body = raw.replace(/^\d+:\s*/, "");
-  try {
-    return JSON.parse(body).error ?? body;
-  } catch {
-    return body;
-  }
+  return apiErrorMessage(err instanceof Error ? err.message : String(err));
 }
 
 export function useUpdatePlayer() {

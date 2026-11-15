@@ -486,6 +486,39 @@ style reference; sources in the Drive folder.
 - **Animation:** the showdown and scenes stay mostly still, like
   storybook panels, rather than Cuphead-style frame-by-frame animation.
 
+## Survey of 2026-11-15: fixed, and still open
+
+Fixed the same day (owner's pick, "stability fixes"):
+- The three public feeds return at most 50 entries (`FEED_LIMIT`): the newest postcards,
+  and the most-voted predictions and dishes, newest first among equals. The voted feeds
+  read through an index, so a flooded table costs 50 row reads, not the whole table.
+- Open pages re-read a feed every 25 seconds, not every 5 (`FEED_REFRESH_MS`). A player's
+  own post still shows at once.
+- A database that can't be reached at start-up is tried again by the next request
+  (before, that server instance answered errors until it was recycled).
+- Errors are always the game's own `{ error }` JSON with nothing internal in them, and
+  the browser shows a plain line, never a host's error page or a database message.
+- `body-parser` updated to 2.4.0 (a denial-of-service fix).
+
+Still open, not started (the owner has seen the list):
+- **Keep-your-hunter code.** A hunter is one browser cookie. Clearing cookies, a new
+  phone, or "Add to Home Screen" on an iPhone (which keeps its own cookies) starts a new
+  hunter, and the game's install tip does not say so. A code the player can copy would
+  fix it, and the mole bounty needs the same thing.
+- **Rate limits on Vercel** are counted per server instance and reset on a cold start, so
+  they hold back far less than their numbers say. They need a shared store.
+- **Votes without a cookie** each count as a new voter.
+- **No moderation.** Posts on the public pages cannot be hidden or deleted, names are
+  free text, and the arrivals log accepts any `world` and `action` text.
+- **Throwaway profiles** can script first-run answers onto the leaderboard and the wire.
+- **Link preview.** `client/index.html` has no preview picture, and its description still
+  mentions a "Time Capsule".
+- **Phone Back** leaves a case rather than closing the open sheet or stage.
+- **Libraries:** `drizzle-orm` below 0.45.2 has an advisory that this code does not
+  trigger (no identifiers built from user input); the upgrade is a breaking one.
+- **The repository is public** and `server/bounties.ts` holds every answer (already an
+  open owner question below).
+
 ## Carried over from the 2026-10-04 handoff (moved 2026-11-09)
 
 Ruled out (do not retry):

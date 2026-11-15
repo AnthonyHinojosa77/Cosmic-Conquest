@@ -50,8 +50,8 @@ export function createApp(): Express {
     const start = Date.now();
     const path = req.path;
 
-    // Response bodies are deliberately not logged: polled GETs return whole
-    // tables every few seconds, and bodies contain user-submitted content.
+    // Response bodies are deliberately not logged: the public feeds are polled by
+    // every open page, and bodies contain user-submitted content.
     res.on("finish", () => {
       if (path.startsWith("/api")) {
         log(`${req.method} ${path} ${res.statusCode} in ${Date.now() - start}ms`);
@@ -69,20 +69,32 @@ export function createApp(): Express {
 
   registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    console.error("Internal Server Error:", err);
-
-    if (res.headersSent) {
-      return next(err);
-    }
-
-    return res.status(status).json({ message });
+  // An /api path no route answered: say so in JSON, not Express's HTML page.
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: "No such endpoint" });
   });
 
+  app.use(sendError);
+
   return app;
+}
+
+// Every failure answers in the shape the game reads: { error }. What went wrong
+// inside the server (a database message, a stack) is logged, never sent.
+export function sendError(err: any, _req: Request, res: Response, next: NextFunction) {
+  const status = Number(err?.status || err?.statusCode) || 500;
+
+  console.error("Internal Server Error:", err);
+
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  const error = status >= 500
+    ? "Something went wrong on our side. Try again in a moment."
+    : status === 413 ? "That's too much to send at once."
+    : "The game couldn't read that request.";
+  return res.status(status).json({ error });
 }
 
 declare module "http" {

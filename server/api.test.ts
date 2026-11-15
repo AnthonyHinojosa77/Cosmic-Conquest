@@ -2117,3 +2117,154 @@ test("standoff: a replay of another case has no cards, and the result reaches th
   assert.equal(await saveStandoff(visitor, "heart-of-luna", held.turn + 1, held), false); // a stale save loses
   assert.equal(await shoot(1600), true);
 });
+
+// --- Stability: capped feeds, a database start that retries, errors in plain words ---
+
+test("feeds: the public pages get at most 50 entries, read through an index", async () => {
+  const { storage } = await import("./storage.js");
+  const { FEED_LIMIT, feedCount } = await import("../shared/game.js");
+  assert.equal(FEED_LIMIT, 50);
+
+  // Postcards: the newest 50, newest first.
+  const cards = [];
+  for (let i = 0; i < FEED_LIMIT + 5; i++) cards.push(await storage.createPostcard({ visitorName: "Flood", destination: "Mars", message: `card ${i}` }));
+  const wall = await (await fetch(base + "/api/postcards")).json();
+  assert.equal(wall.length, FEED_LIMIT);
+  assert.equal(wall[0].id, cards[cards.length - 1].id);
+  assert.deepEqual(wall.map((c: { id: number }) => c.id), [...wall].map((c: { id: number }) => c.id).sort((a, b) => b - a));
+  assert.equal(wall.some((c: { id: number }) => c.id === cards[0].id), false);
+
+  // Predictions and dishes: the most-voted 50, newest first among equals. A voted entry
+  // stays on the list however many newer ones arrive.
+  const first = await storage.createPrediction({ visitorName: "Flood", prediction: "voted, then buried" });
+  const voted = await storage.votePrediction(first.id, "feed-test-voter");
+  assert.equal(voted.status, "ok");
+  const later = [];
+  for (let i = 0; i < FEED_LIMIT + 5; i++) later.push(await storage.createPrediction({ visitorName: "Flood", prediction: `prediction ${i}` }));
+  const predictions = await (await fetch(base + "/api/predictions")).json();
+  assert.equal(predictions.length, FEED_LIMIT);
+  assert.ok(predictions.some((p: { id: number }) => p.id === first.id), "a voted prediction is not pushed out by newer ones");
+  for (let i = 1; i < predictions.length; i++) {
+    const a = predictions[i - 1], b = predictions[i];
+    assert.ok(a.votes > b.votes || (a.votes === b.votes && a.id > b.id), `order at ${i}`);
+  }
+  assert.equal(predictions.filter((p: { votes: number }) => p.votes === 0)[0].id, later[later.length - 1].id);
+
+  for (let i = 0; i < FEED_LIMIT + 5; i++) await storage.createMenuItem({ visitorName: "Flood", dishName: `dish ${i}`, description: "x" });
+  const menu = await (await fetch(base + "/api/menu-items")).json();
+  assert.equal(menu.length, FEED_LIMIT);
+  for (let i = 1; i < menu.length; i++) {
+    const a = menu[i - 1], b = menu[i];
+    assert.ok(a.votes > b.votes || (a.votes === b.votes && a.id > b.id), `menu order at ${i}`);
+  }
+
+  // The two voted feeds are answered from their index: 50 rows read, not the whole table.
+  const { createClient } = await import("@libsql/client");
+  const direct = createClient({ url: "file:" + process.env.DATABASE_PATH });
+  for (const table of ["predictions", "menu_items"]) {
+    const plan = await direct.execute(`EXPLAIN QUERY PLAN SELECT * FROM ${table} ORDER BY votes DESC, id DESC LIMIT 50`);
+    const detail = plan.rows.map((r) => String(r.detail)).join(" | ");
+    assert.match(detail, new RegExp(`USING INDEX ${table}_votes_id_idx`), detail);
+    assert.equal(/TEMP B-TREE/.test(detail), false, detail);
+  }
+  direct.close();
+
+  // The heading says when it is showing the cap rather than a count.
+  assert.equal(feedCount(0, "latest"), "0");
+  assert.equal(feedCount(49, "top"), "49");
+  assert.equal(feedCount(50, "latest"), "latest 50");
+  assert.equal(feedCount(50, "top"), "top 50");
+  for (const [page, call] of [["voyages.tsx", 'feedCount(postcards.length, "latest")'], ["expo.tsx", 'feedCount(predictions.length, "top")'], ["diner.tsx", 'feedCount(communityItems.length, "top")']]) {
+    assert.ok(readFileSync(path.join("client/src/pages", page), "utf8").includes(call), page);
+  }
+});
+
+test("feeds: open pages refresh every 25 seconds, not every 5", async () => {
+  const client = readFileSync("client/src/lib/queryClient.ts", "utf8");
+  assert.match(client, /export const FEED_REFRESH_MS = 25_000;/);
+  for (const page of ["voyages.tsx", "expo.tsx", "diner.tsx", "hub.tsx"]) {
+    const source = readFileSync(path.join("client/src/pages", page), "utf8");
+    assert.match(source, /refetchInterval: FEED_REFRESH_MS/, page);
+    for (const interval of source.matchAll(/refetchInterval: (\d+)/g)) assert.ok(Number(interval[1]) >= 25000, `${page} polls every ${interval[1]} ms`);
+  }
+});
+
+test("database: a failed start is tried again by the next request, and a good one runs once", async () => {
+  const { onceUntilItWorks } = await import("./storage.js");
+  let runs = 0;
+  const start = onceUntilItWorks(async () => {
+    runs++;
+    if (runs === 1) throw new Error("database unreachable");
+    await wait(20);
+    return "ready";
+  });
+  await assert.rejects(start(), /unreachable/);
+  // Two requests arriving together share the one retry...
+  assert.deepEqual(await Promise.all([start(), start()]), ["ready", "ready"]);
+  assert.equal(runs, 2);
+  // ...and nothing runs again once it has worked.
+  assert.equal(await start(), "ready");
+  assert.equal(runs, 2);
+});
+
+test("errors: the server answers in the game's own JSON and keeps its insides to itself", async () => {
+  const { createApp, sendError } = await import("./app.js");
+  const whole = createServer(createApp());
+  await new Promise<void>((resolve) => whole.listen(0, "127.0.0.1", resolve));
+  const at = `http://127.0.0.1:${(whole.address() as AddressInfo).port}`;
+  try {
+    // A path no route answers: JSON, not Express's HTML page.
+    const missing = await fetch(at + "/api/no-such-thing");
+    assert.equal(missing.status, 404);
+    assert.match(missing.headers.get("content-type") ?? "", /application\/json/);
+    assert.deepEqual(await missing.json(), { error: "No such endpoint" });
+    assert.equal((await fetch(at + "/api/no-such-thing", { method: "POST" })).status, 404);
+    // A body that isn't JSON: a plain line, not the parser's message.
+    const garbled = await fetch(at + "/api/postcards", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{not json" });
+    assert.equal(garbled.status, 400);
+    assert.deepEqual(await garbled.json(), { error: "The game couldn't read that request." });
+    // Real routes still work through the whole app.
+    assert.equal((await fetch(at + "/api/postcards")).status, 200);
+  } finally {
+    whole.close();
+  }
+
+  // Anything that breaks inside: logged, and the player gets one calm line.
+  const sent: { status?: number; body?: unknown } = {};
+  const res = { headersSent: false, status(code: number) { sent.status = code; return this; }, json(body: unknown) { sent.body = body; return this; } };
+  const quiet = console.error;
+  console.error = () => undefined;
+  try {
+    sendError(new Error("UNIQUE constraint failed: votes.visitor_id, votes.item_type"), {} as never, res as never, () => undefined);
+    assert.equal(sent.status, 500);
+    assert.deepEqual(sent.body, { error: "Something went wrong on our side. Try again in a moment." });
+    sendError(Object.assign(new Error("request entity too large"), { status: 413 }), {} as never, res as never, () => undefined);
+    assert.equal(sent.status, 413);
+    assert.deepEqual(sent.body, { error: "That's too much to send at once." });
+  } finally {
+    console.error = quiet;
+  }
+});
+
+test("errors: the game shows its own messages and never raw server text", async () => {
+  const { apiErrorMessage } = await import("../shared/game.js");
+  // The game's own errors pass through.
+  assert.equal(apiErrorMessage('409: {"error":"Win the showdown first"}'), "Win the showdown first");
+  assert.equal(apiErrorMessage('429: {"error":"Easy there, hunter — too many actions. Try again in a few minutes."}'), "Easy there, hunter — too many actions. Try again in a few minutes.");
+  // A host's error page, a bare status, or the old { message } shape never reach the player.
+  assert.equal(apiErrorMessage("502: <html><head><title>502 Bad Gateway</title></head></html>"), "The game's server is having trouble. Give it a moment.");
+  assert.equal(apiErrorMessage('500: {"message":"SQLITE_BUSY: database is locked"}'), "The game's server is having trouble. Give it a moment.");
+  assert.equal(apiErrorMessage("504: Gateway Timeout"), "The game's server is having trouble. Give it a moment.");
+  assert.equal(apiErrorMessage("404: <!DOCTYPE html><pre>Cannot POST /api/x</pre>"), "That didn't go through.");
+  assert.equal(apiErrorMessage('400: {"error":""}'), "That didn't go through.");
+  assert.equal(apiErrorMessage("429: Too Many Requests"), "Easy there, hunter. Too many requests. Try again in a few minutes.");
+  // The request never arrived (each browser words this differently).
+  for (const offline of ["Failed to fetch", "Load failed", "NetworkError when attempting to fetch resource."]) {
+    assert.equal(apiErrorMessage(offline), "Couldn't reach the game. Check your connection.");
+  }
+  for (const shown of ["<html", "SQLITE", "Bad Gateway", "Cannot POST"]) {
+    for (const raw of ["502: <html><title>502 Bad Gateway</title>", '500: {"message":"SQLITE_BUSY"}', "404: Cannot POST /api/x"]) {
+      assert.equal(apiErrorMessage(raw).includes(shown), false);
+    }
+  }
+});

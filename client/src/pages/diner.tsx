@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, FEED_REFRESH_MS } from "@/lib/queryClient";
+import { feedCount } from "@shared/game";
 import { BackButton } from "@/components/BackButton";
 import { getVotedIds, rememberVote } from "@/lib/visitor";
 import { errorMessage, useCallsignName } from "@/lib/game";
@@ -78,7 +79,7 @@ export default function Diner() {
 
   const { data: communityItems = [], isError: menuError, refetch: refetchMenu } = useQuery<MenuItem[]>({
     queryKey: ["/api/menu-items"],
-    refetchInterval: 5000,
+    refetchInterval: FEED_REFRESH_MS,
   });
 
   const draft = useRef({ name, dishName, description });
@@ -315,7 +316,7 @@ export default function Diner() {
                   {communityItems.length > 0 && (
                     <div className="mt-4 space-y-2">
                       <h4 className="pulp-title text-xs text-[hsl(195,65%,38%)] tracking-wider">
-                        Community Menu ({communityItems.length})
+                        Community Menu ({feedCount(communityItems.length, "top")})
                       </h4>
                       {communityItems.map(item => (
                         <div key={item.id} className="comic-panel p-3 bg-[hsl(38,35%,88%)] flex items-start gap-3" data-testid={`card-menu-${item.id}`}>
