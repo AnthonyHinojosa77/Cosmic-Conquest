@@ -43,7 +43,7 @@ Every brief has the same sections, in this order, so the reader always knows whe
 
 Design:
 
-- Load `frontend-design` (and the host's design rules, such as the toolkit's `instructions/design.md`) before designing. Use the project's own brand when it has one.
+- Load `frontend-design` if available, and follow the project's own design guidance and brand when present. This public skill does not require private toolkit guides.
 - Use graphics wherever they make the project easier to see: a map of the parts, a timeline or progress track, status at a glance, flows between components. Draw them as inline SVG or HTML and CSS so they stay sharp on any screen. Every graphic needs text labels; never rely on color alone.
 - Plain words only. Define any technical term in plain words the first time it appears. Short sections, generous spacing, comfortable type.
 - One self-contained file: inline CSS and SVG, no external scripts, no tracking, no secrets, no build step. The only outside resource allowed is a web-font stylesheet from Google Fonts, always with system font fallbacks so the page reads well without it. It must read well at phone width (about 390px) and on a desktop screen, with no sideways scrolling, in light and dark settings.
@@ -64,6 +64,6 @@ Open the page at phone width and at desktop width and look at it (a headless bro
 
 ## Dated updates and finishing a plan
 
-After any work that changes the project, add a short dated entry: what happened, where things stand, what is next. Keep it generalized, summarized, easy to read, visually clear and forward facing for the owner and agents. Update stale status rather than piling entries over it. Keep personal goals out of project briefs; preserve the existing project-goal step above. A smaller model drafts entries and the working agent proofreads against the owner's words and agreements.
+When refreshing the brief after project changes, add a short dated entry: what happened, where things stand, what is next. Keep it generalized, summarized, easy to read, visually clear and forward facing for the owner and agents. Update stale status rather than piling entries over it. Keep personal goals out of project briefs; preserve the existing project-goal step above. Check entries against the owner's words and agreements.
 
-A plan is finished only with evidence that its agreed result happened (a test result, live page or merged change). Record that evidence in the brief; an empty next-steps list is not proof. Report the completed result and agreed remaining work. Only at the verified end of an agreed project plan, honor the owner's explicit standing request as an authorized exception to the ordinary no-unsolicited-alternatives rule: ask what they want to do next and give three researched recommendations explaining what each is, how it advances the goals, and what it takes. This trigger does not apply to every edit, subtask or status update. Show the brief by link, never by pasting its text. Copying rules alone does not rewrite other project briefs.
+A plan is finished only with evidence that its agreed result happened (a test result, live page or merged change). Record that evidence in the brief; an empty next-steps list is not proof. Report the completed result and agreed remaining work. Give recommendations for new work only when the user requests them; this skill does not establish a standing request. Show the brief by link, never by pasting its text. Copying rules alone does not rewrite other project briefs.
