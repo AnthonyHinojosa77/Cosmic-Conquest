@@ -23,7 +23,7 @@ import {
   type ClueSearch,
 } from "../shared/game.js";
 import { aureliaFor } from "./aurelia.js";
-import { gameLimiter, clueLimiter, codeLimiter, fromThisSite, setVisitorCookie } from "./middleware.js";
+import { gameLimiter, clueLimiter, codeLimiter, ownPageOnly, setVisitorCookie } from "./middleware.js";
 import { secretFor, solutionFor, testimonyFor, standoffDeckFor, type Solution } from "./bounties.js";
 import { standoffApplies, dealStandoff, playCard, viewOf, type StandoffState } from "./standoff.js";
 import {
@@ -203,18 +203,18 @@ export function registerGameRoutes(app: Express) {
   // A hunter is one browser's cookie. A code lets the player bring the same hunter back
   // in another browser or on another device: there, entering the code points that
   // browser's cookie at this hunter. Only the hunter's own browser is ever shown the code.
-  const elsewhere = (res: Response) => res.status(403).json({ error: "Open the game itself to do that." });
+  // Each route first turns away anything another site caused (before any limiter, so such
+  // requests can't use up a visitor's tries).
 
   // The hunter's code (made the first time it is asked for).
-  app.post("/api/player/code", gameLimiter, async (req, res) => {
-    if (!fromThisSite(req, false)) return elsewhere(res);
+  app.post("/api/player/code", ownPageOnly(false), gameLimiter, async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json({ code: showHunterCode(await keepHunterCode(req.visitorId!)) });
   });
 
-  // A new code. The old one stops working.
-  app.post("/api/player/code/new", gameLimiter, async (req, res) => {
-    if (!fromThisSite(req, false)) return elsewhere(res);
+  // A new code. The old one stops working. (A browser that already used the old code
+  // is that hunter by its cookie and stays so: a new code does not sign it out.)
+  app.post("/api/player/code/new", ownPageOnly(false), gameLimiter, async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json({ code: showHunterCode(await keepHunterCode(req.visitorId!, true)) });
   });
@@ -222,8 +222,7 @@ export function registerGameRoutes(app: Express) {
   // Enter a code: this browser becomes that hunter. The hunter this browser had is not
   // merged or deleted; it is left behind, reachable only by its own code. A wrong code
   // says nothing about why, and wrong tries are limited.
-  app.post("/api/player/restore", codeLimiter, async (req, res) => {
-    if (!fromThisSite(req, true)) return elsewhere(res);
+  app.post("/api/player/restore", ownPageOnly(true), codeLimiter, async (req, res) => {
     const parsed = hunterCodeSchema.safeParse(req.body);
     const code = parsed.success ? tidyHunterCode(parsed.data.code) : null;
     if (!code) return res.status(400).json({ error: `A hunter code is 12 letters and numbers, like ${HUNTER_CODE_EXAMPLE}.` });

@@ -515,8 +515,14 @@ Built on 2026-11-16 (owner's pick: a lasting code):
   - Anyone who has a hunter's code can play as that hunter, and the panel says so. Wrong
     tries are limited to ten per quarter hour (per server instance, like the other limits);
     the code's length is the real guard against guessing.
-  - Another website cannot switch a visitor's hunter: the route takes only the game's own
-    JSON requests.
+  - Another website cannot switch a visitor's hunter or use up their tries: the code routes
+    turn away anything another site caused before doing or counting anything.
+  - Found and fixed on the way: a form posted from another site arrives without the
+    visitor's cookie, and the server used to answer any such request with a brand-new
+    cookie, which replaced the visitor's hunter with a blank one. A request another site
+    caused is now never given a cookie (`fromElsewhere` in `server/middleware.ts`).
+  - A new code stops the old code working, but a device that already used the old code is
+    that hunter by its cookie and stays so. There is no way to sign another device out.
   - The iPhone install tip now says the Home Screen app may start with a fresh hunter.
     Whether it does depends on the iOS version; this was not tested on a device.
   - This is the "recognise a hunter across devices" piece the mole bounty needs.

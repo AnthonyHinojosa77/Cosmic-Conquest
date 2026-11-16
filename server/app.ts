@@ -87,7 +87,9 @@ export function createApp(): Express {
 export function sendError(err: any, _req: Request, res: Response, next: NextFunction) {
   const status = Number(err?.status || err?.statusCode) || 500;
 
-  console.error(status >= 500 ? "Internal Server Error:" : `Request refused (${status}):`, err);
+  // A refused request is logged by its kind only: the error object holds what was sent.
+  if (status >= 500) console.error("Internal Server Error:", err);
+  else console.error(`Request refused (${status}): ${err?.type ?? err?.name ?? "error"}`);
 
   if (res.headersSent) {
     return next(err);

@@ -2386,12 +2386,15 @@ test("hunter code: entering it elsewhere brings the same hunter back, and only i
   assert.equal((await restore(next, other)).status, 200);
 
   // Another site cannot switch this browser's hunter: the browser marks such a request,
-  // and a form cannot send JSON at all.
+  // and a form cannot send JSON at all. Refusals are not counted as wrong tries, so
+  // another site cannot use up a visitor's tries either.
   resetLimits();
-  for (const site of ["cross-site", "same-site"]) {
-    const res = await restore(next, other, { ...json, "Sec-Fetch-Site": site });
-    assert.equal(res.status, 403, site);
-    assert.deepEqual(visitorCookies(res), []);
+  for (let i = 0; i < 12; i++) {
+    for (const site of ["cross-site", "same-site"]) {
+      const res = await restore(next, other, { ...json, "Sec-Fetch-Site": site });
+      assert.equal(res.status, 403, site);
+      assert.deepEqual(visitorCookies(res), []);
+    }
   }
   assert.equal((await restore(next, other, { ...json, "Sec-Fetch-Site": "same-origin" })).status, 200);
   resetLimits();
@@ -2400,11 +2403,37 @@ test("hunter code: entering it elsewhere brings the same hunter back, and only i
   await new Promise<void>((resolve) => whole.listen(0, "127.0.0.1", resolve));
   const at = `http://127.0.0.1:${(whole.address() as AddressInfo).port}`;
   try {
+    // A form posted from another site arrives without the visitor's cookie. It is refused,
+    // and it is not answered with any cookie at all: a new one would replace the visitor's
+    // hunter with a blank one. Old browsers name the other site in Origin; new ones in
+    // Sec-Fetch-Site.
     for (const type of ["application/x-www-form-urlencoded", "text/plain", "multipart/form-data; boundary=x"]) {
-      const form = await fetch(at + "/api/player/restore", { method: "POST", headers: { "Content-Type": type }, body: type.startsWith("text") ? JSON.stringify({ code: next }) : `code=${next}` });
-      assert.equal(form.status, 403, type);
-      assert.equal(form.headers.getSetCookie().some((c) => c.startsWith(mine)), false, type);
+      for (const marks of [{ "Sec-Fetch-Site": "cross-site" }, { Origin: "https://elsewhere.example" }, { Origin: "null" }] as Record<string, string>[]) {
+        const form = await fetch(at + "/api/player/restore", { method: "POST", headers: { "Content-Type": type, ...marks }, body: type.startsWith("text") ? JSON.stringify({ code: next }) : `code=${next}` });
+        assert.equal(form.status, 403, type);
+        assert.deepEqual(form.headers.getSetCookie(), [], `${type} ${JSON.stringify(marks)}`);
+      }
+      // Even with nothing marking it as another site's, a form is refused and changes nobody.
+      const bare = await fetch(at + "/api/player/restore", { method: "POST", headers: { "Content-Type": type }, body: `code=${next}` });
+      assert.equal(bare.status, 403, type);
+      assert.equal(bare.headers.getSetCookie().some((c) => c.startsWith(mine)), false, type);
     }
+    // The same holds on every route: a request another site caused is never handed a cookie.
+    for (const [method, path] of [["POST", "/api/postcards"], ["POST", "/api/visitors"], ["GET", "/api/player"], ["POST", "/api/player/code"]]) {
+      for (const marks of [{ "Sec-Fetch-Site": "cross-site" }, { "Sec-Fetch-Site": "same-site" }, { Origin: "https://elsewhere.example" }] as Record<string, string>[]) {
+        const res = await fetch(at + path, { method, headers: marks });
+        assert.deepEqual(res.headers.getSetCookie(), [], `${method} ${path} ${JSON.stringify(marks)}`);
+      }
+    }
+    // The game's own page, on its own origin, is given one as always.
+    for (const marks of [{}, { "Sec-Fetch-Site": "same-origin" }, { "Sec-Fetch-Site": "none" }, { Origin: at }] as Record<string, string>[]) {
+      const res = await fetch(at + "/api/player", { headers: marks });
+      assert.equal(res.headers.getSetCookie().filter((c) => c.startsWith("rf_vid=")).length, 1, JSON.stringify(marks));
+    }
+    // A browser that does have its cookie keeps its hunter whatever the request says.
+    const kept = await fetch(at + "/api/player", { headers: { Cookie: other, "Sec-Fetch-Site": "cross-site" } });
+    assert.deepEqual(kept.headers.getSetCookie(), []);
+    assert.match((await kept.json()).callsign, /^Hunter #\d{4}$/);
     // The same request as the game's own page sends it does work through the whole app.
     const real = await fetch(at + "/api/player/restore", { method: "POST", headers: json, body: JSON.stringify({ code: next }) });
     assert.equal(real.status, 200);
@@ -2432,7 +2461,7 @@ test("hunter code: entering it elsewhere brings the same hunter back, and only i
   assert.equal((await restore(next, other)).status, 200);
 });
 
-test("hunter code: storage keeps one code per hunter and never hands out a taken one", async () => {
+test("hunter code: storage keeps one code per hunter, and a replaced code answers to nobody", async () => {
   const { keepHunterCode, hunterCodeOf, hunterForCode } = await import("./gameStorage.js");
   const a = "11111111-1111-4111-8111-111111111111", b = "22222222-2222-4222-8222-222222222222";
   assert.equal(await hunterCodeOf(a), null);

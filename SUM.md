@@ -16,7 +16,9 @@ Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
 - The hunter can look at their code again any time; it is stored as it is, because the visitor id stored beside it already has the same power.
 - Entering a code does not merge hunters. The hunter the device had is left behind, and the panel warns first if that hunter has done anything.
 - Wrong tries are limited to ten per quarter hour; after that every code is refused until the wait is over.
-- The route that switches a browser's hunter takes only the game's own requests, so another website cannot switch a visitor's hunter.
+- The code routes turn away anything another website caused, before counting it as a wrong try, so another site cannot switch a visitor's hunter or use up their tries.
+- Found by the first independent review and fixed in the same release: the server used to answer a form posted from another site with a brand-new cookie, which replaced the visitor's hunter with a blank one. This was already so before the hunter code existed. A request another site caused is now never given a cookie.
+- A new code stops the old one working, but a device that already used the old code keeps the hunter. The panel says so before making a new code.
 - The iPhone install tip now says the Home Screen app may start with a fresh hunter. This was not tested on a device.
 - The wording fix from the entry below ships in the same release, after one review of both.
 

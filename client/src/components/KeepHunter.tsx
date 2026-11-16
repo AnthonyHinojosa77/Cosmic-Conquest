@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePlayer, errorMessage, fetchHunterCode, restoreHunter } from "@/lib/game";
 import { HUNTER_CODE_EXAMPLE, tidyHunterCode } from "@shared/game";
 
@@ -18,6 +18,16 @@ export function KeepHunter() {
   const [typed, setTyped] = useState("");
   const [askReplace, setAskReplace] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+
+  // The keyboard follows what just appeared: the code, or the question about replacing.
+  const codeRef = useRef<HTMLOutputElement>(null);
+  const replaceRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (code) codeRef.current?.focus({ preventScroll: true });
+  }, [code]);
+  useEffect(() => {
+    if (askReplace) replaceRef.current?.focus({ preventScroll: true });
+  }, [askReplace]);
 
   if (!player) return null;
 
@@ -49,15 +59,22 @@ export function KeepHunter() {
     }
   };
 
-  const restore = async () => {
+  // `confirmed`: the player pressed the "Replace…" button itself. Enter in the field
+  // only ever asks.
+  const restore = async (confirmed: boolean) => {
     const entered = tidyHunterCode(typed);
     if (!entered) {
       setRestoreError(`A hunter code is 12 letters and numbers, like ${HUNTER_CODE_EXAMPLE}.`);
       setAskReplace(false);
       return;
     }
+    if (code && tidyHunterCode(code) === entered) {
+      setRestoreError("That is this hunter's own code. It is for your other devices.");
+      setAskReplace(false);
+      return;
+    }
     // Replacing a hunter who has done something takes a second, deliberate press.
-    if (hasProgress && !askReplace) {
+    if (hasProgress && !confirmed) {
       setRestoreError(null);
       setAskReplace(true);
       return;
@@ -85,7 +102,7 @@ export function KeepHunter() {
 
       {code ? (
         <div className="mt-3">
-          <output className="hunter-code" aria-label="Your hunter code" data-testid="text-hunter-code">{code}</output>
+          <output ref={codeRef} tabIndex={-1} className="hunter-code" aria-label="Your hunter code" data-testid="text-hunter-code">{code}</output>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-2">
             <button className="retro-btn teal text-sm" onClick={copy} data-testid="button-copy-code">
               {copied === "yes" ? "Copied" : "Copy code"}
@@ -104,7 +121,10 @@ export function KeepHunter() {
           </p>
           {askNew && (
             <div className="mt-3 pt-3 border-t-2 border-dashed border-[hsl(30,20%,68%)]" role="group" aria-label="Make a new code">
-              <p className="text-sm">A new code replaces this one. The old code stops working everywhere you saved it.</p>
+              <p className="text-sm">
+                A new code replaces this one, and the old code stops working. A device that already used the old
+                code keeps your hunter.
+              </p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <button className="retro-btn text-sm" onClick={() => show(true)} disabled={busy !== null} data-testid="button-confirm-new-code">
                   {busy === "new" ? "Making…" : "Make a new code"}
@@ -127,7 +147,7 @@ export function KeepHunter() {
         className="mt-4 pt-3 border-t-2 border-dashed border-[hsl(30,20%,68%)]"
         onSubmit={(e) => {
           e.preventDefault();
-          void restore();
+          void restore(false);
         }}
       >
         <label className="pulp-title text-sm block" htmlFor="hunter-code">Have a code from another device?</label>
@@ -146,7 +166,7 @@ export function KeepHunter() {
               setAskReplace(false);
               setRestoreError(null);
             }}
-            className="flex-1 min-w-0 px-3 py-2 text-sm uppercase tracking-wider bg-[hsl(38,30%,85%)] text-[hsl(25,40%,15%)] border-2 border-[hsl(30,20%,68%)] rounded focus:border-[hsl(45,80%,48%)] focus:outline-none placeholder:text-[hsl(25,15%,55%)]"
+            className="flex-1 min-w-0 min-h-[44px] px-3 py-2 text-base uppercase tracking-wider bg-[hsl(38,30%,85%)] text-[hsl(25,40%,15%)] border-2 border-[hsl(30,20%,68%)] rounded focus:border-[hsl(45,80%,48%)] focus:outline-none placeholder:text-[hsl(25,15%,55%)]"
             data-testid="input-hunter-code"
           />
           {!askReplace && (
@@ -161,7 +181,7 @@ export function KeepHunter() {
               {player.callsign} is the hunter on this device and will be left behind. Save their code first if you want them back.
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
-              <button type="submit" className="retro-btn text-sm" disabled={busy !== null} data-testid="button-confirm-restore">
+              <button ref={replaceRef} type="button" className="retro-btn text-sm" onClick={() => void restore(true)} disabled={busy !== null} data-testid="button-confirm-restore">
                 {busy === "restore" ? "Calling…" : `Replace ${player.callsign}`}
               </button>
               <button type="button" className="retro-btn teal text-sm" onClick={() => setAskReplace(false)} disabled={busy !== null}>

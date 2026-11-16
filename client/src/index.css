@@ -720,6 +720,7 @@
     -webkit-user-select: all;
     overflow-wrap: anywhere;
   }
+  .hunter-code:focus-visible { outline: 3px solid hsl(45 85% 50%); outline-offset: 2px; }
 
   /* ---- The Standoff: cards across the table before the draw --------------- */
   .standoff {

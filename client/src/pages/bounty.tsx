@@ -775,7 +775,7 @@ function Investigation({
             }
             return (
               <p className="text-sm" role="alert">
-                Couldn't search here{searchErrors[openClue.id] ? `: ${searchErrors[openClue.id]}` : ""}.{" "}
+                Couldn't search here.{searchErrors[openClue.id] ? ` ${searchErrors[openClue.id]}` : ""}{" "}
                 <button className="underline" onClick={() => search(openClue)}>Try again</button>
               </p>
             );

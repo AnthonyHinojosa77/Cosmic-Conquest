@@ -98,23 +98,49 @@ export function setVisitorCookie(req: Request, res: Response, id: string): void 
   });
 }
 
-// Server-issued visitor identity (httpOnly cookie) used for vote deduplication,
-// so clients can't pick their own ID per request.
+// A request that a page on another site caused this browser to make. Browsers say so
+// themselves (Sec-Fetch-Site); older ones at least name the page's origin on anything
+// but a plain GET. A request that says neither is taken as the game's own.
+export function fromElsewhere(req: Request): boolean {
+  const site = req.get("sec-fetch-site");
+  if (site) return site !== "same-origin" && site !== "none";
+  const origin = req.get("origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).host !== req.host;
+  } catch {
+    return true; // "null", or not a URL at all
+  }
+}
+
+// Server-issued visitor identity (httpOnly cookie): who this browser's hunter is, and
+// its one vote per item. Clients can't pick their own ID per request.
+// A browser's cookie is not sent along with a form another site posts here. Such a
+// request is served as a passing stranger and is never given a cookie: answering it with
+// a new one would replace the visitor's hunter with a blank one.
 export function visitorIdentity(req: Request, res: Response, next: NextFunction) {
   let id = readCookie(req, VISITOR_COOKIE);
   if (!id || !UUID_RE.test(id)) {
     id = randomUUID();
-    setVisitorCookie(req, res, id);
+    if (!fromElsewhere(req)) setVisitorCookie(req, res, id);
   }
   req.visitorId = id;
   next();
 }
 
-// A request the game's own page made: JSON (which a form on another site cannot send, and
-// which a script on another site cannot send without this server's say-so), and not marked
-// by the browser as coming from elsewhere. Guards the routes that change who this browser is.
+// A request the game's own page made: not one another site caused, and, where it carries
+// a body, JSON (which a form on another site cannot send, and which a script on another
+// site cannot send without this server's say-so). Guards the routes that change who this
+// browser is.
 export function fromThisSite(req: Request, sendsBody: boolean): boolean {
-  const site = req.get("sec-fetch-site");
-  if (site && site !== "same-origin" && site !== "none") return false;
-  return !sendsBody || !!req.is("application/json");
+  return !fromElsewhere(req) && (!sendsBody || !!req.is("application/json"));
+}
+
+// The same check as a step in front of a route: refused requests go no further, so they
+// are not counted against the visitor by a limiter behind it.
+export function ownPageOnly(sendsBody: boolean) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (fromThisSite(req, sendsBody)) return next();
+    res.status(403).json({ error: "Open the game itself to do that." });
+  };
 }

@@ -25,8 +25,11 @@ npm run build
   never return `visitorId` from the API. A hunter code (`hunter_codes` table,
   `/api/player/code`, `/code/new`, `/restore` in `server/gameRoutes.ts`) points another
   browser's cookie at the same visitor id: it is as powerful as the cookie, so send a code
-  only to the hunter it belongs to, keep `/restore` behind `fromThisSite` (JSON only, not
-  cross-site) and `codeLimiter`, and never merge two hunters' rows.
+  only to the hunter it belongs to, keep the code routes behind `ownPageOnly` (placed
+  before any limiter; `/restore` takes JSON only) and `codeLimiter`, and never merge two
+  hunters' rows. `visitorIdentity` never hands a cookie to a request another site caused
+  (`fromElsewhere`): such a request arrives without the visitor's cookie, and a new one
+  would replace their hunter with a blank one.
 - Bounty Hunter game: content in `shared/game.ts` (ships to the browser),
   bounty answers server-only in `server/bounties.ts`, logic in
   `server/gameStorage.ts` + `server/gameRoutes.ts`. Credits/purchases/claims
