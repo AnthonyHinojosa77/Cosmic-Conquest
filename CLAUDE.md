@@ -31,8 +31,9 @@ npm run build
   `worthKeeping` only when the request says `replace: true`), and never merge two
   hunters' rows. `visitorIdentity` never hands a cookie to a request another site caused
   (`fromElsewhere`): such a request arrives without the visitor's cookie, and a new one
-  would replace their hunter with a blank one. `GET /api/player` (read once by every
-  page) gives the cookie a fresh year (`renewVisitorCookie`).
+  would replace their hunter with a blank one. `GET /api/player` gives the cookie a
+  fresh year (`renewVisitorCookie`); `App.tsx` reads it once each time the game is loaded,
+  on whichever page.
 - Bounty Hunter game: content in `shared/game.ts` (ships to the browser),
   bounty answers server-only in `server/bounties.ts`, logic in
   `server/gameStorage.ts` + `server/gameRoutes.ts`. Credits/purchases/claims

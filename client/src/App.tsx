@@ -14,6 +14,15 @@ import Aurelia from "@/pages/aurelia";
 import NotFound from "@/pages/not-found";
 import { SoundToggle } from "@/components/SoundToggle";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { usePlayer } from "@/lib/game";
+
+// Reads the hunter's profile once when the game loads, whichever page the player lands
+// on (Aurelia and the not-found page don't read it themselves). The server renews the
+// hunter's cookie on that read, and the pages that show the profile share this one answer.
+function KeepHunterCookie() {
+  usePlayer();
+  return null;
+}
 
 function AppRouter() {
   return (
@@ -42,6 +51,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router hook={useHashLocation}>
+            <KeepHunterCookie />
             <AppRouter />
             <SoundToggle />
           </Router>

@@ -19,7 +19,7 @@ Message 1 answered a report that listed two "decisions for you": the code's leng
 ### What happened
 
 - The keep-your-hunter code and the wording fix were pushed to `main` at commit `b4fb1e4` after a fourth independent review came back In Spec. The live site served that build and refused a cross-site form to the code route.
-- The agent decided both open choices: the code stays twelve characters in a panel under the card, and the hunter cookie is renewed whenever a page of the game is opened.
+- The agent decided both open choices: the code stays twelve characters in a panel under the card, and the hunter cookie is renewed each time the game is loaded, on whichever page.
 
 ### Open questions for the owner
 
@@ -47,7 +47,7 @@ Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
 
 ### Open questions for the owner
 
-- (Settled by the agent on 2026-11-16, see the entry above: the hunter cookie is now renewed whenever a page of the game is opened.)
+- (Settled by the agent on 2026-11-16, see the entry above: the hunter cookie is now renewed each time the game is loaded.)
 - Everything still listed as open in the entries below.
 
 ## 2026-11-15 (evening): stability fixes went live; wording fix and the keep-your-hunter code chosen

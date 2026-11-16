@@ -2536,6 +2536,14 @@ test("hunter cookie: opening the game gives it a fresh year, so a hunter who kee
   assert.equal("visitorId" in profile, false);
   assert.equal(JSON.stringify(profile).includes(visitorOf(mine)), false);
 
+  // The browser says so itself on the game's own requests; that renews too.
+  const own = await fetch(base + "/api/player", { headers: { Cookie: mine, "Sec-Fetch-Site": "same-origin" } });
+  assert.deepEqual(visitorCookies(own).map((c) => c.split(";")[0]), [mine]);
+  // The app reads the profile at its root, so it is read on whichever page the game is loaded.
+  const app = readFileSync("client/src/App.tsx", "utf8");
+  assert.match(app, /function KeepHunterCookie\(\) \{\s*usePlayer\(\);/);
+  assert.match(app, /<KeepHunterCookie \/>\s*<AppRouter \/>/);
+
   // Only the profile read renews: the feeds and other routes that pages poll stay cookie-free.
   for (const url of ["/api/leaderboard", "/api/wire", "/api/postcards", "/api/visitors", "/api/star-map", "/api/bounties/heart-of-luna/progress"]) {
     const res = await fetch(base + url, { headers: { Cookie: mine } });

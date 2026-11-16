@@ -536,8 +536,9 @@ twelve-character code (like ABCD-EFGH-JKLM, no look-alike characters) that the p
   - This is the "recognise a hunter across devices" piece the mole bounty needs.
 
 Fixed on 2026-11-16: the hunter cookie used to run out one year after the first visit,
-however often the hunter played, and the browser then started a new hunter. Opening any
-page of the game now gives the cookie a fresh year (the profile read renews it).
+however often the hunter played, and the browser then started a new hunter. Loading the
+game on any page now gives the cookie a fresh year (the app reads the profile once per
+load, and that read renews it; moving between pages without reloading does not read again).
 
 Still open, not started (the owner has seen the list):
 - **Rate limits on Vercel** are counted per server instance and reset on a cold start, so

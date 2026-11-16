@@ -197,7 +197,7 @@ async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProg
 }
 
 export function registerGameRoutes(app: Express) {
-  // Every page reads this once when it opens, so it is also where the cookie is renewed.
+  // The game reads this once each time it is loaded, so it is also where the cookie is renewed.
   app.get("/api/player", async (req, res) => {
     renewVisitorCookie(req, res);
     res.json(await getProfile(req.visitorId!));
