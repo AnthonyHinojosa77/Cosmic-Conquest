@@ -2516,3 +2516,39 @@ test("hunter code: storage keeps one code per hunter, and a replaced code answer
   assert.ok(seen.size > 24, `only ${seen.size} different characters`);
   for (const c of seen) assert.ok(HUNTER_CODE_ALPHABET.includes(c));
 });
+
+test("hunter cookie: opening the game gives it a fresh year, so a hunter who keeps playing is kept", async () => {
+  const visitorCookies = (res: Response) => res.headers.getSetCookie().filter((c) => c.startsWith("rf_vid="));
+  const first = await fetch(base + "/api/player");
+  assert.equal(visitorCookies(first).length, 1);
+  const mine = cookieOf(first);
+  const maxAge = (cookie: string) => Number(/Max-Age=(\d+)/i.exec(cookie)?.[1]);
+  assert.equal(maxAge(visitorCookies(first)[0]), 365 * 24 * 60 * 60);
+
+  // A later visit: the same id comes back with a full year again, and the same safeguards.
+  const later = await fetch(base + "/api/player", { headers: { Cookie: mine } });
+  assert.deepEqual(visitorCookies(later).map((c) => c.split(";")[0]), [mine]);
+  assert.equal(maxAge(visitorCookies(later)[0]), 365 * 24 * 60 * 60);
+  assert.match(visitorCookies(later)[0], /HttpOnly/i);
+  assert.match(visitorCookies(later)[0], /SameSite=Lax/i);
+  assert.match(visitorCookies(later)[0], /Path=\//i);
+  const profile = await later.json();
+  assert.equal("visitorId" in profile, false);
+  assert.equal(JSON.stringify(profile).includes(visitorOf(mine)), false);
+
+  // Only the profile read renews: the feeds and other routes that pages poll stay cookie-free.
+  for (const url of ["/api/leaderboard", "/api/wire", "/api/postcards", "/api/visitors", "/api/star-map", "/api/bounties/heart-of-luna/progress"]) {
+    const res = await fetch(base + url, { headers: { Cookie: mine } });
+    assert.deepEqual(res.headers.getSetCookie(), [], url);
+  }
+  // A request another site caused is never answered with a cookie, renewal included.
+  for (const marks of [{ "Sec-Fetch-Site": "cross-site" }, { "Sec-Fetch-Site": "same-site" }, { Origin: "https://elsewhere.example" }] as Record<string, string>[]) {
+    const res = await fetch(base + "/api/player", { headers: { Cookie: mine, ...marks } });
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.headers.getSetCookie(), [], JSON.stringify(marks));
+  }
+  // A malformed cookie still gets one new id, not two.
+  const mended = await fetch(base + "/api/player", { headers: { Cookie: "rf_vid=not-a-uuid" } });
+  assert.equal(visitorCookies(mended).length, 1);
+  assert.notEqual(cookieOf(mended), mine);
+});

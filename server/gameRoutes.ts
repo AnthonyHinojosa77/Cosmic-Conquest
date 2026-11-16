@@ -25,7 +25,7 @@ import {
   type ClueSearch,
 } from "../shared/game.js";
 import { aureliaFor } from "./aurelia.js";
-import { gameLimiter, clueLimiter, codeLimiter, ownPageOnly, setVisitorCookie } from "./middleware.js";
+import { gameLimiter, clueLimiter, codeLimiter, ownPageOnly, setVisitorCookie, renewVisitorCookie } from "./middleware.js";
 import { secretFor, solutionFor, testimonyFor, standoffDeckFor, type Solution } from "./bounties.js";
 import { standoffApplies, dealStandoff, playCard, viewOf, type StandoffState } from "./standoff.js";
 import {
@@ -197,7 +197,9 @@ async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProg
 }
 
 export function registerGameRoutes(app: Express) {
+  // Every page reads this once when it opens, so it is also where the cookie is renewed.
   app.get("/api/player", async (req, res) => {
+    renewVisitorCookie(req, res);
     res.json(await getProfile(req.visitorId!));
   });
 

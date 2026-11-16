@@ -128,6 +128,14 @@ export function visitorIdentity(req: Request, res: Response, next: NextFunction)
   next();
 }
 
+// Give this browser's cookie a fresh year. Each page of the game reads the hunter's
+// profile once when it opens, and that read calls this, so a hunter who keeps playing
+// keeps their hunter (the cookie used to run out a year after the first visit).
+// Not for a request another site caused: those never set a cookie.
+export function renewVisitorCookie(req: Request, res: Response): void {
+  if (req.visitorId && !fromElsewhere(req)) setVisitorCookie(req, res, req.visitorId);
+}
+
 // A request the game's own page made: not one another site caused, and, where it carries
 // a body, JSON (which a form on another site cannot send, and which a script on another
 // site cannot send without this server's say-so). Guards the routes that change who this

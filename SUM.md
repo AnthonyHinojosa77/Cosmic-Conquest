@@ -2,6 +2,29 @@
 
 Newest first. Owner's words are quoted exactly.
 
+## 2026-11-16 (later): the hunter code went live; technical choices are the agent's to make
+
+Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
+
+### Owner's words (in order)
+
+1. > Those decisions you say are for me are things I don't know how to answer
+
+Message 1 answered a report that listed two "decisions for you": the code's length and placement (twelve characters in a panel under the hunter card, where the example shown had sixteen on the card), and whether to renew the hunter cookie on each visit.
+
+### Standing guidance (the working agent's reading of message 1, not the owner's words)
+
+- Do not hand the owner technical choices. Make them, say in one line what was chosen and why, and carry on. Ask the owner only about things they can judge: how the game should feel and read, what to build next, money, publishing, and their own art and voice.
+
+### What happened
+
+- The keep-your-hunter code and the wording fix were pushed to `main` at commit `b4fb1e4` after a fourth independent review came back In Spec. The live site served that build and refused a cross-site form to the code route.
+- The agent decided both open choices: the code stays twelve characters in a panel under the card, and the hunter cookie is renewed whenever a page of the game is opened.
+
+### Open questions for the owner
+
+- None new. The play-test questions and the remaining survey items in the entries below still stand.
+
 ## 2026-11-16: the keep-your-hunter code, as a lasting code
 
 Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
@@ -24,7 +47,7 @@ Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
 
 ### Open questions for the owner
 
-- Should the hunter cookie be renewed on each visit? Today it lasts one year from the first visit, however often the hunter plays.
+- (Settled by the agent on 2026-11-16, see the entry above: the hunter cookie is now renewed whenever a page of the game is opened.)
 - Everything still listed as open in the entries below.
 
 ## 2026-11-15 (evening): stability fixes went live; wording fix and the keep-your-hunter code chosen
