@@ -83,6 +83,20 @@ export function errorMessage(err: unknown): string {
   return apiErrorMessage(err instanceof Error ? err.message : String(err));
 }
 
+// The hunter's code, to save somewhere: typed into another browser or device, it brings
+// this hunter back there. `fresh` makes a new one and the old stops working.
+export async function fetchHunterCode(fresh = false): Promise<string> {
+  const res = await apiRequest("POST", `/api/player/code${fresh ? "/new" : ""}`);
+  return (await res.json()).code;
+}
+
+// Enter a code: the server makes this browser that hunter. Reload afterwards, so nothing
+// from the hunter this browser had lingers on screen.
+export async function restoreHunter(code: string): Promise<PlayerProfile> {
+  const res = await apiRequest("POST", "/api/player/restore", { code });
+  return res.json();
+}
+
 export function useUpdatePlayer() {
   return useMutation({
     mutationFn: async (changes: { callsign?: string; suit?: SuitId }) =>

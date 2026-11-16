@@ -37,6 +37,19 @@ export const clueLimiter = rateLimit({
   },
 });
 
+// Entering a hunter code: wrong codes only, a handful per 15 min per IP. The code's
+// length is the real guard against guessing (these counters are per server instance).
+export const codeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  handler: (_req: Request, res: Response) => {
+    res.status(429).json({ error: "Too many tries. Wait a few minutes before entering a code again." });
+  },
+});
+
 // Game actions (customizing, buying, claiming) — more generous than content writes
 export const gameLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -67,20 +80,41 @@ function readCookie(req: Request, name: string): string | undefined {
   return undefined;
 }
 
+// Give this browser a visitor id. Any cookie already queued on this response for the
+// same name is dropped first, so the browser is told one id, not two.
+export function setVisitorCookie(req: Request, res: Response, id: string): void {
+  const queued = res.getHeader("Set-Cookie");
+  if (queued !== undefined) {
+    const others = (Array.isArray(queued) ? queued : [String(queued)]).filter((c) => !c.startsWith(`${VISITOR_COOKIE}=`));
+    if (others.length) res.setHeader("Set-Cookie", others);
+    else res.removeHeader("Set-Cookie");
+  }
+  res.cookie(VISITOR_COOKIE, id, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: req.secure,
+    maxAge: 365 * 24 * 60 * 60 * 1000,
+    path: "/",
+  });
+}
+
 // Server-issued visitor identity (httpOnly cookie) used for vote deduplication,
 // so clients can't pick their own ID per request.
 export function visitorIdentity(req: Request, res: Response, next: NextFunction) {
   let id = readCookie(req, VISITOR_COOKIE);
   if (!id || !UUID_RE.test(id)) {
     id = randomUUID();
-    res.cookie(VISITOR_COOKIE, id, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: req.secure,
-      maxAge: 365 * 24 * 60 * 60 * 1000,
-      path: "/",
-    });
+    setVisitorCookie(req, res, id);
   }
   req.visitorId = id;
   next();
+}
+
+// A request the game's own page made: JSON (which a form on another site cannot send, and
+// which a script on another site cannot send without this server's say-so), and not marked
+// by the browser as coming from elsewhere. Guards the routes that change who this browser is.
+export function fromThisSite(req: Request, sendsBody: boolean): boolean {
+  const site = req.get("sec-fetch-site");
+  if (site && site !== "same-origin" && site !== "none") return false;
+  return !sendsBody || !!req.is("application/json");
 }

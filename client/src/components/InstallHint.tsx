@@ -40,7 +40,7 @@ export function InstallHint() {
       <span className="install-hint-icon" aria-hidden>🚀</span>
       <p className="flex-1 text-sm leading-snug">
         <strong className="pulp-title tracking-wider text-[hsl(45,90%,65%)]">Play full screen. </strong>
-        {android ? "Install Cosmic Conquest and it opens like an app, with no browser bars." : <>Tap Share (the square with the arrow), then <em>Add to Home Screen</em>, and it opens like an app.</>}
+        {android ? "Install Cosmic Conquest and it opens like an app, with no browser bars." : <>Tap Share (the square with the arrow), then <em>Add to Home Screen</em>, and it opens like an app. The app may start with a fresh hunter, so save your hunter code first (under your hunter card).</>}
       </p>
       {android && (
         <button className="retro-btn gold text-sm" onClick={() => android.prompt().finally(close)} data-testid="button-install">

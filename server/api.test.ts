@@ -31,9 +31,9 @@ before(async () => {
   server = createServer(app);
   registerRoutes(app);
   // The suite plays many more bounties than one visitor would in 15 minutes.
-  const { gameLimiter, clueLimiter, apiLimiter } = await import("./middleware.js");
+  const { gameLimiter, clueLimiter, apiLimiter, codeLimiter } = await import("./middleware.js");
   resetLimits = () => {
-    for (const limiter of [gameLimiter, clueLimiter, apiLimiter]) limiter.resetKey("127.0.0.1");
+    for (const limiter of [gameLimiter, clueLimiter, apiLimiter, codeLimiter]) limiter.resetKey("127.0.0.1");
   };
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -2286,4 +2286,173 @@ test("errors: the game shows its own messages and never raw server text", async 
       assert.equal(apiErrorMessage(raw).includes(shown), false);
     }
   }
+});
+
+// --- Hunter codes: bring a hunter back on another browser or device ------------------
+
+test("hunter code: the format has no look-alikes, and typing is forgiving", async () => {
+  const { tidyHunterCode, showHunterCode, HUNTER_CODE_ALPHABET, HUNTER_CODE_LENGTH, HUNTER_CODE_EXAMPLE } = await import("../shared/game.js");
+  assert.equal(HUNTER_CODE_ALPHABET.length, 32);
+  assert.equal(new Set(HUNTER_CODE_ALPHABET).size, 32);
+  assert.equal(/[01IO]/.test(HUNTER_CODE_ALPHABET), false);
+  assert.equal(HUNTER_CODE_LENGTH, 12);
+  assert.equal(showHunterCode("ABCDEFGHJKLM"), "ABCD-EFGH-JKLM");
+  assert.equal(tidyHunterCode(HUNTER_CODE_EXAMPLE), "ABCDEFGHJKLM");
+  assert.equal(tidyHunterCode("  abcd efgh-jklm "), "ABCDEFGHJKLM");
+  assert.equal(tidyHunterCode("ABCD-EFGH-JKL"), null);    // too short
+  assert.equal(tidyHunterCode("ABCD-EFGH-JKLMN"), null);  // too long
+  assert.equal(tidyHunterCode("ABCD-EFGH-JKL0"), null);   // a zero is not in the alphabet
+  assert.equal(tidyHunterCode("ABCD-EFGH-JKLI"), null);
+  assert.equal(tidyHunterCode(""), null);
+});
+
+test("hunter code: entering it elsewhere brings the same hunter back, and only its own browser is shown it", async () => {
+  const json = { "Content-Type": "application/json" };
+  const visitorCookies = (res: Response) => res.headers.getSetCookie().filter((c) => c.startsWith("rf_vid="));
+  const profile = async (cookie: string) => (await fetch(base + "/api/player", { headers: { Cookie: cookie } })).json();
+  const codeOf = async (cookie: string, fresh = false) => {
+    const res = await fetch(base + "/api/player/code" + (fresh ? "/new" : ""), { method: "POST", headers: { Cookie: cookie } });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("cache-control"), "no-store");
+    return (await res.json()).code as string;
+  };
+  const restore = (code: unknown, cookie?: string, headers: Record<string, string> = json) =>
+    fetch(base + "/api/player/restore", { method: "POST", headers: { ...headers, ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify({ code }) });
+
+  // A hunter with something to lose.
+  const mine = cookieOf(await fetch(base + "/api/player"));
+  assert.equal((await solve("heart-of-luna", "cookie", mine)).status, 200);
+  await send("PATCH", "/api/player", { callsign: "Keeper Kate" }, mine);
+  const before = await profile(mine);
+  assert.equal(before.credits, 500);
+  assert.equal(before.callsign, "Keeper Kate");
+
+  // Her code: twelve characters in fours, the same each time she asks.
+  const code = await codeOf(mine);
+  assert.match(code, /^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/);
+  assert.equal(await codeOf(mine), code);
+  // Nobody else is shown it, and nothing public carries it or her visitor id.
+  const other = cookieOf(await fetch(base + "/api/player"));
+  const theirs = await codeOf(other);
+  assert.notEqual(theirs, code);
+  for (const url of ["/api/player", "/api/leaderboard", "/api/wire", "/api/star-map"]) {
+    const body = await (await fetch(base + url, { headers: { Cookie: mine } })).text();
+    assert.equal(body.includes(code) || body.includes(code.replace(/-/g, "")), false, url);
+    assert.equal(body.includes(visitorOf(mine)), false, url);
+  }
+
+  // On another device (its own cookie, with its own hunter): typed loosely, it still works.
+  const moved = await restore(` ${code.toLowerCase().replace(/-/g, " ")} `, other);
+  assert.equal(moved.status, 200);
+  assert.equal(moved.headers.get("cache-control"), "no-store");
+  assert.deepEqual(visitorCookies(moved).map((c) => c.split(";")[0]), [mine]);
+  assert.match(visitorCookies(moved)[0], /HttpOnly/i);
+  assert.match(visitorCookies(moved)[0], /SameSite=Lax/i);
+  const arrived = await moved.text();
+  assert.deepEqual(JSON.parse(arrived), before);
+  assert.equal(arrived.includes(visitorOf(mine)), false);
+  // The hunter that device had is left as it was, not merged and not deleted.
+  assert.match((await profile(other)).callsign, /^Hunter #\d{4}$/);
+  assert.equal((await profile(other)).credits, 0);
+  assert.equal(await codeOf(other), theirs);
+
+  // On a browser with no cookie at all: one cookie comes back, and it is hers.
+  const blank = await restore(code);
+  assert.equal(blank.status, 200);
+  assert.deepEqual(visitorCookies(blank).map((c) => c.split(";")[0]), [mine]);
+  // Her own browser entering her own code changes nothing.
+  const same = await restore(code, mine);
+  assert.equal(same.status, 200);
+  assert.deepEqual(visitorCookies(same), []);
+
+  // Wrong and malformed codes: plain refusals, and this browser stays who it was.
+  const wrong = await restore("2222-2222-2222", other);
+  assert.equal(wrong.status, 404);
+  assert.deepEqual(await wrong.json(), { error: "No hunter answers to that code. Check it and try again." });
+  assert.deepEqual(visitorCookies(wrong), []);
+  for (const bad of ["", "nope", "ABCD-EFGH-JKL0", 12, null, "x".repeat(41)]) {
+    const res = await restore(bad, other);
+    assert.equal(res.status, 400, String(bad));
+    assert.match((await res.json()).error, /12 letters and numbers, like ABCD-EFGH-JKLM/);
+    assert.deepEqual(visitorCookies(res), []);
+  }
+
+  // A new code replaces the old one. (Each refusal above counted as a wrong try.)
+  resetLimits();
+  const next = await codeOf(mine, true);
+  assert.notEqual(next, code);
+  assert.equal(await codeOf(mine), next);
+  assert.equal((await restore(code, other)).status, 404);
+  assert.equal((await restore(next, other)).status, 200);
+
+  // Another site cannot switch this browser's hunter: the browser marks such a request,
+  // and a form cannot send JSON at all.
+  resetLimits();
+  for (const site of ["cross-site", "same-site"]) {
+    const res = await restore(next, other, { ...json, "Sec-Fetch-Site": site });
+    assert.equal(res.status, 403, site);
+    assert.deepEqual(visitorCookies(res), []);
+  }
+  assert.equal((await restore(next, other, { ...json, "Sec-Fetch-Site": "same-origin" })).status, 200);
+  resetLimits();
+  const { createApp } = await import("./app.js");
+  const whole = createServer(createApp());
+  await new Promise<void>((resolve) => whole.listen(0, "127.0.0.1", resolve));
+  const at = `http://127.0.0.1:${(whole.address() as AddressInfo).port}`;
+  try {
+    for (const type of ["application/x-www-form-urlencoded", "text/plain", "multipart/form-data; boundary=x"]) {
+      const form = await fetch(at + "/api/player/restore", { method: "POST", headers: { "Content-Type": type }, body: type.startsWith("text") ? JSON.stringify({ code: next }) : `code=${next}` });
+      assert.equal(form.status, 403, type);
+      assert.equal(form.headers.getSetCookie().some((c) => c.startsWith(mine)), false, type);
+    }
+    // The same request as the game's own page sends it does work through the whole app.
+    const real = await fetch(at + "/api/player/restore", { method: "POST", headers: json, body: JSON.stringify({ code: next }) });
+    assert.equal(real.status, 200);
+    for (const path of ["/api/player/code", "/api/player/code/new"]) {
+      const res = await fetch(at + path, { method: "POST", headers: { Cookie: other, "Sec-Fetch-Site": "cross-site" } });
+      assert.equal(res.status, 403, path);
+    }
+  } finally {
+    whole.close();
+  }
+  assert.equal(await codeOf(other), theirs); // the refused requests changed nothing
+
+  // Guessing is slowed: ten wrong tries, then a wait for every code, right or wrong.
+  // Right codes entered before that are not counted.
+  resetLimits();
+  for (let i = 0; i < 10; i++) {
+    assert.equal((await restore(next, other)).status, 200);
+    assert.equal((await restore("3333-3333-3333", other)).status, 404, `try ${i}`);
+  }
+  const slowed = await restore("3333-3333-3333", other);
+  assert.equal(slowed.status, 429);
+  assert.match((await slowed.json()).error, /Too many tries/);
+  assert.equal((await restore(next, other)).status, 429);
+  resetLimits();
+  assert.equal((await restore(next, other)).status, 200);
+});
+
+test("hunter code: storage keeps one code per hunter and never hands out a taken one", async () => {
+  const { keepHunterCode, hunterCodeOf, hunterForCode } = await import("./gameStorage.js");
+  const a = "11111111-1111-4111-8111-111111111111", b = "22222222-2222-4222-8222-222222222222";
+  assert.equal(await hunterCodeOf(a), null);
+  const first = await keepHunterCode(a);
+  assert.match(first, /^[2-9A-HJ-NP-Z]{12}$/);
+  assert.equal(await keepHunterCode(a), first);
+  assert.equal(await hunterForCode(first), a);
+  // Asked for at the same moment, a hunter still ends up with one code.
+  const [x, y] = await Promise.all([keepHunterCode(b), keepHunterCode(b)]);
+  assert.equal(x, y);
+  assert.notEqual(x, first);
+  const replaced = await keepHunterCode(a, true);
+  assert.notEqual(replaced, first);
+  assert.equal(await hunterForCode(first), null);
+  assert.equal(await hunterForCode(replaced), a);
+  assert.equal(await hunterForCode("NOTACODE2222"), null);
+  // Codes come from all over the alphabet (a stuck generator would repeat characters).
+  const { HUNTER_CODE_ALPHABET } = await import("../shared/game.js");
+  const seen = new Set<string>();
+  for (let i = 0; i < 40; i++) for (const c of await keepHunterCode(a, true)) seen.add(c);
+  assert.ok(seen.size > 24, `only ${seen.size} different characters`);
+  for (const c of seen) assert.ok(HUNTER_CODE_ALPHABET.includes(c));
 });

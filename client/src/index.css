@@ -703,6 +703,24 @@
   @media (hover: hover) { .wanted-poster:hover { transform: translateY(-4px); } }
   .wanted-poster { transition: transform 0.2s; }
 
+  /* A hunter code, shown like a claim ticket: press and hold selects all of it */
+  .hunter-code {
+    display: block;
+    padding: 10px 8px 8px;
+    text-align: center;
+    font-family: 'Bangers', cursive;
+    font-size: 1.55rem;
+    letter-spacing: 0.1em;
+    line-height: 1.1;
+    color: hsl(25 40% 15%);
+    background: hsl(42 55% 84%);
+    border: 3px dashed hsl(25 40% 18%);
+    border-radius: 6px;
+    user-select: all;
+    -webkit-user-select: all;
+    overflow-wrap: anywhere;
+  }
+
   /* ---- The Standoff: cards across the table before the draw --------------- */
   .standoff {
     display: grid;

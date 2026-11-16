@@ -47,7 +47,9 @@ The SQLite database path defaults to `./data.db` and can be overridden with
 `DATABASE_PATH` (read by both `server/storage.ts` and `drizzle.config.ts`). The server
 creates any missing tables on startup, so `npm run db:push` is optional.
 There is no auth/session/OAuth layer, so no secrets are required. The server sets an
-anonymous `rf_vid` cookie to identify visitors for one-vote-per-item deduplication.
+anonymous `rf_vid` cookie that identifies a visitor: it is their hunter in the game and
+their one vote per item. A player can save a hunter code (Bounty Office, under the
+hunter card) and enter it in another browser to become the same hunter there.
 
 ## Deployment
 

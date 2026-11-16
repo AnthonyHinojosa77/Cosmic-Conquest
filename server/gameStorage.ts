@@ -1,6 +1,6 @@
-import { createHash } from "crypto";
+import { createHash, randomInt } from "crypto";
 import { and, eq, desc, sql, inArray } from "drizzle-orm";
-import { players, bountyClaims, playerItems, clueFinds, showdowns, replayReceipts, duelShots, bountyAttempts, caseRuns, standoffs, type Player } from "../shared/schema.js";
+import { players, bountyClaims, playerItems, clueFinds, showdowns, replayReceipts, duelShots, bountyAttempts, caseRuns, standoffs, hunterCodes, type Player } from "../shared/schema.js";
 import {
   DEFAULT_SUIT,
   ownsSuit,
@@ -10,6 +10,8 @@ import {
   STAR_MAP_SIZE,
   isBountyUnlocked,
   shotLands,
+  HUNTER_CODE_ALPHABET,
+  HUNTER_CODE_LENGTH,
   type Bounty,
   type PlayerProfile,
   type LeaderboardEntry,
@@ -490,4 +492,52 @@ export async function replayDuelOpen(visitorId: string, bountyId: string): Promi
     .where(and(eq(bountyClaims.visitorId, visitorId), eq(bountyClaims.bountyId, bountyId)))
     .get();
   return !!claim && started > Date.parse(claim.createdAt);
+}
+
+// --- Hunter codes: bring a hunter back on another browser or device ------------------
+// A code stands for a visitor id, which is itself what makes a browser that hunter, so
+// the code is kept as it is (the hunter can look at it again) and is no stronger a
+// secret than the id beside it. It is only ever sent to the hunter it belongs to.
+
+function freshHunterCode(): string {
+  let code = "";
+  for (let i = 0; i < HUNTER_CODE_LENGTH; i++) code += HUNTER_CODE_ALPHABET[randomInt(HUNTER_CODE_ALPHABET.length)];
+  return code;
+}
+
+export async function hunterCodeOf(visitorId: string): Promise<string | null> {
+  const row = await db.select({ code: hunterCodes.code })
+    .from(hunterCodes)
+    .where(eq(hunterCodes.visitorId, visitorId))
+    .get();
+  return row?.code ?? null;
+}
+
+// The hunter's code, made on first asking. `replace` makes a new one and the old stops working.
+export async function keepHunterCode(visitorId: string, replace = false): Promise<string> {
+  // A new code that happens to match someone else's is refused by the unique index: draw again.
+  for (let tries = 0; ; tries++) {
+    const values = { visitorId, code: freshHunterCode(), createdAt: new Date().toISOString() };
+    try {
+      const insert = db.insert(hunterCodes).values(values);
+      if (replace) {
+        await insert.onConflictDoUpdate({ target: hunterCodes.visitorId, set: { code: values.code, createdAt: values.createdAt } }).run();
+      } else {
+        await insert.onConflictDoNothing({ target: hunterCodes.visitorId }).run();
+      }
+      const code = await hunterCodeOf(visitorId);
+      if (code) return code;
+    } catch (err) {
+      if (tries >= 3) throw err;
+    }
+  }
+}
+
+// Whose code is this? Null if nobody's.
+export async function hunterForCode(code: string): Promise<string | null> {
+  const row = await db.select({ visitorId: hunterCodes.visitorId })
+    .from(hunterCodes)
+    .where(eq(hunterCodes.code, code))
+    .get();
+  return row?.visitorId ?? null;
 }

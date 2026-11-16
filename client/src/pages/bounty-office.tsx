@@ -10,6 +10,7 @@ import { InstallHint } from "@/components/InstallHint";
 import { useMusic } from "@/lib/sound";
 import { SterlingBroadcast, hasHeardBroadcast, markBroadcastHeard } from "@/components/SterlingBroadcast";
 import { usePlayer, useLeaderboard, useUpdatePlayer, useBuyItem, errorMessage } from "@/lib/game";
+import { KeepHunter } from "@/components/KeepHunter";
 import { BOUNTIES, SHOP_ITEMS, SUITS, SUIT_IDS, ITEMS, ownsSuit, hunterRank, rankLine, fragmentsFor, isBountyUnlocked, lockedLabel, AURELIA_INVITE_FRAGMENTS, creditsLabel, shopButtonLabel } from "@shared/game";
 
 const INK = "hsl(25,40%,15%)";
@@ -420,6 +421,7 @@ export default function BountyOffice() {
         </div>
         <div className="space-y-6 md:order-1">
           <HeroCard />
+          <KeepHunter />
           <Leaderboard />
         </div>
       </main>

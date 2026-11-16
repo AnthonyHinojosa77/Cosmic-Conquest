@@ -163,6 +163,13 @@ const SCHEMA = `
     \`state\` text NOT NULL
   );
   CREATE UNIQUE INDEX IF NOT EXISTS \`standoffs_visitor_bounty_unique\` ON \`standoffs\` (\`visitor_id\`,\`bounty_id\`);
+  CREATE TABLE IF NOT EXISTS \`hunter_codes\` (
+    \`visitor_id\` text NOT NULL,
+    \`code\` text NOT NULL,
+    \`created_at\` text NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS \`hunter_codes_visitor_unique\` ON \`hunter_codes\` (\`visitor_id\`);
+  CREATE UNIQUE INDEX IF NOT EXISTS \`hunter_codes_code_unique\` ON \`hunter_codes\` (\`code\`);
   CREATE TABLE IF NOT EXISTS \`replay_receipts\` (
     \`visitor_id\` text NOT NULL,
     \`bounty_id\` text NOT NULL

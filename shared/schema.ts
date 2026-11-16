@@ -166,6 +166,17 @@ export const standoffs = sqliteTable("standoffs", {
   uniqueIndex("standoffs_visitor_bounty_unique").on(table.visitorId, table.bountyId),
 ]);
 
+// A hunter's code: typed into another browser or device, it brings this hunter back there.
+// One per hunter; making a new one replaces it, and the old code stops working.
+export const hunterCodes = sqliteTable("hunter_codes", {
+  visitorId: text("visitor_id").notNull(),
+  code: text("code").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("hunter_codes_visitor_unique").on(table.visitorId),
+  uniqueIndex("hunter_codes_code_unique").on(table.code),
+]);
+
 // A finished replay whose showdown row is gone. A lost claim response can be retried.
 export const replayReceipts = sqliteTable("replay_receipts", {
   visitorId: text("visitor_id").notNull(),

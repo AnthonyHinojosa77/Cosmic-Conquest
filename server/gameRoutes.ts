@@ -14,13 +14,16 @@ import {
   onChart,
   claimWithoutShowdown,
   duelWindowMs,
+  tidyHunterCode,
+  showHunterCode,
+  HUNTER_CODE_EXAMPLE,
   type Bounty,
   type BountyProgress,
   type StandoffView,
   type ClueSearch,
 } from "../shared/game.js";
 import { aureliaFor } from "./aurelia.js";
-import { gameLimiter, clueLimiter } from "./middleware.js";
+import { gameLimiter, clueLimiter, codeLimiter, fromThisSite, setVisitorCookie } from "./middleware.js";
 import { secretFor, solutionFor, testimonyFor, standoffDeckFor, type Solution } from "./bounties.js";
 import { standoffApplies, dealStandoff, playCard, viewOf, type StandoffState } from "./standoff.js";
 import {
@@ -51,6 +54,8 @@ import {
   standoffOf,
   openStandoff,
   saveStandoff,
+  keepHunterCode,
+  hunterForCode,
 } from "./gameStorage.js";
 
 const accusationSchema = z.object({
@@ -60,6 +65,7 @@ const accusationSchema = z.object({
   proof2: z.string().min(1).max(40).optional(),
 });
 const claimSchema = z.object({ suspect: z.string().min(1).max(40) });
+const hunterCodeSchema = z.object({ code: z.string().min(1).max(40) });
 const decodeSchema = z.object({ key: z.number().int().min(0).max(25) });
 // A lock's digits, or a square on a sea chart ("C3")
 const unlockSchema = z.object({ code: z.string().regex(/^[0-9]{1,6}$|^[A-Z][1-9][0-9]?$/) });
@@ -191,6 +197,41 @@ async function progressOf(visitorId: string, bounty: Bounty): Promise<BountyProg
 export function registerGameRoutes(app: Express) {
   app.get("/api/player", async (req, res) => {
     res.json(await getProfile(req.visitorId!));
+  });
+
+  // --- Hunter codes ----------------------------------------------------------------
+  // A hunter is one browser's cookie. A code lets the player bring the same hunter back
+  // in another browser or on another device: there, entering the code points that
+  // browser's cookie at this hunter. Only the hunter's own browser is ever shown the code.
+  const elsewhere = (res: Response) => res.status(403).json({ error: "Open the game itself to do that." });
+
+  // The hunter's code (made the first time it is asked for).
+  app.post("/api/player/code", gameLimiter, async (req, res) => {
+    if (!fromThisSite(req, false)) return elsewhere(res);
+    res.set("Cache-Control", "no-store");
+    res.json({ code: showHunterCode(await keepHunterCode(req.visitorId!)) });
+  });
+
+  // A new code. The old one stops working.
+  app.post("/api/player/code/new", gameLimiter, async (req, res) => {
+    if (!fromThisSite(req, false)) return elsewhere(res);
+    res.set("Cache-Control", "no-store");
+    res.json({ code: showHunterCode(await keepHunterCode(req.visitorId!, true)) });
+  });
+
+  // Enter a code: this browser becomes that hunter. The hunter this browser had is not
+  // merged or deleted; it is left behind, reachable only by its own code. A wrong code
+  // says nothing about why, and wrong tries are limited.
+  app.post("/api/player/restore", codeLimiter, async (req, res) => {
+    if (!fromThisSite(req, true)) return elsewhere(res);
+    const parsed = hunterCodeSchema.safeParse(req.body);
+    const code = parsed.success ? tidyHunterCode(parsed.data.code) : null;
+    if (!code) return res.status(400).json({ error: `A hunter code is 12 letters and numbers, like ${HUNTER_CODE_EXAMPLE}.` });
+    const hunter = await hunterForCode(code);
+    if (!hunter) return res.status(404).json({ error: "No hunter answers to that code. Check it and try again." });
+    if (hunter !== req.visitorId) setVisitorCookie(req, res, hunter);
+    res.set("Cache-Control", "no-store");
+    res.json(await getProfile(hunter));
   });
 
   app.patch("/api/player", gameLimiter, async (req, res) => {

@@ -97,8 +97,8 @@ from the optional red-herring lies; the bandana take-back.
 
 **Step 3 (not started).** The mole bounty: 3 to 5 hunters share a notebook, the server
 secretly makes one the mole, who can plant a false clue and slip a bad card into the
-shared deck; the team votes on the accusation. Played in turns, not live. Needs a way to
-recognise a hunter across devices first.
+shared deck; the team votes on the accusation. Played in turns, not live. The hunter code
+(2026-11-16) is the way to recognise a hunter across devices that this needed.
 
 **Market check (2026-11-13/14, limited search).** No game found combining investigation,
 deckbuilding and a hidden traitor. Partial relatives: Card Detective (2023) and All Will
@@ -472,9 +472,11 @@ style reference; sources in the Drive folder.
 
 ## Known limits
 
-- **Anonymous players:** anyone who clears their browser cookies starts
-  over with a new hunter. They could collect a bounty again, capped by the
-  rate limit. Accounts would fix this if it ever matters.
+- **Anonymous players:** a hunter is one browser's cookie, with no account. Since
+  2026-11-16 a hunter code (under the hunter card in the Bounty Office) brings a hunter
+  back after cookies are cleared, on another phone, or in the iPhone Home Screen app. A
+  player who never saved their code and loses the cookie still starts over, and could
+  collect a bounty again, capped by the rate limit.
 - **The server is the referee:** clue text, puzzle answers and culprits live
   only on the server. It records each clue a hunter finds, checks decoder keys,
   hands out items only when the right spot is searched, refuses accusations
@@ -503,11 +505,26 @@ Fixed the same day (owner's pick, "stability fixes"):
   answer a bare 404.)
 - `body-parser` updated to 2.4.0 (a denial-of-service fix).
 
+Built on 2026-11-16 (owner's pick: a lasting code):
+- **Keep-your-hunter code.** Under the hunter card: "Show my hunter code" gives a
+  twelve-character code (like ABCD-EFGH-JKLM, no look-alike characters) that the player
+  can look at again any time. Typed into another browser or device, it makes that browser
+  the same hunter. "Make a new code" replaces it and the old one stops working.
+  - Entering a code does not merge hunters. The hunter that device had is left behind,
+    reachable only by its own code; the panel warns first if that hunter has done anything.
+  - Anyone who has a hunter's code can play as that hunter, and the panel says so. Wrong
+    tries are limited to ten per quarter hour (per server instance, like the other limits);
+    the code's length is the real guard against guessing.
+  - Another website cannot switch a visitor's hunter: the route takes only the game's own
+    JSON requests.
+  - The iPhone install tip now says the Home Screen app may start with a fresh hunter.
+    Whether it does depends on the iOS version; this was not tested on a device.
+  - This is the "recognise a hunter across devices" piece the mole bounty needs.
+
 Still open, not started (the owner has seen the list):
-- **Keep-your-hunter code.** A hunter is one browser cookie. Clearing cookies, a new
-  phone, or "Add to Home Screen" on an iPhone (which keeps its own cookies) starts a new
-  hunter, and the game's install tip does not say so. A code the player can copy would
-  fix it, and the mole bounty needs the same thing.
+- **The hunter cookie lasts one year from the first visit and is never renewed**, however
+  often the hunter plays. After that the browser starts a new hunter (the hunter code
+  brings the old one back, if it was saved). Renewing the cookie on each visit would fix it.
 - **Rate limits on Vercel** are counted per server instance and reset on a cold start, so
   they hold back far less than their numbers say. They need a shared store.
 - **Votes without a cookie** each count as a new voter.

@@ -21,8 +21,12 @@ npm run build
   index to `shared/schema.ts`, add the matching `CREATE ... IF NOT EXISTS`
   there too (copy the DDL drizzle-kit generates). Column changes need
   `npm run db:push`.
-- Visitor identity for vote dedup is the server-issued `rf_vid` cookie; never
-  return `visitorId` from the API.
+- Visitor identity (the hunter, and vote dedup) is the server-issued `rf_vid` cookie;
+  never return `visitorId` from the API. A hunter code (`hunter_codes` table,
+  `/api/player/code`, `/code/new`, `/restore` in `server/gameRoutes.ts`) points another
+  browser's cookie at the same visitor id: it is as powerful as the cookie, so send a code
+  only to the hunter it belongs to, keep `/restore` behind `fromThisSite` (JSON only, not
+  cross-site) and `codeLimiter`, and never merge two hunters' rows.
 - Bounty Hunter game: content in `shared/game.ts` (ships to the browser),
   bounty answers server-only in `server/bounties.ts`, logic in
   `server/gameStorage.ts` + `server/gameRoutes.ts`. Credits/purchases/claims

@@ -881,6 +881,28 @@ export function claimWithoutShowdown(hasReceipt: boolean): "already_collected" |
   return hasReceipt ? "already_collected" : "name_the_culprit";
 }
 
+// A hunter code brings a hunter back on another browser or device. Twelve characters from
+// an alphabet with no look-alikes (no 0 or O, no 1 or I), shown in fours: ABCD-EFGH-JKLM.
+// Whoever holds a hunter's code can play as that hunter, so the server only ever shows a
+// code to the hunter it belongs to.
+export const HUNTER_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+export const HUNTER_CODE_LENGTH = 12;
+export const HUNTER_CODE_EXAMPLE = "ABCD-EFGH-JKLM";
+
+// What someone typed, as a code: capitals, without the spaces and dashes. Null if it
+// can't be one.
+export function tidyHunterCode(typed: string): string | null {
+  const code = typed.toUpperCase().replace(/[\s-]/g, "");
+  if (code.length !== HUNTER_CODE_LENGTH) return null;
+  for (const c of code) if (!HUNTER_CODE_ALPHABET.includes(c)) return null;
+  return code;
+}
+
+// A code as it is shown: in fours, with dashes.
+export function showHunterCode(code: string): string {
+  return code.match(/.{1,4}/g)?.join("-") ?? code;
+}
+
 // The public feeds (postcards, predictions, community menu) return their newest entries,
 // this many at most. Every open page re-reads its feed, so an uncapped feed grows without
 // end. A new post is always among them; one with 50 newer than it is no longer shown.
@@ -898,8 +920,8 @@ export function feedCount(shown: number): string {
 export function apiErrorMessage(raw: string): string {
   const status = Number(/^(\d{3}):/.exec(raw)?.[1] ?? 0);
   // No status: the request never arrived (each browser words that differently), or the
-  // answer could not be read. Every line here says what to do next, so a page shows it
-  // as it is and adds nothing after it.
+  // answer could not be read. Each fixed line below says what to do next, so a page shows
+  // it as it is and adds nothing after it.
   if (!status) {
     return /fetch|network|load failed|connection|offline|timed? ?out/i.test(raw)
       ? "Couldn't reach the game. Check your connection."

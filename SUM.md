@@ -2,6 +2,29 @@
 
 Newest first. Owner's words are quoted exactly.
 
+## 2026-11-16: the keep-your-hunter code, as a lasting code
+
+Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
+
+### Owner's decisions (answered in the question dialog)
+
+- Asked how a hunter code should work (a lasting code, a one-time 15-minute transfer code, or both), the owner chose "Lasting code (Recommended)": each hunter can show one code and save it; entering it on any browser or phone brings that hunter back, even after cookies were cleared; it works until the player makes a new code, which cancels the old one. The question said that anyone holding a valid code would become that hunter, and that the result would be built, tested, independently reviewed and then pushed to the live game.
+
+### Gap-fills (the working agent's choices, not yet seen by the owner)
+
+- The code is twelve characters in fours, like ABCD-EFGH-JKLM, with no look-alike characters (no 0, O, 1 or I).
+- The hunter can look at their code again any time; it is stored as it is, because the visitor id stored beside it already has the same power.
+- Entering a code does not merge hunters. The hunter the device had is left behind, and the panel warns first if that hunter has done anything.
+- Wrong tries are limited to ten per quarter hour; after that every code is refused until the wait is over.
+- The route that switches a browser's hunter takes only the game's own requests, so another website cannot switch a visitor's hunter.
+- The iPhone install tip now says the Home Screen app may start with a fresh hunter. This was not tested on a device.
+- The wording fix from the entry below ships in the same release, after one review of both.
+
+### Open questions for the owner
+
+- Should the hunter cookie be renewed on each visit? Today it lasts one year from the first visit, however often the hunter plays.
+- Everything still listed as open in the entries below.
+
 ## 2026-11-15 (evening): stability fixes went live; wording fix and the keep-your-hunter code chosen
 
 Session: https://claude.ai/code/session_01GF8wU27PqANb4uWcqVkEbe
@@ -19,7 +42,7 @@ Message 1 answered: "Want me to fix the doubled "Try again" wording, or start on
 ### What happened
 
 - The stability fixes were pushed to `main` at commit `233bc1d` after a second independent review came back In Spec. The live site served that build, and an unknown API path on the live server answered with the new JSON reply.
-- The wording fix: the world pages no longer add "Try again." after an error line, because every error line already says what to do next.
+- The wording fix: the world pages no longer add "Try again." after an error line, because the error lines those pages can show already say what to do next.
 
 ### Open questions for the owner
 
