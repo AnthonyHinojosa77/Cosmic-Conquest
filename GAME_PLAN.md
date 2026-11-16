@@ -511,12 +511,16 @@ Built on 2026-11-16 (owner's pick: a lasting code):
   can look at again any time. Typed into another browser or device, it makes that browser
   the same hunter. "Make a new code" replaces it and the old one stops working.
   - Entering a code does not merge hunters. The hunter that device had is left behind,
-    reachable only by its own code; the panel warns first if that hunter has done anything.
+    reachable only by its own code; the panel warns first if that hunter has done anything
+    (credits, a case started, gear, an item, or a chosen callsign), and only a press on
+    the Replace button itself goes ahead.
   - Anyone who has a hunter's code can play as that hunter, and the panel says so. Wrong
     tries are limited to ten per quarter hour (per server instance, like the other limits);
     the code's length is the real guard against guessing.
-  - Another website cannot switch a visitor's hunter or use up their tries: the code routes
-    turn away anything another site caused before doing or counting anything.
+  - Another website cannot switch a visitor's hunter or use up their ten tries: the code
+    routes turn away anything another site caused before doing anything or counting a try.
+    (The general allowance of 600 requests per quarter hour per address still counts such
+    requests, as it does for the whole API.)
   - Found and fixed on the way: a form posted from another site arrives without the
     visitor's cookie, and the server used to answer any such request with a brand-new
     cookie, which replaced the visitor's hunter with a blank one. A request another site

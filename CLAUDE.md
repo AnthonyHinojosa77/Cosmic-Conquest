@@ -26,7 +26,7 @@ npm run build
   `/api/player/code`, `/code/new`, `/restore` in `server/gameRoutes.ts`) points another
   browser's cookie at the same visitor id: it is as powerful as the cookie, so send a code
   only to the hunter it belongs to, keep the code routes behind `ownPageOnly` (placed
-  before any limiter; `/restore` takes JSON only) and `codeLimiter`, and never merge two
+  before the route's own limiters; `/restore` takes JSON only) and `codeLimiter`, and never merge two
   hunters' rows. `visitorIdentity` never hands a cookie to a request another site caused
   (`fromElsewhere`): such a request arrives without the visitor's cookie, and a new one
   would replace their hunter with a blank one.

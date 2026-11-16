@@ -19,21 +19,34 @@ export function KeepHunter() {
   const [askReplace, setAskReplace] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
 
-  // The keyboard follows what just appeared: the code, or the question about replacing.
+  // The keyboard follows what just appeared: the code, or the words of a question. Never
+  // straight onto the button that answers it: Enter held down, or pressed twice, in the
+  // code field would press that button before the question could be read.
   const codeRef = useRef<HTMLOutputElement>(null);
-  const replaceRef = useRef<HTMLButtonElement>(null);
+  const replaceRef = useRef<HTMLParagraphElement>(null);
+  const newRef = useRef<HTMLParagraphElement>(null);
+  const newLinkRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const asked = useRef({ replace: false, fresh: false });
   useEffect(() => {
     if (code) codeRef.current?.focus({ preventScroll: true });
   }, [code]);
   useEffect(() => {
     if (askReplace) replaceRef.current?.focus({ preventScroll: true });
+    else if (asked.current.replace) inputRef.current?.focus({ preventScroll: true });
+    asked.current.replace = askReplace;
   }, [askReplace]);
+  useEffect(() => {
+    if (askNew) newRef.current?.focus({ preventScroll: true });
+    else if (asked.current.fresh) (newLinkRef.current ?? codeRef.current)?.focus({ preventScroll: true });
+    asked.current.fresh = askNew;
+  }, [askNew]);
 
   if (!player) return null;
 
-  // Anything this device's hunter would lose by being replaced
+  // Anything this device's hunter would lose by being replaced, a chosen callsign included
   const hasProgress = player.credits > 0 || player.completedBounties.length > 0 || player.startedBounties.length > 0
-    || player.owned.length > 0 || player.items.length > 0;
+    || player.owned.length > 0 || player.items.length > 0 || !/^Hunter #\d{4}$/.test(player.callsign);
 
   const show = async (fresh: boolean) => {
     setBusy(fresh ? "new" : "show");
@@ -108,7 +121,7 @@ export function KeepHunter() {
               {copied === "yes" ? "Copied" : "Copy code"}
             </button>
             {!askNew && (
-              <button className="underline text-xs min-h-[44px]" onClick={() => setAskNew(true)} data-testid="button-new-code">
+              <button ref={newLinkRef} className="underline text-xs min-h-[44px]" onClick={() => setAskNew(true)} data-testid="button-new-code">
                 Make a new code
               </button>
             )}
@@ -121,7 +134,7 @@ export function KeepHunter() {
           </p>
           {askNew && (
             <div className="mt-3 pt-3 border-t-2 border-dashed border-[hsl(30,20%,68%)]" role="group" aria-label="Make a new code">
-              <p className="text-sm">
+              <p ref={newRef} tabIndex={-1} className="text-sm keep-hunter-ask">
                 A new code replaces this one, and the old code stops working. A device that already used the old
                 code keeps your hunter.
               </p>
@@ -154,6 +167,7 @@ export function KeepHunter() {
         <div className="flex gap-2 mt-2">
           <input
             id="hunter-code"
+            ref={inputRef}
             value={typed}
             maxLength={20}
             placeholder={HUNTER_CODE_EXAMPLE}
@@ -177,11 +191,11 @@ export function KeepHunter() {
         </div>
         {askReplace && (
           <div className="mt-3" role="group" aria-label="Replace this device's hunter">
-            <p className="text-sm" role="status" data-testid="text-replace-warning">
+            <p ref={replaceRef} tabIndex={-1} className="text-sm keep-hunter-ask" role="status" data-testid="text-replace-warning">
               {player.callsign} is the hunter on this device and will be left behind. Save their code first if you want them back.
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
-              <button ref={replaceRef} type="button" className="retro-btn text-sm" onClick={() => void restore(true)} disabled={busy !== null} data-testid="button-confirm-restore">
+              <button type="button" className="retro-btn text-sm" onClick={() => void restore(true)} disabled={busy !== null} data-testid="button-confirm-restore">
                 {busy === "restore" ? "Calling…" : `Replace ${player.callsign}`}
               </button>
               <button type="button" className="retro-btn teal text-sm" onClick={() => setAskReplace(false)} disabled={busy !== null}>

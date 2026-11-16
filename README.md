@@ -41,7 +41,7 @@ Copy [`.env.example`](./.env.example) to `.env`. This app deliberately has only 
 | `NODE_ENV` | `development`   | `production` serves the prebuilt static client; otherwise Vite dev middleware is used |
 | `PORT`     | `5000`          | Port the Express server (API + client) binds on `0.0.0.0`   |
 | `DATABASE_PATH` | `./data.db` | SQLite file location (put it on a persistent volume in production) |
-| `TRUST_PROXY` | unset       | Proxy hops to trust for client IPs (e.g. `1` behind Fly.io/Railway/Render/nginx); needed for per-IP rate limiting behind a proxy |
+| `TRUST_PROXY` | unset       | Proxy hops to trust for client IPs (e.g. `1` behind Fly.io/Railway/Render/nginx); needed behind a proxy for per-IP rate limiting, and so the server can tell the game's own page from another site's (it compares a request's `Origin` with the forwarded host) |
 
 The SQLite database path defaults to `./data.db` and can be overridden with
 `DATABASE_PATH` (read by both `server/storage.ts` and `drizzle.config.ts`). The server
