@@ -903,6 +903,22 @@ export function showHunterCode(code: string): string {
   return code.match(/.{1,4}/g)?.join("-") ?? code;
 }
 
+// What entering a hunter code can answer. The server decides whether the hunter this
+// browser has now would be lost, so a page showing old news cannot skip the question.
+export type RestoreAnswer =
+  | { outcome: "restored"; profile: PlayerProfile }
+  // The code is this browser's own hunter's: nothing to do.
+  | { outcome: "same" }
+  // This browser's hunter has something to lose. Send the code again with `replace` to go ahead.
+  | { outcome: "ask"; callsign: string };
+
+// A hunter with anything to their name: credits, a case started or collected, gear, an
+// item, or a callsign they chose. Replacing one of these is asked about first.
+export function worthKeeping(profile: PlayerProfile): boolean {
+  return profile.credits > 0 || profile.completedBounties.length > 0 || profile.startedBounties.length > 0
+    || profile.owned.length > 0 || profile.items.length > 0 || !/^Hunter #\d{4}$/.test(profile.callsign);
+}
+
 // The public feeds (postcards, predictions, community menu) return their newest entries,
 // this many at most. Every open page re-reads its feed, so an uncapped feed grows without
 // end. A new post is always among them; one with 50 newer than it is no longer shown.

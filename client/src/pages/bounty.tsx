@@ -774,10 +774,10 @@ function Investigation({
               return <p className="text-sm marker-text text-[hsl(25,15%,42%)]">Searching…</p>;
             }
             return (
-              <p className="text-sm" role="alert">
-                Couldn't search here.{searchErrors[openClue.id] ? ` ${searchErrors[openClue.id]}` : ""}{" "}
-                <button className="underline" onClick={() => search(openClue)}>Search again</button>
-              </p>
+              <div className="text-sm" role="alert">
+                <p>Couldn't search here.{searchErrors[openClue.id] ? ` ${searchErrors[openClue.id]}` : ""}</p>
+                <button className="underline min-h-[44px]" onClick={() => search(openClue)}>Search again</button>
+              </div>
             );
           })()}
           {openClue.grants && player?.items.includes(openClue.grants) && (

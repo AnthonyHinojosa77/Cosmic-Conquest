@@ -516,7 +516,8 @@ export async function hunterCodeOf(visitorId: string): Promise<string | null> {
 // The hunter's code, made on first asking. `replace` makes a new one and the old stops working.
 export async function keepHunterCode(visitorId: string, replace = false): Promise<string> {
   // A new code that happens to match someone else's is refused by the unique index: draw again.
-  for (let tries = 0; ; tries++) {
+  let failure: unknown = new Error("Could not make a hunter code");
+  for (let tries = 0; tries < 4; tries++) {
     const values = { visitorId, code: freshHunterCode(), createdAt: new Date().toISOString() };
     try {
       const insert = db.insert(hunterCodes).values(values);
@@ -528,9 +529,10 @@ export async function keepHunterCode(visitorId: string, replace = false): Promis
       const code = await hunterCodeOf(visitorId);
       if (code) return code;
     } catch (err) {
-      if (tries >= 3) throw err;
+      failure = err;
     }
   }
+  throw failure;
 }
 
 // Whose code is this? Null if nobody's.

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { arrivalName, finishVisit, shouldLogVisit } from "@/lib/visitor";
-import { BOUNTIES, apiErrorMessage, closeReplayDuel, readyWithoutInterview, withAccusation, withCaught, type PlayerProfile, type LeaderboardEntry, type SuitId, type CaseSolution, type StarMapStatus, type BountyProgress, type ClueSearch, type AureliaLocation, type StandoffView } from "@shared/game";
+import { BOUNTIES, apiErrorMessage, closeReplayDuel, readyWithoutInterview, withAccusation, withCaught, type PlayerProfile, type LeaderboardEntry, type SuitId, type CaseSolution, type StarMapStatus, type BountyProgress, type ClueSearch, type AureliaLocation, type StandoffView, type RestoreAnswer } from "@shared/game";
 import { nameAfterReset } from "@/lib/votes";
 
 export const PLAYER_KEY = ["/api/player"];
@@ -90,10 +90,12 @@ export async function fetchHunterCode(fresh = false): Promise<string> {
   return (await res.json()).code;
 }
 
-// Enter a code: the server makes this browser that hunter. Reload afterwards, so nothing
-// from the hunter this browser had lingers on screen.
-export async function restoreHunter(code: string): Promise<PlayerProfile> {
-  const res = await apiRequest("POST", "/api/player/restore", { code });
+// Enter a code. The server answers: this browser is now that hunter ("restored": reload,
+// so nothing from the hunter it had lingers on screen); the code is this hunter's own
+// ("same"); or the hunter here has something to lose ("ask"), and only a second call
+// with `replace` goes ahead.
+export async function restoreHunter(code: string, replace = false): Promise<RestoreAnswer> {
+  const res = await apiRequest("POST", "/api/player/restore", replace ? { code, replace: true } : { code });
   return res.json();
 }
 

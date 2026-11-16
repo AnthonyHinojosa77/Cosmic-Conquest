@@ -2316,8 +2316,8 @@ test("hunter code: entering it elsewhere brings the same hunter back, and only i
     assert.equal(res.headers.get("cache-control"), "no-store");
     return (await res.json()).code as string;
   };
-  const restore = (code: unknown, cookie?: string, headers: Record<string, string> = json) =>
-    fetch(base + "/api/player/restore", { method: "POST", headers: { ...headers, ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify({ code }) });
+  const restore = (code: unknown, cookie?: string, headers: Record<string, string> = json, extra: Record<string, unknown> = {}) =>
+    fetch(base + "/api/player/restore", { method: "POST", headers: { ...headers, ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify({ code, ...extra }) });
 
   // A hunter with something to lose.
   const mine = cookieOf(await fetch(base + "/api/player"));
@@ -2349,7 +2349,7 @@ test("hunter code: entering it elsewhere brings the same hunter back, and only i
   assert.match(visitorCookies(moved)[0], /HttpOnly/i);
   assert.match(visitorCookies(moved)[0], /SameSite=Lax/i);
   const arrived = await moved.text();
-  assert.deepEqual(JSON.parse(arrived), before);
+  assert.deepEqual(JSON.parse(arrived), { outcome: "restored", profile: before });
   assert.equal(arrived.includes(visitorOf(mine)), false);
   // The hunter that device had is left as it was, not merged and not deleted.
   assert.match((await profile(other)).callsign, /^Hunter #\d{4}$/);
@@ -2360,10 +2360,41 @@ test("hunter code: entering it elsewhere brings the same hunter back, and only i
   const blank = await restore(code);
   assert.equal(blank.status, 200);
   assert.deepEqual(visitorCookies(blank).map((c) => c.split(";")[0]), [mine]);
-  // Her own browser entering her own code changes nothing.
-  const same = await restore(code, mine);
-  assert.equal(same.status, 200);
-  assert.deepEqual(visitorCookies(same), []);
+  // Her own browser entering her own code changes nothing, with or without `replace`.
+  for (const extra of [{}, { replace: true }]) {
+    const same = await restore(code, mine, json, extra);
+    assert.equal(same.status, 200);
+    assert.deepEqual(await same.json(), { outcome: "same" });
+    assert.deepEqual(visitorCookies(same), []);
+  }
+
+  // A device whose hunter has something to lose is asked first, by the server: the page
+  // cannot skip the question, whatever it believes about the hunter it is showing.
+  const busy = cookieOf(await fetch(base + "/api/player"));
+  await send("PATCH", "/api/player", { callsign: "Busy Bea" }, busy); // a chosen callsign is enough
+  for (const extra of [{}, { replace: false }]) {
+    const asked = await restore(code, busy, json, extra);
+    assert.equal(asked.status, 200);
+    assert.deepEqual(await asked.json(), { outcome: "ask", callsign: "Busy Bea" });
+    assert.deepEqual(visitorCookies(asked), []);
+  }
+  assert.equal((await profile(busy)).callsign, "Busy Bea");
+  for (const notYes of ["true", 1, "yes", null]) {
+    const res = await restore(code, busy, json, { replace: notYes });
+    assert.equal(res.status, 400, String(notYes));
+    assert.deepEqual(visitorCookies(res), []);
+  }
+  const went = await restore(code, busy, json, { replace: true });
+  assert.deepEqual(await went.json(), { outcome: "restored", profile: before });
+  assert.deepEqual(visitorCookies(went).map((c) => c.split(";")[0]), [mine]);
+  assert.equal((await profile(busy)).callsign, "Busy Bea"); // left behind, not changed
+  resetLimits();
+  const { worthKeeping } = await import("../shared/game.js");
+  const nobody = { callsign: "Hunter #1234", credits: 0, suit: "silver" as const, owned: [], completedBounties: [], startedBounties: [], cleanBounties: [], items: [] };
+  assert.equal(worthKeeping(nobody), false);
+  for (const some of [{ credits: 1 }, { completedBounties: ["heart-of-luna"] }, { startedBounties: ["heart-of-luna"] }, { owned: ["raygun" as const] }, { items: ["decoder-ring" as const] }, { callsign: "Kate" }, { callsign: "Hunter #12345" }]) {
+    assert.equal(worthKeeping({ ...nobody, ...some }), true, JSON.stringify(some));
+  }
 
   // Wrong and malformed codes: plain refusals, and this browser stays who it was.
   const wrong = await restore("2222-2222-2222", other);

@@ -507,13 +507,17 @@ Fixed the same day (owner's pick, "stability fixes"):
 
 Built on 2026-11-16 (owner's pick: a lasting code):
 - **Keep-your-hunter code.** Under the hunter card: "Show my hunter code" gives a
-  twelve-character code (like ABCD-EFGH-JKLM, no look-alike characters) that the player
-  can look at again any time. Typed into another browser or device, it makes that browser
+twelve-character code (like ABCD-EFGH-JKLM, no look-alike characters) that the player
+  can look at again any time. (The example shown to the owner when choosing had sixteen
+  characters and spoke of the hunter card itself; the build uses twelve, in a panel
+  directly under the card.) Typed into another browser or device, it makes that browser
   the same hunter. "Make a new code" replaces it and the old one stops working.
   - Entering a code does not merge hunters. The hunter that device had is left behind,
-    reachable only by its own code; the panel warns first if that hunter has done anything
-    (credits, a case started, gear, an item, or a chosen callsign), and only a press on
-    the Replace button itself goes ahead.
+    reachable only by its own code. If that hunter has done anything (credits, a case
+    started, gear, an item, or a chosen callsign), the server answers the first request
+    with a question instead of switching, and switches only when the page sends the code
+    again from its Replace button. The server decides this from its own record, so a page
+    showing old news (a second tab, say) cannot skip the question.
   - Anyone who has a hunter's code can play as that hunter, and the panel says so. Wrong
     tries are limited to ten per quarter hour (per server instance, like the other limits);
     the code's length is the real guard against guessing.
